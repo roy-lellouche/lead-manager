@@ -21,22 +21,24 @@ export default async function TeleproLeadPage({
 
   const adminClient = createAdminClient();
 
-  const { data: lead } = await adminClient
-    .from("leads")
-    .select("*")
-    .eq("id", id)
-    .eq("assigned_to", user.id)
-    .single();
+  // Lectures en parallèle. Les documents et l'historique ne sont affichés que si
+  // le lead appartient bien au télépro (notFound sinon, avant tout rendu).
+  const [{ data: lead }, { data: teleproDocs }, { data: logs }] = await Promise.all([
+    adminClient
+      .from("leads")
+      .select("*")
+      .eq("id", id)
+      .eq("assigned_to", user.id)
+      .single(),
+    adminClient
+      .from("lead_documents")
+      .select("id, type, file_name, storage_path, created_at")
+      .eq("lead_id", id)
+      .in("type", ["taxe_fonciere", "avis_imposition"]),
+    fetchTeleproLeadLogs(adminClient, id),
+  ]);
 
   if (!lead) notFound();
-
-  const { data: teleproDocs } = await adminClient
-    .from("lead_documents")
-    .select("id, type, file_name, storage_path, created_at")
-    .eq("lead_id", id)
-    .in("type", ["taxe_fonciere", "avis_imposition"]);
-
-  const { data: logs } = await fetchTeleproLeadLogs(adminClient, id);
 
   const logEntries = (logs || []).map((log) => ({
     id: log.id,

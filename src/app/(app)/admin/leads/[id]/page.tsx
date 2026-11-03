@@ -18,44 +18,44 @@ export default async function AdminLeadPage({
   const { id } = await params;
   const adminClient = createAdminClient();
 
-  const { data: lead } = await adminClient
-    .from("leads")
-    .select("*")
-    .eq("id", id)
-    .single();
+  // Les quatre lectures ne dépendent que de l'id : un seul aller-retour au lieu de quatre.
+  const [{ data: lead }, { data: logs }, { data: documents }, { data: distributions }] = await Promise.all([
+    adminClient
+      .from("leads")
+      .select("*")
+      .eq("id", id)
+      .single(),
+    adminClient
+      .from("lead_logs")
+      .select(`
+        *,
+        profile:profiles!user_id(full_name)
+      `)
+      .eq("lead_id", id)
+      .order("created_at", { ascending: false })
+      .limit(20),
+    adminClient
+      .from("lead_documents")
+      .select("*")
+      .eq("lead_id", id)
+      .order("created_at", { ascending: false }),
+    adminClient
+      .from("lead_distributions")
+      .select(`
+        id,
+        created_at,
+        previous_status,
+        previous_nrp_count,
+        previous_commentaire,
+        previous_telepro_added_at,
+        from:profiles!from_telepro(full_name, email),
+        to:profiles!to_telepro(full_name, email)
+      `)
+      .eq("lead_id", id)
+      .order("created_at", { ascending: true }),
+  ]);
 
   if (!lead) notFound();
-
-  const { data: logs } = await adminClient
-    .from("lead_logs")
-    .select(`
-      *,
-      profile:profiles!user_id(full_name)
-    `)
-    .eq("lead_id", id)
-    .order("created_at", { ascending: false })
-    .limit(20);
-
-  const { data: documents } = await adminClient
-    .from("lead_documents")
-    .select("*")
-    .eq("lead_id", id)
-    .order("created_at", { ascending: false });
-
-  const { data: distributions } = await adminClient
-    .from("lead_distributions")
-    .select(`
-      id,
-      created_at,
-      previous_status,
-      previous_nrp_count,
-      previous_commentaire,
-      previous_telepro_added_at,
-      from:profiles!from_telepro(full_name, email),
-      to:profiles!to_telepro(full_name, email)
-    `)
-    .eq("lead_id", id)
-    .order("created_at", { ascending: true });
 
   const logEntries = (logs || []).map((log) => ({
     id: log.id,

@@ -2,6 +2,8 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { isPublicAuthPath, isPublicSavPath } from '@/lib/auth-paths';
 import { canAccessAdminPath, normalizeRole, roleLandingPath, usesAdminSpace } from '@/lib/roles';
+import type { UserRole } from '@/lib/types';
+import { ROLE_COOKIE, ROLE_COOKIE_TTL_SECONDS, readRoleCookie, signRoleCookie } from '@/lib/role-cookie';
 
 export async function updateSession(request: NextRequest) {
   // Formulaire SAV client : public, aucune session ni vérification de rôle.
@@ -38,9 +40,45 @@ export async function updateSession(request: NextRequest) {
       },
     });
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    // getClaims() rafraîchit la session si besoin puis vérifie la signature du
+    // JWT en local (clés asymétriques ES256, JWKS mis en cache). Avant, getUser()
+    // faisait un aller-retour vers Supabase Auth à CHAQUE requête (pages, appels
+    // API, prefetch) : ~5 000 appels/jour, 66 ms en moyenne, jusqu'à 2,3 s.
+    const { data: claimsData } = await supabase.auth.getClaims();
+    const userId = typeof claimsData?.claims?.sub === 'string' ? claimsData.claims.sub : null;
+    const user = userId ? { id: userId } : null;
+
+    // Rôle : cookie signé si valide, sinon une lecture de `profiles` (puis mise en cache).
+    const roleSecret = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    let roleCookieToSet: string | null = null;
+    const getRole = async (id: string): Promise<UserRole | undefined> => {
+      if (roleSecret) {
+        const cached = await readRoleCookie(request.cookies.get(ROLE_COOKIE)?.value, id, roleSecret);
+        if (cached) return cached;
+      }
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', id)
+        .single();
+      const role = normalizeRole(profile?.role);
+      if (role && roleSecret) {
+        roleCookieToSet = await signRoleCookie(id, role, roleSecret);
+      }
+      return role;
+    };
+    const withRoleCookie = (response: NextResponse) => {
+      if (roleCookieToSet) {
+        response.cookies.set(ROLE_COOKIE, roleCookieToSet, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          path: '/',
+          maxAge: ROLE_COOKIE_TTL_SECONDS,
+        });
+      }
+      return response;
+    };
 
     const isTeleproApp = request.nextUrl.pathname.startsWith('/telepro');
     const isAdminApp = request.nextUrl.pathname.startsWith('/admin');
@@ -54,36 +92,24 @@ export async function updateSession(request: NextRequest) {
     const isPasswordRecovery = request.nextUrl.pathname.startsWith('/reset-password')
       || request.nextUrl.pathname.startsWith('/auth/');
     if (user && (isAuthPage || isSetupPage) && !isPasswordRecovery) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single();
-
-      const role = normalizeRole(profile?.role);
-      return NextResponse.redirect(new URL(roleLandingPath(role), request.url));
+      const role = await getRole(user.id);
+      return withRoleCookie(NextResponse.redirect(new URL(roleLandingPath(role), request.url)));
     }
 
     if (user && (isTeleproApp || isAdminApp)) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single();
-
-      const role = normalizeRole(profile?.role);
+      const role = await getRole(user.id);
       if (usesAdminSpace(role) && isTeleproApp) {
-        return NextResponse.redirect(new URL(roleLandingPath(role), request.url));
+        return withRoleCookie(NextResponse.redirect(new URL(roleLandingPath(role), request.url)));
       }
       if (role === 'telepro' && isAdminApp) {
-        return NextResponse.redirect(new URL('/telepro', request.url));
+        return withRoleCookie(NextResponse.redirect(new URL('/telepro', request.url)));
       }
       if (isAdminApp && !canAccessAdminPath(role, request.nextUrl.pathname)) {
-        return NextResponse.redirect(new URL(roleLandingPath(role), request.url));
+        return withRoleCookie(NextResponse.redirect(new URL(roleLandingPath(role), request.url)));
       }
     }
 
-    return supabaseResponse;
+    return withRoleCookie(supabaseResponse);
   } catch (err) {
     if (isAuthPage || isSetupPage || isSetupApi) {
       return NextResponse.next({ request });

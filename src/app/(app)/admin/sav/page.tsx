@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionUser } from "@/lib/supabase/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizeRole, roleLandingPath } from "@/lib/roles";
 import { withPhotoUrls } from "@/lib/sav-server";
@@ -10,8 +10,7 @@ import { SavClient } from "./SavClient";
 export const dynamic = "force-dynamic";
 
 export default async function AdminSavPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getSessionUser();
   if (!user) redirect("/login");
 
   const admin = createAdminClient();

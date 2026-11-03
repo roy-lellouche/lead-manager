@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getUserFromClient } from "@/lib/supabase/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createSavFromFormData, requireSavStaff, withPhotoUrls } from "@/lib/sav-server";
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const admin = createAdminClient();
-  const auth = await requireSavStaff(async () => (await supabase.auth.getUser()).data.user, admin);
+  const auth = await requireSavStaff(async () => getUserFromClient(supabase), admin);
   if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   let formData: FormData;

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getUserFromClient } from "@/lib/supabase/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizeRole } from "@/lib/roles";
 import type { UserRole } from "@/lib/types";
@@ -9,9 +10,7 @@ export async function getTaskActor(): Promise<
   | null
 > {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUserFromClient(supabase);
   if (!user) return null;
 
   const adminClient = createAdminClient();

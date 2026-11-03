@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
+import { getSessionProfile, getSessionUser } from "@/lib/supabase/session";
 import { normalizeRole } from "@/lib/roles";
 import { isExcludedFromRedistribution } from "@/lib/redistribution";
 import Link from "next/link";
@@ -124,10 +124,9 @@ export default async function AdminLeadsPage({
     buildQuery().range((target - 1) * per, target * per - 1);
 
   // La redistribution est réservée à l'admin : la secrétaire voit aussi cette page.
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getSessionUser();
 
-  const [{ leads, page, total }, { data: allTelepros }, { data: activeTelepros }, { data: viewer }] = await Promise.all([
+  const [{ leads, page, total }, { data: allTelepros }, { data: activeTelepros }, viewer] = await Promise.all([
     fetchPaginatedLeads(fetchPage, requestedPage, per),
     adminClient
       .from("profiles")
@@ -140,9 +139,8 @@ export default async function AdminLeadsPage({
       .eq("role", "telepro")
       .is("deleted_at", null)
       .order("full_name"),
-    user
-      ? adminClient.from("profiles").select("role").eq("id", user.id).single()
-      : Promise.resolve({ data: null }),
+    // Même requête que le layout : cache() la partage, aucun SELECT supplémentaire.
+    user ? getSessionProfile(user.id) : Promise.resolve(null),
   ]);
   const isAdmin = normalizeRole(viewer?.role) === "admin";
 

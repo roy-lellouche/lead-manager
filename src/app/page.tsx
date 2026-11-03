@@ -6,12 +6,13 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { normalizeRole, roleLandingPath } from "@/lib/roles";
+import { getSessionUser } from "@/lib/supabase/session";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getSessionUser();
 
   if (user) {
     let profile: { role?: string } | null = null;
