@@ -1,10 +1,18 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Pirata_One } from "next/font/google";
 import "./globals.css";
 
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
+  display: "swap",
+});
+
+// Police gothique, réservée aux titres de marque (menu, page de connexion).
+const gothic = Pirata_One({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-gothic",
   display: "swap",
 });
 
@@ -27,7 +35,7 @@ export default function RootLayout({
 
   return (
     <html lang="fr">
-      <body className={`${inter.variable} font-sans antialiased bg-[#f4f7fb] text-[#0b1f3a]`}>
+      <body className={`${inter.variable} ${gothic.variable} font-sans antialiased bg-[#f4f7fb] text-[#0b1f3a]`}>
         <script dangerouslySetInnerHTML={{ __html: envScript }} />
         {children}
       </body>

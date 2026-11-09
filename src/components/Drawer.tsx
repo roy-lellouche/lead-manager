@@ -27,6 +27,7 @@ import {
   ListTodo,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { FleurDeLis } from "@/components/brand/FleurDeLis";
 import { useRouter } from "next/navigation";
 import { LEAD_STATUS_LABELS, LEAD_STATUSES_ADMIN, LEAD_CATEGORIES, LEAD_CATEGORY_LABELS, type LeadStatus, type LeadCategory } from "@/lib/types";
 
@@ -107,7 +108,7 @@ export function Drawer({ role, userName, unreadNotifications = 0, statusCounts =
     <>
       <button
         onClick={() => setOpen(true)}
-        className="fixed top-4 left-4 z-40 p-2 rounded-lg bg-[#13294b] border border-white/15 lg:hidden"
+        className="fixed top-4 left-4 z-40 p-2 rounded-lg bg-[#0b0b0c] border border-[#8a8f96]/50 lg:hidden"
         aria-label="Ouvrir le menu"
       >
         <Menu className="w-6 h-6 text-white" />
@@ -122,12 +123,12 @@ export function Drawer({ role, userName, unreadNotifications = 0, statusCounts =
       )}
 
       <aside
-        className={`fixed top-0 left-0 h-full w-64 bg-gradient-to-b from-[#0b1f3a] to-[#13294b] border-r border-white/10 z-50 transform transition-transform duration-200 ease-in-out lg:translate-x-0 ${
+        className={`fixed top-0 left-0 h-full w-64 gothic-surface border-r border-[#8a8f96]/30 z-50 transform transition-transform duration-200 ease-in-out lg:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <div className="flex flex-col h-full">
-          <div className="p-4 border-b border-white/10 flex items-center justify-between">
+          <div className="p-4 flex items-center justify-between">
             <div className="flex flex-col gap-1">
               <Link href={isAdminSpace ? adminSpaceHome : "/telepro"} className="block">
                 {/* Symbole seul : le texte « RS ÉCOLOGIE » du logo complet est en vert foncé et
@@ -142,7 +143,8 @@ export function Drawer({ role, userName, unreadNotifications = 0, statusCounts =
                   priority
                 />
               </Link>
-              <span className="text-xs font-medium text-white">
+              <span className="font-gothic chrome-text text-2xl leading-tight">RS Écologie</span>
+              <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-[#a9aeb5]">
                 {isAdminSpace ? adminSpaceLabel : "Espace télépro"}
               </span>
             </div>
@@ -153,6 +155,12 @@ export function Drawer({ role, userName, unreadNotifications = 0, statusCounts =
             >
               <X className="w-5 h-5" />
             </button>
+          </div>
+
+          <div className="flex items-center gap-2 px-4" aria-hidden="true">
+            <div className="chrome-rule flex-1" />
+            <FleurDeLis className="w-5 h-5 shrink-0" />
+            <div className="chrome-rule flex-1" />
           </div>
 
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
@@ -179,8 +187,8 @@ export function Drawer({ role, userName, unreadNotifications = 0, statusCounts =
                       <div
                         className={`flex items-center gap-1 px-4 py-3 rounded-lg transition-colors ${
                           isActive
-                            ? "bg-[#3b82f6]/20 text-white font-medium shadow-[inset_0_0_0_1px_rgba(96,165,250,.45)]"
-                            : "text-[#9fb4d6] hover:bg-white/10"
+                            ? "bg-white/[0.07] text-white font-medium shadow-[inset_0_0_0_1px_rgba(214,217,221,.55)]"
+                            : "text-[#b9bec5] hover:bg-white/10"
                         }`}
                       >
                         <Link
@@ -221,7 +229,7 @@ export function Drawer({ role, userName, unreadNotifications = 0, statusCounts =
                                   className={`flex items-center gap-1 px-2 py-2 rounded-md transition-colors ${
                                     isCatActive
                                       ? "bg-white/15 text-white font-medium"
-                                      : "text-[#9fb4d6] hover:bg-white/10"
+                                      : "text-[#b9bec5] hover:bg-white/10"
                                   }`}
                                 >
                                   <Link
@@ -258,7 +266,7 @@ export function Drawer({ role, userName, unreadNotifications = 0, statusCounts =
                                       className={`flex items-center justify-between w-full px-3 py-2 text-sm rounded-md transition-colors ${
                                         isCatActive && !currentStatus
                                           ? "bg-white/15 text-white font-medium"
-                                          : "text-[#cfe0ff] hover:bg-white/10"
+                                          : "text-[#d6d9dd] hover:bg-white/10"
                                       }`}
                                     >
                                       <span>Tous</span>
@@ -273,7 +281,7 @@ export function Drawer({ role, userName, unreadNotifications = 0, statusCounts =
                                         className={`flex items-center justify-between w-full px-3 py-2 text-sm rounded-md transition-colors ${
                                           isCatActive && currentStatus === s
                                             ? "bg-white/15 text-white font-medium"
-                                            : "text-[#cfe0ff] hover:bg-white/10"
+                                            : "text-[#d6d9dd] hover:bg-white/10"
                                         }`}
                                       >
                                         <span>{LEAD_STATUS_LABELS[s as LeadStatus]}</span>
@@ -296,8 +304,8 @@ export function Drawer({ role, userName, unreadNotifications = 0, statusCounts =
                       onClick={() => setOpen(false)}
                       className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                         isActive
-                          ? "bg-[#3b82f6]/20 text-white font-medium shadow-[inset_0_0_0_1px_rgba(96,165,250,.45)]"
-                          : "text-[#9fb4d6] hover:bg-white/10"
+                          ? "bg-white/[0.07] text-white font-medium shadow-[inset_0_0_0_1px_rgba(214,217,221,.55)]"
+                          : "text-[#b9bec5] hover:bg-white/10"
                       }`}
                     >
                       <item.icon className="w-5 h-5 shrink-0" />
@@ -314,12 +322,12 @@ export function Drawer({ role, userName, unreadNotifications = 0, statusCounts =
             })}
           </nav>
 
-          <div className="p-4 border-t border-white/10 space-y-2">
+          <div className="p-4 border-t border-[#8a8f96]/30 space-y-2">
             {unreadNotifications > 0 && (
               <Link
                 href={isAdminSpace ? "/admin/notifications" : "/telepro/notifications"}
                 onClick={() => setOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 rounded-lg text-[#9fb4d6] hover:bg-white/10"
+                className="flex items-center gap-3 px-4 py-3 rounded-lg text-[#b9bec5] hover:bg-white/10"
               >
                 <Bell className="w-5 h-5 shrink-0" />
                 <span>Notifications</span>

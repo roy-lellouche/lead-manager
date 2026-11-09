@@ -61,7 +61,7 @@ export default async function AppLayout({
   return (
     <SaveOnLeaveProvider>
       <div className="min-h-screen flex">
-        <Suspense fallback={<div className="hidden lg:block w-64 shrink-0 bg-gradient-to-b from-[#0b1f3a] to-[#13294b]" />}>
+        <Suspense fallback={<div className="hidden lg:block w-64 shrink-0 gothic-surface" />}>
           <Drawer
             role={role ?? "telepro"}
             userName={profile?.full_name || user.email || undefined}

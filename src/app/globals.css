@@ -185,3 +185,31 @@
 
   --sidebar-ring: oklch(0.556 0 0);
 }
+
+/* ── Thème « gothique chromé » : noir, argent, fleurs de lys ─────────────── */
+.gothic-surface {
+  background-color: #0b0b0c;
+  background-image:
+    url("/fleur-de-lis-pattern.svg"),
+    linear-gradient(180deg, #161618 0%, #0b0b0c 55%, #050505 100%);
+  background-size: 64px 64px, 100% 100%;
+}
+
+.font-gothic {
+  font-family: var(--font-gothic), "Old English Text MT", serif;
+  letter-spacing: 0.01em;
+}
+
+/* Texte argent chromé (dégradé métallique) */
+.chrome-text {
+  background: linear-gradient(180deg, #ffffff 0%, #d4d7db 35%, #7c8188 55%, #eceef0 75%, #9aa0a7 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Filet argent avec reflet, utilisé comme séparateur */
+.chrome-rule {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #8a8f96 20%, #f2f3f5 50%, #8a8f96 80%, transparent);
+}
