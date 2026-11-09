@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { LEAD_STATUS_LABELS, LEAD_STATUSES_ADMIN, type LeadCategory, type LeadStatus } from "@/lib/types";
+import { LEAD_STATUS_LABELS, LEAD_STATUSES_ADMIN, LEAD_CATEGORIES, LEAD_CATEGORY_LABELS, type LeadCategory, type LeadStatus } from "@/lib/types";
 import { formatDateParis } from "@/lib/date";
 import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import {
@@ -185,6 +185,39 @@ export function AdminLeadsTable({ leads, telepros, excludeTeleproId, statusSort 
     }
   };
 
+  const [bulkCategory, setBulkCategory] = useState("");
+  const [updatingCategory, setUpdatingCategory] = useState(false);
+
+  const handleBulkCategoryChange = async () => {
+    if (selected.size === 0 || !bulkCategory) return;
+    setUpdatingCategory(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/update-leads-category", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          leadIds: Array.from(selected),
+          newCategory: bulkCategory,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setSelected(new Set());
+        setBulkCategory("");
+        setError(null);
+        router.refresh();
+      } else {
+        setError(data?.error || `Erreur ${res.status}`);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur réseau");
+    } finally {
+      setUpdatingCategory(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (selected.size === 0) return;
     if (
@@ -296,6 +329,30 @@ export function AdminLeadsTable({ leads, telepros, excludeTeleproId, statusSort 
             size="sm"
           >
             {updatingStatus ? "Mise à jour..." : "Appliquer statut"}
+          </Button>
+          <select
+            value={bulkCategory}
+            onChange={(e) => {
+              setBulkCategory(e.target.value);
+              setError(null);
+            }}
+            data-testid="bulk-category-select"
+            className="h-8 px-3 text-sm border border-[#e1e8f2] rounded-[9px] bg-white text-[#0b1f3a] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40"
+          >
+            <option value="">Changer la catégorie...</option>
+            {LEAD_CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {LEAD_CATEGORY_LABELS[c]}
+              </option>
+            ))}
+          </select>
+          <Button
+            onClick={handleBulkCategoryChange}
+            disabled={!bulkCategory || updatingCategory}
+            variant="secondary"
+            size="sm"
+          >
+            {updatingCategory ? "Mise à jour..." : "Appliquer catégorie"}
           </Button>
           <select
             value={targetId}
