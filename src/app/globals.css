@@ -188,10 +188,10 @@
 
 /* ── Thème « gothique chromé » : noir, argent, fleurs de lys ─────────────── */
 .gothic-surface {
-  background-color: #0b0b0c;
+  background-color: #2e3034;
   background-image:
     url("/fleur-de-lis-pattern.svg"),
-    linear-gradient(180deg, #161618 0%, #0b0b0c 55%, #050505 100%);
+    linear-gradient(180deg, #3a3c41 0%, #2e3034 55%, #26282b 100%);
   background-size: 64px 64px, 100% 100%;
 }
 

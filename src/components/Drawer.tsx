@@ -108,7 +108,7 @@ export function Drawer({ role, userName, unreadNotifications = 0, statusCounts =
     <>
       <button
         onClick={() => setOpen(true)}
-        className="fixed top-4 left-4 z-40 p-2 rounded-lg bg-[#0b0b0c] border border-[#8a8f96]/50 lg:hidden"
+        className="fixed top-4 left-4 z-40 p-2 rounded-lg bg-[#2e3034] border border-[#8a8f96]/50 lg:hidden"
         aria-label="Ouvrir le menu"
       >
         <Menu className="w-6 h-6 text-white" />
