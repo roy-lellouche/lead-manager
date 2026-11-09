@@ -27,13 +27,14 @@ export const LEAD_STATUSES_ADMIN: LeadStatus[] = [
 export const LEAD_STATUSES_TELEPRO: LeadStatus[] = LEAD_STATUSES_ADMIN;
 export const LEAD_STATUSES_TELEPRO_SELECTABLE: LeadStatus[] = LEAD_STATUSES_ADMIN;
 
-export type LeadCategory = 'fenetre' | 'clim_1euro' | 'clim_3990euros';
+export type LeadCategory = 'fenetre' | 'clim_1euro' | 'video_pac_atlantic_990' | 'clim_3990euros';
 
-export const LEAD_CATEGORIES: LeadCategory[] = ['fenetre', 'clim_1euro', 'clim_3990euros'];
+export const LEAD_CATEGORIES: LeadCategory[] = ['fenetre', 'clim_1euro', 'video_pac_atlantic_990', 'clim_3990euros'];
 
 export const LEAD_CATEGORY_LABELS: Record<LeadCategory, string> = {
   fenetre: 'Fenêtre',
-  clim_1euro: 'Clim 1 €',
+  clim_1euro: 'PAC image Atlantic 990 €',
+  video_pac_atlantic_990: 'Vidéo PAC Atlantic 990 €',
   clim_3990euros: 'Clim 3990 €',
 };
 
