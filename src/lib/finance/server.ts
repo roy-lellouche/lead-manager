@@ -173,7 +173,7 @@ export async function recalculateLeadFinancials(
   opts: { trigger: string; userId: string | null; resetStandardCosts?: boolean }
 ): Promise<{ ok: boolean; error?: string }> {
   const [{ data: lead }, finRes, products] = await Promise.all([
-    admin.from("leads").select("id, postal_code, city, devis_signed_at").eq("id", leadId).maybeSingle(),
+    admin.from("leads").select("id, status, postal_code, city, devis_signed_at").eq("id", leadId).maybeSingle(),
     admin.from("lead_financials").select("*").eq("lead_id", leadId).maybeSingle(),
     loadLeadPacProducts(admin, leadId),
   ]);
@@ -181,9 +181,9 @@ export async function recalculateLeadFinancials(
   let fin = finRes.data as Record<string, any> | null; // eslint-disable-line @typescript-eslint/no-explicit-any
   const hasPac = products.some((p) => p.is_pac_atlantic);
 
-  // Pas de fiche rentabilité : on n'en crée une que si une PAC Atlantic est sur la fiche.
+  // Pas de fiche rentabilité : on n'en crée une qu'au statut « Installé », avec une PAC Atlantic sur la fiche.
   if (!fin) {
-    if (!hasPac) return { ok: true };
+    if (!hasPac || lead.status !== "installe") return { ok: true };
     const { error } = await admin.from("lead_financials").insert({ lead_id: leadId, method_source: "auto" });
     if (error) return { ok: false, error: error.message };
     fin = (await admin.from("lead_financials").select("*").eq("lead_id", leadId).maybeSingle()).data;
@@ -411,7 +411,7 @@ export async function recalculateLeadFinancials(
 }
 
 /** Champs de la fiche lead dont la modification déclenche un recalcul. */
-export const RECALC_LEAD_FIELDS = ["postal_code", "city", "installation_type", "devis_signed_at", "category"] as const;
+export const RECALC_LEAD_FIELDS = ["status", "postal_code", "city", "installation_type", "devis_signed_at", "category"] as const;
 
 /**
  * À appeler après une mise à jour de lead : recalcule si un champ pertinent

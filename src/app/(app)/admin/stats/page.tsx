@@ -39,7 +39,7 @@ export default async function AdminStatsPage({
 
   let docRecusQuery = adminClient
     .from("leads")
-    .select("benefit_cee, benefit_mpr, benefit_apporteur_affaires, installation_cost, material_cost, regie_cost, profitability, status, delegataire_group, installation_type, is_installe, is_depot_mpr, is_cee_paye, is_mpe_paye, is_code_envoye, is_depose, is_controle_veritas, is_paye, is_compte_bloque, is_rejete")
+    .select("status, delegataire_group, installation_type, is_installe, is_depot_mpr, is_cee_paye, is_mpe_paye, is_code_envoye, is_depose, is_controle_veritas, is_paye, is_compte_bloque, is_rejete, lead_financials(method_id, calc_status, gross_margin, revenue, total_cost, cee_forecast, cee_received)")
     .eq("status", "installe")
     .gte("updated_at", fromDate.toISOString())
     .lte("updated_at", toDate.toISOString());
@@ -68,18 +68,26 @@ export default async function AdminStatsPage({
 
   const leads = docRecusLeads || [];
   const leadsDocRecusOnly = leads;
-  const totalBenefitCee = leads.reduce((s, l) => s + (Number(l.benefit_cee) || 0), 0);
-  const totalBenefitMpr = leads.reduce((s, l) => s + (Number(l.benefit_mpr) || 0), 0);
-  const totalApporteurAffaires = leads.reduce((s, l) => s + (Number(l.benefit_apporteur_affaires) || 0), 0);
-  const totalCosts = leads.reduce(
-    (s, l) =>
-      s +
-      (Number(l.installation_cost) || 0) +
-      (Number(l.material_cost) || 0) +
-      (Number(l.regie_cost) || 0),
-    0
-  );
-  const totalProfitability = leads.reduce((s, l) => s + (Number(l.profitability) || 0), 0);
+  // Finances : uniquement le calcul automatique des méthodes économiques (méthodes 1, 2, 3).
+  // Les anciens montants saisis à la main restent sur les fiches mais ne sont plus comptés.
+  type Fin = { method_id: string | null; calc_status: string; gross_margin: number | null; revenue: number | null; total_cost: number | null; cee_forecast: number | null; cee_received: number | null };
+  const finOf = (l: Record<string, unknown>): Fin | null => {
+    const f = l.lead_financials as Fin | Fin[] | null | undefined;
+    return (Array.isArray(f) ? f[0] : f) ?? null;
+  };
+  const cents = (v: unknown) => Math.round((Number(v) || 0) * 100);
+  const fins = leads.map((l) => finOf(l as Record<string, unknown>));
+  const withMethod = fins.filter((f) => f?.method_id);
+  const computed = withMethod.filter((f) => f!.calc_status === "calcule" && f!.gross_margin !== null) as Fin[];
+  const sum = (list: Fin[], k: keyof Fin) => list.reduce((s, f) => s + cents(f[k]), 0) / 100;
+  const totalMargin = sum(computed, "gross_margin");
+  const totalRevenue = sum(computed, "revenue");
+  const totalCosts = sum(computed, "total_cost");
+  const totalCeeForecast = sum(computed, "cee_forecast");
+  const totalCeeReceived = sum(withMethod as Fin[], "cee_received");
+  const withoutMethod = leads.length - withMethod.length;
+  const pendingCalc = withMethod.length - computed.length;
+  const avgMargin = computed.length > 0 ? totalMargin / computed.length : 0;
   const count = leads.length;
 
   const delegataireCounts = leads.reduce<Record<string, number>>((acc, l) => {
@@ -105,13 +113,6 @@ export default async function AdminStatsPage({
   }, {});
 
   const totalLeads = (allLeadsByStatus || []).length;
-  const countDocRecusOnly = leadsDocRecusOnly.length;
-  const totalProfitabilityDocRecus = leadsDocRecusOnly.reduce((s, l) => s + (Number(l.profitability) || 0), 0);
-  const totalBenefitDocRecus = leadsDocRecusOnly.reduce((s, l) => s + (Number(l.benefit_cee) || 0) + (Number(l.benefit_mpr) || 0), 0);
-  const avgProfitability = countDocRecusOnly > 0 ? totalProfitabilityDocRecus / countDocRecusOnly : 0;
-  const avgBenefit = countDocRecusOnly > 0 ? totalBenefitDocRecus / countDocRecusOnly : 0;
-
-  const benefitCeeNet = totalBenefitCee - totalCosts;
 
   const eur = (n: number) =>
     n.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
@@ -134,17 +135,17 @@ export default async function AdminStatsPage({
         />
       </PeriodFilter>
 
-      <SectionTitle hint="Dossiers installés sur la période">Finances</SectionTitle>
+      <SectionTitle hint="Dossiers installés sur la période, calcul automatique par méthode (1, 2, 3)">Finances</SectionTitle>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Rentabilité totale" value={eur(totalProfitability)} icon={TrendingUp} tone="success" size="lg" href={baseInstalleUrl} hint={`${eur(avgProfitability)} en moyenne par dossier`} />
-        <StatCard label="Bénéfices (CEE + MPR)" value={eur(totalBenefitCee + totalBenefitMpr)} icon={Coins} tone="brand" size="lg" href={baseInstalleUrl} hint={`${eur(avgBenefit)} en moyenne par dossier`} />
-        <StatCard label="Total à payer (coûts)" value={eur(totalCosts)} icon={Banknote} tone="danger" size="lg" href={baseInstalleUrl} hint="Pose + matériel + régie" />
-        <StatCard label="Dossiers installés" value={count} icon={Hammer} tone="amethyst" size="lg" href={baseInstalleUrl} />
+        <StatCard label="Marge brute prévisionnelle" value={eur(totalMargin)} icon={TrendingUp} tone="success" size="lg" href="/admin/rentabilite" hint={`${eur(avgMargin)} en moyenne par chantier calculé`} />
+        <StatCard label="Chiffre d'affaires prévisionnel" value={eur(totalRevenue)} icon={Coins} tone="brand" size="lg" href="/admin/rentabilite" hint="Prime CEE HT + reste à charge" />
+        <StatCard label="Coût de revient" value={eur(totalCosts)} icon={Banknote} tone="danger" size="lg" href="/admin/rentabilite" hint="Coûts standards des méthodes, TVA récupérable déduite" />
+        <StatCard label="Dossiers installés" value={count} icon={Hammer} tone="amethyst" size="lg" href={baseInstalleUrl} hint={`${computed.length} calculés · ${pendingCalc} en attente`} />
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard label="Bénéfice CEE (CEE − coûts)" value={eur(benefitCeeNet)} href={baseInstalleUrl} />
-        <StatCard label="Bénéfice MPR" value={eur(totalBenefitMpr)} href={baseInstalleUrl} />
-        <StatCard label="Apporteur d'affaires" value={eur(totalApporteurAffaires)} href={baseInstalleUrl} />
+        <StatCard label="Prime CEE prévisionnelle" value={eur(totalCeeForecast)} href="/admin/rentabilite" />
+        <StatCard label="Prime CEE encaissée" value={eur(totalCeeReceived)} href="/admin/rentabilite" />
+        <StatCard label="Installés sans méthode" value={withoutMethod} href={baseInstalleUrl} hint="À attribuer : méthode 1, 2 ou 3 sur la fiche" />
       </div>
 
       {selectedDelegataires.length > 0 && (

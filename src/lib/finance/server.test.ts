@@ -176,7 +176,7 @@ describe("méthode 2 : sélection automatique par l'ETAS et TVA", () => {
   });
 
   beforeEach(() => {
-    tables.leads.push({ id: "L9", postal_code: "05110", city: "La Saulce", devis_signed_at: "2026-05-01" });
+    tables.leads.push({ id: "L9", status: "installe", postal_code: "05110", city: "La Saulce", devis_signed_at: "2026-05-01" });
     tables.economic_methods = [
       { id: "pac_atlantic_cee", name: "PAC Atlantic CEE", is_configured: true, active: true, auto_select: true,
         etas_min_exclusive: null, etas_max_inclusive: 140, eligibility_conditions: [], cee_amount_basis: "HT", cee_vat_share: 50, cee_vat_rate: 20 },
@@ -213,6 +213,13 @@ describe("méthode 2 : sélection automatique par l'ETAS et TVA", () => {
       raw_total_cost: 4870, total_cost_ht: 4636.66, total_cost_ttc: 5564, total_cost: 4636.66,
       cee_forecast: 9500, cee_ttc: 10450, revenue: 9500, gross_margin: 4863.34, cash_in_ttc: 10450, cash_out_ttc: 5564,
     });
+  });
+
+  it("ne crée rien tant que le client n'est pas au statut Installé", async () => {
+    tables.leads.find((l) => l.id === "L9")!.status = "devis_envoye";
+    tables.lead_materials.push(pac(146));
+    await recalculateLeadFinancials(db, "L9", { trigger: "matériel", userId: "U" });
+    expect(tables.lead_financials.find((r) => r.lead_id === "L9")).toBeUndefined();
   });
 
   it("demande l'ETAS s'il n'est pas validé au catalogue, sans rien inventer", async () => {

@@ -10,7 +10,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 async function buildPayload(admin: SupabaseClient, leadId: string) {
   const [{ data: lead }, { data: fin }, { data: methods }, thresholds, { data: history }] = await Promise.all([
-    admin.from("leads").select("id, postal_code, city, devis_signed_at, installation_type").eq("id", leadId).maybeSingle(),
+    admin.from("leads").select("id, status, postal_code, city, devis_signed_at, installation_type").eq("id", leadId).maybeSingle(),
     admin.from("lead_financials").select("*").eq("lead_id", leadId).maybeSingle(),
     admin
       .from("economic_methods")
@@ -48,8 +48,16 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   const admin = auth.admin;
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
 
-  const { data: lead } = await admin.from("leads").select("id").eq("id", id).maybeSingle();
+  const { data: lead } = await admin.from("leads").select("id, status").eq("id", id).maybeSingle();
   if (!lead) return NextResponse.json({ error: "Lead introuvable" }, { status: 404 });
+  // La rentabilité (choix de méthode) se gère au statut « Installé ».
+  const assignsMethod = ("method_id" in body && body.method_id) || body.method_auto === true;
+  if (assignsMethod && lead.status !== "installe") {
+    return NextResponse.json(
+      { error: "La méthode économique s'attribue quand le client est au statut « Installé »." },
+      { status: 400 }
+    );
+  }
   const { data: fin } = await admin.from("lead_financials").select("*").eq("lead_id", id).maybeSingle();
 
   const changes: Record<string, unknown> = {};

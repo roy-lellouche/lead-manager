@@ -79,7 +79,7 @@ interface HistoryEntry {
   profile: { full_name: string | null } | null;
 }
 interface Payload {
-  lead: { devis_signed_at: string | null; postal_code: string | null; city: string | null };
+  lead: { status: string | null; devis_signed_at: string | null; postal_code: string | null; city: string | null };
   financials: Financials | null;
   methods: Method[];
   thresholds: AlertThresholds;
@@ -195,6 +195,18 @@ export function ProfitabilitySection({ leadId, isAdmin }: { leadId: string; isAd
   }
 
   const f = data.financials;
+  if (data.lead.status !== "installe" && !f?.method_id) {
+    return (
+      <div className={CARD}>
+        <h2 className="text-xs font-semibold text-[#64748b] uppercase tracking-wide mb-2">Rentabilité du chantier</h2>
+        <p className="text-sm text-[#64748b] flex items-start gap-2">
+          <Info className="w-4 h-4 mt-0.5 shrink-0" />
+          La rentabilité se calcule quand le client passe au statut « Installé » : vous pourrez alors lui attribuer
+          la méthode 1, 2 ou 3, et la marge s&apos;affichera automatiquement.
+        </p>
+      </div>
+    );
+  }
   const method = data.methods.find((m) => m.id === f?.method_id) || null;
   const suggested = data.methods.find((m) => m.id === f?.suggested_method_id) || null;
   const hasVat = (f?.cost_lines || []).some((l) => l.vat_rate !== null && l.vat_rate !== undefined);

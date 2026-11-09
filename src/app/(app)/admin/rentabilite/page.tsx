@@ -75,7 +75,8 @@ export default async function RentabilitePage({ searchParams }: { searchParams: 
     to: one(sp.to),
     zone: one(sp.zone),
     method: one(sp.method),
-    status: one(sp.status),
+    // Par défaut : dossiers au statut « Installé » (« all » = tous les statuts).
+    status: sp.status === undefined ? "installe" : one(sp.status),
   };
 
   const admin = createAdminClient();
@@ -85,7 +86,7 @@ export default async function RentabilitePage({ searchParams }: { searchParams: 
     .not("method_id", "is", null);
   if (filters.method) query = query.eq("method_id", filters.method);
   if (filters.zone) query = filters.zone === "none" ? query.is("climate_zone", null) : query.eq("climate_zone", filters.zone);
-  if (filters.status) query = query.eq("lead.status", filters.status);
+  if (filters.status && filters.status !== "all") query = query.eq("lead.status", filters.status);
   // Période : date de signature du devis (date qui détermine le barème).
   if (filters.from) query = query.gte("lead.devis_signed_at", filters.from);
   if (filters.to) query = query.lte("lead.devis_signed_at", filters.to);
@@ -143,7 +144,7 @@ export default async function RentabilitePage({ searchParams }: { searchParams: 
         <div>
           <label className="block text-xs text-[#64748b] mb-1">Statut du chantier</label>
           <select name="status" defaultValue={filters.status} className={INPUT}>
-            <option value="">Tous</option>
+            <option value="all">Tous</option>
             {(Object.keys(LEAD_STATUS_LABELS) as LeadStatus[]).map((k) => <option key={k} value={k}>{LEAD_STATUS_LABELS[k]}</option>)}
           </select>
         </div>
