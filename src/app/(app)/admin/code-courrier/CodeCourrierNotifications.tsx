@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 const DISMISSED_STORAGE_KEY = "code-courrier-notifications-dismissed";
 
 const SELECT_CLS =
-  "w-full h-8 px-2.5 text-sm border border-[#e1e8f2] rounded-[9px] bg-white text-[#0b1f3a] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40";
+  "w-full h-8 px-2.5 text-sm border border-line rounded-[9px] bg-white text-ink focus:outline-none focus:ring-2 focus:ring-brand/40";
 
 function loadDismissedFromStorage(): Set<string> {
   if (typeof window === "undefined") return new Set();
@@ -175,7 +175,7 @@ export function CodeCourrierNotifications() {
               tabIndex={0}
               onClick={() => handleClick(entry)}
               onKeyDown={(e) => e.key === "Enter" && handleClick(entry)}
-              className="rounded-[12px] bg-[#fff5f5] border border-[#fecaca] shadow-[0_1px_2px_rgba(13,38,76,.06)] p-4 hover:bg-[#fff1f2] cursor-pointer transition-colors flex items-start gap-3 w-full"
+              className="rounded-[14px] bg-[#fff5f5] border border-[#fecaca] shadow-card p-4 hover:bg-[#fff1f2] cursor-pointer transition-colors flex items-start gap-3 w-full"
             >
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-[#991b1b]">
@@ -200,9 +200,9 @@ export function CodeCourrierNotifications() {
       {/* Modal suivi */}
       {selectedEntry && (
         <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
-          <div className="rounded-[12px] border border-[#e1e8f2] bg-white shadow-[0_1px_2px_rgba(13,38,76,.06)] w-full max-w-md">
-            <div className="flex items-center justify-between p-4 border-b border-[#e1e8f2]">
-              <h3 className="text-lg font-semibold text-[#0b1f3a]">Code courrier</h3>
+          <div className="rounded-[14px] border border-line bg-white shadow-card w-full max-w-md">
+            <div className="flex items-center justify-between p-4 border-b border-line">
+              <h3 className="text-lg font-semibold text-ink">Code courrier</h3>
               <Button variant="ghost" size="icon-sm" onClick={closeModal}>
                 <X />
               </Button>
@@ -210,38 +210,38 @@ export function CodeCourrierNotifications() {
             <div className="p-4 space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <p className="text-xs text-[#64748b]">Nom</p>
-                  <p className="font-medium text-[#0b1f3a]">{selectedEntry.last_name}</p>
+                  <p className="text-xs text-subtle">Nom</p>
+                  <p className="font-medium text-ink">{selectedEntry.last_name}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-[#64748b]">Prénom</p>
-                  <p className="font-medium text-[#0b1f3a]">{selectedEntry.first_name}</p>
+                  <p className="text-xs text-subtle">Prénom</p>
+                  <p className="font-medium text-ink">{selectedEntry.first_name}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-[#64748b]">Téléphone</p>
-                  <p className="font-medium text-[#0b1f3a]">{selectedEntry.phone}</p>
+                  <p className="text-xs text-subtle">Téléphone</p>
+                  <p className="font-medium text-ink">{selectedEntry.phone}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-[#64748b]">Date de création</p>
-                  <p className="font-medium text-[#0b1f3a]">{formatDateParis(selectedEntry.created_at)}</p>
+                  <p className="text-xs text-subtle">Date de création</p>
+                  <p className="font-medium text-ink">{formatDateParis(selectedEntry.created_at)}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-[#64748b]">Jours écoulés</p>
-                  <p className="font-medium text-[#0b1f3a]">{getDaysSinceCreation(selectedEntry.created_at)} jour(s)</p>
+                  <p className="text-xs text-subtle">Jours écoulés</p>
+                  <p className="font-medium text-ink">{getDaysSinceCreation(selectedEntry.created_at)} jour(s)</p>
                 </div>
               </div>
 
               {selectedEntry.callback_at && (
-                <div className="bg-[#eff6ff] border border-[#bfdbfe] rounded-[10px] p-3">
-                  <p className="text-sm text-[#1e40af]">
+                <div className="bg-brand-soft border border-brand-line rounded-[10px] p-3">
+                  <p className="text-sm text-brand-strong">
                     <CalendarIcon className="w-4 h-4 inline mr-1" />
                     Rappel prévu le {formatDateParis(selectedEntry.callback_at)}
                   </p>
                 </div>
               )}
 
-              <div className="border-t border-[#e1e8f2] pt-3">
-                <label className="block text-sm font-medium text-[#0b1f3a] mb-2">Suivi</label>
+              <div className="border-t border-line pt-3">
+                <label className="block text-sm font-medium text-ink mb-2">Suivi</label>
                 <select
                   value={followUpAction}
                   onChange={(e) => {
@@ -262,7 +262,7 @@ export function CodeCourrierNotifications() {
 
                 {followUpAction === "a_rappeler" && (
                   <div className="mt-3">
-                    <label className="block text-sm font-medium text-[#0b1f3a] mb-1">Date et heure du rappel</label>
+                    <label className="block text-sm font-medium text-ink mb-1">Date et heure du rappel</label>
                     <Input
                       type="datetime-local"
                       value={callbackDate}
@@ -272,7 +272,7 @@ export function CodeCourrierNotifications() {
                 )}
               </div>
             </div>
-            <div className="p-4 border-t border-[#e1e8f2] flex justify-end gap-3">
+            <div className="p-4 border-t border-line flex justify-end gap-3">
               <Button variant="outline" onClick={closeModal}>
                 Fermer
               </Button>

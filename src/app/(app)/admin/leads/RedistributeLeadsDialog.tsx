@@ -55,20 +55,20 @@ function TeleproChecklist({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-[#0b1f3a]">
-          {title} <span className="text-[#64748b] font-normal">({selected.size}/{telepros.length})</span>
+        <span className="text-sm font-medium text-ink">
+          {title} <span className="text-subtle font-normal">({selected.size}/{telepros.length})</span>
         </span>
         <button
           type="button"
-          className="text-xs text-[#2563eb] hover:text-[#1d4ed8] font-medium"
+          className="text-xs text-brand hover:text-brand-hover font-medium"
           onClick={() => onChange(allSelected ? new Set() : new Set(telepros.map((t) => t.id)))}
         >
           {allSelected ? "Tout désélectionner" : "Tout sélectionner"}
         </button>
       </div>
-      <div className="max-h-40 overflow-y-auto rounded-lg border border-[#e1e8f2] p-2 space-y-1.5">
+      <div className="max-h-40 overflow-y-auto rounded-lg border border-line p-2 space-y-1.5">
         {telepros.map((t) => (
-          <label key={t.id} className="flex items-center gap-2 text-sm text-[#0b1f3a] cursor-pointer">
+          <label key={t.id} className="flex items-center gap-2 text-sm text-ink cursor-pointer">
             <Checkbox
               checked={selected.has(t.id)}
               onCheckedChange={(checked) => {
@@ -187,7 +187,7 @@ export function RedistributeLeadsDialog({ telepros }: { telepros: Telepro[] }) {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
-            <label htmlFor="redistrib-limit" className="text-sm font-medium text-[#0b1f3a]">
+            <label htmlFor="redistrib-limit" className="text-sm font-medium text-ink">
               Derniers NRP par télépro
             </label>
             <Input
@@ -204,10 +204,10 @@ export function RedistributeLeadsDialog({ telepros }: { telepros: Telepro[] }) {
                 <option key={n} value={n} />
               ))}
             </datalist>
-            <p className="text-xs text-[#64748b]">Ex. 20, 50, 100 (max {REDISTRIBUTION_MAX_LIMIT})</p>
+            <p className="text-xs text-subtle">Ex. 20, 50, 100 (max {REDISTRIBUTION_MAX_LIMIT})</p>
           </div>
           <div className="space-y-1.5">
-            <label htmlFor="redistrib-date" className="text-sm font-medium text-[#0b1f3a]">
+            <label htmlFor="redistrib-date" className="text-sm font-medium text-ink">
               Ajoutés au plus tard le
             </label>
             <Input
@@ -216,7 +216,7 @@ export function RedistributeLeadsDialog({ telepros }: { telepros: Telepro[] }) {
               value={maxDate}
               onChange={(e) => edit(setMaxDate)(e.target.value)}
             />
-            <p className="text-xs text-[#64748b]">Seuls les leads reçus ce jour-là ou avant sont pris.</p>
+            <p className="text-xs text-subtle">Seuls les leads reçus ce jour-là ou avant sont pris.</p>
           </div>
         </div>
 

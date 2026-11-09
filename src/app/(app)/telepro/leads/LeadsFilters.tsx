@@ -94,17 +94,17 @@ export function LeadsFilters() {
   };
 
   return (
-    <div className="rounded-[12px] border border-[#e1e8f2] bg-white shadow-[0_1px_2px_rgba(13,38,76,.06)] p-4 flex flex-col gap-4">
+    <div className="rounded-[14px] border border-line bg-white shadow-card p-4 flex flex-col gap-4">
       <form onSubmit={handleSearch} className="w-full flex gap-2">
         <div className="relative flex-1 min-w-0">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748b]" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-subtle" />
           <Input
             ref={searchInputRef}
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Rechercher par nom, prénom, téléphone ou email..."
-            className="pl-9 h-9 border-[#e1e8f2] rounded-[9px] text-[#0b1f3a] placeholder:text-[#64748b]"
+            className="pl-9 h-9 border-line rounded-[9px] text-ink placeholder:text-subtle"
             data-testid="filter-search"
           />
         </div>
@@ -114,11 +114,11 @@ export function LeadsFilters() {
       </form>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 items-end">
         <div>
-          <label className="block text-xs font-medium text-[#64748b] mb-1">Catégorie</label>
+          <label className="block text-xs font-medium text-subtle mb-1">Catégorie</label>
           <select
             value={currentCategory}
             onChange={(e) => handleCategoryChange(e.target.value)}
-            className="w-full h-9 px-3 py-1.5 text-sm border border-[#e1e8f2] rounded-[9px] bg-white text-[#0b1f3a] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40 focus:border-[#2563eb]"
+            className="w-full h-9 px-3 py-1.5 text-sm border border-line rounded-[9px] bg-white text-ink focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand"
             data-testid="filter-category"
           >
             <option value="">Toutes les catégories</option>
@@ -130,11 +130,11 @@ export function LeadsFilters() {
           </select>
         </div>
         <div>
-          <label className="block text-xs font-medium text-[#64748b] mb-1">Statut</label>
+          <label className="block text-xs font-medium text-subtle mb-1">Statut</label>
           <select
             value={currentStatus}
             onChange={(e) => handleStatusChange(e.target.value)}
-            className="w-full h-9 px-3 py-1.5 text-sm border border-[#e1e8f2] rounded-[9px] bg-white text-[#0b1f3a] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40 focus:border-[#2563eb]"
+            className="w-full h-9 px-3 py-1.5 text-sm border border-line rounded-[9px] bg-white text-ink focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand"
             data-testid="filter-status"
           >
             <option value="">Tous les statuts</option>
@@ -151,21 +151,21 @@ export function LeadsFilters() {
           onApply={(m2Min, m2Max) => router.push(`/telepro/leads?${buildParams({ m2Min, m2Max }).toString()}`)}
         />
         <div>
-          <label className="block text-xs font-medium text-[#64748b] mb-1">Du</label>
+          <label className="block text-xs font-medium text-subtle mb-1">Du</label>
           <Input
             type="date"
             value={from}
             onChange={(e) => setFrom(e.target.value)}
-            className="h-9 border-[#e1e8f2] rounded-[9px] text-[#0b1f3a]"
+            className="h-9 border-line rounded-[9px] text-ink"
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-[#64748b] mb-1">Au</label>
+          <label className="block text-xs font-medium text-subtle mb-1">Au</label>
           <Input
             type="date"
             value={to}
             onChange={(e) => setTo(e.target.value)}
-            className="h-9 border-[#e1e8f2] rounded-[9px] text-[#0b1f3a]"
+            className="h-9 border-line rounded-[9px] text-ink"
           />
         </div>
         <Button

@@ -25,12 +25,12 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const CARD_CLS =
-  "rounded-[12px] border border-[#e1e8f2] bg-white shadow-[0_1px_2px_rgba(13,38,76,.06)] p-5";
+  "rounded-[14px] border border-line bg-white shadow-card p-5";
 const SECTION_TITLE_CLS =
-  "text-xs font-semibold text-[#64748b] uppercase tracking-wide mb-4";
-const LABEL_CLS = "block text-sm font-medium text-[#0b1f3a] mb-1.5";
+  "text-xs font-semibold text-subtle uppercase tracking-wide mb-4";
+const LABEL_CLS = "block text-sm font-medium text-ink mb-1.5";
 const SELECT_CLS =
-  "h-9 w-full px-3 border border-[#e1e8f2] rounded-[9px] bg-white text-[#0b1f3a] text-sm focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40";
+  "h-9 w-full px-3 border border-line rounded-[9px] bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-brand/40";
 
 export function CreateLeadForm() {
   const router = useRouter();
@@ -104,13 +104,13 @@ export function CreateLeadForm() {
     <form onSubmit={handleSubmit} className="space-y-4">
       <Link
         href="/telepro/leads"
-        className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "gap-1.5 text-[#64748b] hover:text-[#0b1f3a] -ml-1")}
+        className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "gap-1.5 text-subtle hover:text-ink -ml-1")}
       >
         <ArrowLeft className="w-4 h-4" />
         Retour aux leads
       </Link>
 
-      <h1 className="text-2xl font-bold text-[#0b1f3a]">Nouveau lead</h1>
+      <h1 className="text-2xl font-bold text-ink">Nouveau lead</h1>
 
       {error && (
         <div className="p-3 bg-[#fee2e2] text-[#b91c1c] rounded-[9px] text-sm border border-[#fecaca]">
@@ -322,7 +322,7 @@ export function CreateLeadForm() {
                 const current = form.radiator_type ?? [];
                 const checked = current.includes(t);
                 return (
-                  <label key={t} className="flex items-center gap-2 text-sm text-[#0b1f3a] cursor-pointer">
+                  <label key={t} className="flex items-center gap-2 text-sm text-ink cursor-pointer">
                     <input
                       type="checkbox"
                       checked={checked}
@@ -332,7 +332,7 @@ export function CreateLeadForm() {
                           : current.filter((x) => x !== t);
                         update("radiator_type", next);
                       }}
-                      className="rounded border-[#e1e8f2] accent-[#2563eb]"
+                      className="rounded border-line accent-brand"
                     />
                     {RADIATOR_TYPE_LABELS[t]}
                   </label>

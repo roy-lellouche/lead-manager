@@ -58,7 +58,7 @@ export default async function AdminRedistributePage({
     <div className="space-y-6">
       <Link
         href="/admin/users"
-        className="inline-flex items-center gap-1 text-sm text-[#2563eb] hover:text-[#1d4ed8] font-medium"
+        className="inline-flex items-center gap-1 text-sm text-brand hover:text-brand-hover font-medium"
       >
         <ChevronLeft className="w-4 h-4" />
         Retour aux utilisateurs
@@ -66,10 +66,10 @@ export default async function AdminRedistributePage({
 
       <PageHeader
         title="Redistribuer les leads"
-        subtitle={<>Leads de <strong className="text-[#0b1f3a]">{teleproName}</strong> à redistribuer. Sélectionnez les leads et transférez-les vers un autre télépro.</>}
+        subtitle={<>Leads de <strong className="text-ink">{teleproName}</strong> à redistribuer. Sélectionnez les leads et transférez-les vers un autre télépro.</>}
       />
 
-      <div className="rounded-[12px] border border-amber-200 bg-amber-50 shadow-[0_1px_2px_rgba(13,38,76,.06)] p-4">
+      <div className="rounded-[14px] border border-amber-200 bg-amber-50 shadow-card p-4">
         <p className="text-amber-800 text-sm font-medium">
           {leads?.length || 0} lead(s) à redistribuer
         </p>

@@ -40,7 +40,7 @@ export default function ForgotPasswordPage() {
   if (success) {
     return (
       <AuthShell title="Email envoyé">
-        <p className="mb-6 text-sm text-[#64748b]">
+        <p className="mb-6 text-sm text-subtle">
           Si un compte existe avec l&apos;adresse <strong>{email}</strong>,
           vous recevrez un lien pour réinitialiser votre mot de passe.
           Vérifiez également votre dossier spam.
@@ -57,7 +57,7 @@ export default function ForgotPasswordPage() {
       title="Mot de passe oublié"
       subtitle="Entrez votre email pour recevoir un lien de réinitialisation"
       footer={
-        <Link href="/login" className="text-[#2563eb] hover:underline">
+        <Link href="/login" className="text-brand hover:underline">
           Retour à la connexion
         </Link>
       }
@@ -69,7 +69,7 @@ export default function ForgotPasswordPage() {
           </div>
         )}
         <div className="space-y-1.5">
-          <label htmlFor="email" className="text-sm font-medium text-[#0b1f3a]">
+          <label htmlFor="email" className="text-sm font-medium text-ink">
             Email
           </label>
           <Input

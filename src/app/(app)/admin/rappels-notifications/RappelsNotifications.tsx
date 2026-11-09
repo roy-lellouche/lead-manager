@@ -113,21 +113,21 @@ export function RappelsNotifications() {
           tabIndex={0}
           onClick={() => handleClick(entry.id)}
           onKeyDown={(e) => e.key === "Enter" && handleClick(entry.id)}
-          className="rounded-[12px] bg-white border border-[#e1e8f2] shadow-[0_1px_2px_rgba(13,38,76,.06)] p-4 hover:bg-[#f8fafd] cursor-pointer transition-colors flex items-start gap-3 w-full"
+          className="rounded-[14px] bg-white border border-line shadow-card p-4 hover:bg-panel cursor-pointer transition-colors flex items-start gap-3 w-full"
         >
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-[#0b1f3a]">{entry.name}</p>
+            <p className="font-semibold text-ink">{entry.name}</p>
             {entry.description && (
-              <p className="text-sm text-[#64748b] mt-0.5 line-clamp-2">{entry.description}</p>
+              <p className="text-sm text-subtle mt-0.5 line-clamp-2">{entry.description}</p>
             )}
-            <p className="text-xs text-[#94a3b8] mt-1">
+            <p className="text-xs text-faint mt-1">
               {formatDateParis(entry.callback_at)} à {formatTimeParis(entry.callback_at)}
             </p>
           </div>
           <button
             type="button"
             onClick={(e) => handleDismiss(e, entry.id)}
-            className="p-1 rounded-lg hover:bg-[#e1e8f2] text-[#64748b] shrink-0"
+            className="p-1 rounded-lg hover:bg-line text-subtle shrink-0"
             aria-label="Fermer"
           >
             <X className="w-5 h-5" />

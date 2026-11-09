@@ -6,10 +6,10 @@ import { Plus, Pencil, Trash2, X, Package, Layers, Euro, GripVertical, Truck } f
 import { Button } from "@/components/ui/button";
 
 const INPUT_CLS =
-  "w-full px-3 py-2 text-sm border border-[#e1e8f2] rounded-[9px] bg-white text-[#0b1f3a] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40";
+  "w-full px-3 py-2 text-sm border border-line rounded-[9px] bg-white text-ink focus:outline-none focus:ring-2 focus:ring-brand/40";
 const SELECT_CLS =
-  "w-full px-3 py-2 text-sm border border-[#e1e8f2] rounded-[9px] bg-white text-[#0b1f3a] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40";
-const LABEL_CLS = "block text-sm font-medium text-[#0b1f3a] mb-1.5";
+  "w-full px-3 py-2 text-sm border border-line rounded-[9px] bg-white text-ink focus:outline-none focus:ring-2 focus:ring-brand/40";
+const LABEL_CLS = "block text-sm font-medium text-ink mb-1.5";
 
 interface ProductType {
   id: string;
@@ -370,29 +370,29 @@ export function StockageClient({
     <div className="space-y-8">
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="rounded-[12px] border border-[#e1e8f2] bg-white shadow-[0_1px_2px_rgba(13,38,76,.06)] p-6">
+        <div className="rounded-[14px] border border-line bg-white shadow-card p-6">
           <div className="flex items-center gap-3">
-            <div className="rounded-[9px] bg-[#f1f5f9] p-3">
-              <Package className="w-6 h-6 text-[#0b1f3a]" />
+            <div className="rounded-[9px] bg-line-soft p-3">
+              <Package className="w-6 h-6 text-ink" />
             </div>
             <div>
-              <p className="text-sm font-medium text-[#64748b]">Produits différents</p>
-              <p className="text-2xl font-bold text-[#0b1f3a]">{products.length}</p>
+              <p className="text-sm font-medium text-subtle">Produits différents</p>
+              <p className="text-2xl font-bold text-ink">{products.length}</p>
             </div>
           </div>
         </div>
-        <div className="rounded-[12px] border border-[#e1e8f2] bg-white shadow-[0_1px_2px_rgba(13,38,76,.06)] p-6">
+        <div className="rounded-[14px] border border-line bg-white shadow-card p-6">
           <div className="flex items-center gap-3">
-            <div className="rounded-[9px] bg-[#f1f5f9] p-3">
-              <Layers className="w-6 h-6 text-[#0b1f3a]" />
+            <div className="rounded-[9px] bg-line-soft p-3">
+              <Layers className="w-6 h-6 text-ink" />
             </div>
             <div>
-              <p className="text-sm font-medium text-[#64748b]">Quantité totale</p>
-              <p className="text-2xl font-bold text-[#0b1f3a]">{totalQuantity}</p>
+              <p className="text-sm font-medium text-subtle">Quantité totale</p>
+              <p className="text-2xl font-bold text-ink">{totalQuantity}</p>
             </div>
           </div>
         </div>
-        <div className="rounded-[12px] border border-emerald-200 bg-emerald-50 shadow-[0_1px_2px_rgba(13,38,76,.06)] p-6">
+        <div className="rounded-[14px] border border-emerald-200 bg-emerald-50 shadow-card p-6">
           <div className="flex items-center gap-3">
             <div className="rounded-[9px] bg-emerald-100 p-3">
               <Euro className="w-6 h-6 text-emerald-700" />
@@ -409,13 +409,13 @@ export function StockageClient({
 
       {/* Header + boutons */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h2 className="text-lg font-semibold text-[#0b1f3a]">Catalogue des produits</h2>
+        <h2 className="text-lg font-semibold text-ink">Catalogue des produits</h2>
         <div className="flex items-center gap-2">
           <Button
             type="button"
             variant="outline"
             onClick={() => setShowSuppliersModal(true)}
-            className="gap-2 border-[#e1e8f2] text-[#0b1f3a] hover:bg-[#f1f5f9]"
+            className="gap-2 border-line text-ink hover:bg-line-soft"
           >
             <Truck className="w-4 h-4" />
             Fournisseurs
@@ -423,7 +423,7 @@ export function StockageClient({
           <Button
             type="button"
             onClick={() => setShowAddModal(true)}
-            className="gap-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-white"
+            className="gap-2 bg-brand hover:bg-brand-hover text-white"
           >
             <Plus className="w-4 h-4" />
             Ajouter un produit
@@ -434,16 +434,16 @@ export function StockageClient({
       {/* Grille produits */}
       <div>
         {products.length === 0 ? (
-          <div className="rounded-[12px] border-2 border-dashed border-[#e1e8f2] bg-[#f8fafc] p-12 text-center">
-            <Package className="w-12 h-12 text-[#cbd5e1] mx-auto mb-3" />
-            <p className="text-[#64748b] font-medium">Aucun produit</p>
-            <p className="text-[#94a3b8] text-sm mt-1">
+          <div className="rounded-[14px] border-2 border-dashed border-line bg-panel p-12 text-center">
+            <Package className="w-12 h-12 text-line-strong mx-auto mb-3" />
+            <p className="text-subtle font-medium">Aucun produit</p>
+            <p className="text-faint text-sm mt-1">
               Cliquez sur « Ajouter un produit » pour commencer.
             </p>
             <Button
               type="button"
               onClick={() => setShowAddModal(true)}
-              className="mt-4 bg-[#2563eb] hover:bg-[#1d4ed8] text-white"
+              className="mt-4 bg-brand hover:bg-brand-hover text-white"
             >
               Ajouter un produit
             </Button>
@@ -462,31 +462,31 @@ export function StockageClient({
                   onDragOver={handleDragOver}
                   onDrop={(e) => handleDrop(e, product.id)}
                   onDragEnd={handleDragEnd}
-                  className={`rounded-[12px] border bg-white p-3 shadow-[0_1px_2px_rgba(13,38,76,.06)] hover:shadow-md transition-all flex flex-col min-w-0 relative ${
-                    isDragging ? "opacity-40 border-[#2563eb]" : "border-[#e1e8f2]"
+                  className={`rounded-[14px] border bg-white p-3 shadow-card hover:shadow-md transition-all flex flex-col min-w-0 relative ${
+                    isDragging ? "opacity-40 border-brand" : "border-line"
                   }`}
                   style={product.color ? { borderLeftWidth: "4px", borderLeftColor: product.color } : undefined}
                 >
-                  <div className="absolute top-1 left-1 cursor-grab active:cursor-grabbing text-[#cbd5e1] hover:text-[#64748b]">
+                  <div className="absolute top-1 left-1 cursor-grab active:cursor-grabbing text-line-strong hover:text-subtle">
                     <GripVertical className="w-3.5 h-3.5" />
                   </div>
                   {typeName && (
-                    <span className="text-[10px] font-medium text-[#64748b] bg-[#f1f5f9] px-1.5 py-0.5 rounded w-fit mb-1.5 truncate max-w-full ml-3">
+                    <span className="text-[10px] font-medium text-subtle bg-line-soft px-1.5 py-0.5 rounded w-fit mb-1.5 truncate max-w-full ml-3">
                       {typeName}
                     </span>
                   )}
                   {supplierName && (
-                    <span className="text-[10px] font-medium text-[#2563eb] bg-[#eff6ff] px-1.5 py-0.5 rounded w-fit mb-1.5 truncate max-w-full">
+                    <span className="text-[10px] font-medium text-brand bg-brand-soft px-1.5 py-0.5 rounded w-fit mb-1.5 truncate max-w-full">
                       {supplierName}
                     </span>
                   )}
                   <div className="flex justify-between items-start gap-1 mb-1.5">
-                    <h4 className="font-medium text-[#0b1f3a] line-clamp-2 text-xs flex-1 min-w-0">{product.name}</h4>
+                    <h4 className="font-medium text-ink line-clamp-2 text-xs flex-1 min-w-0">{product.name}</h4>
                     <div className="flex items-center shrink-0">
                       <button
                         type="button"
                         onClick={() => openEditModal(product)}
-                        className="p-1 rounded hover:bg-[#f1f5f9] text-[#64748b] hover:text-[#0b1f3a]"
+                        className="p-1 rounded hover:bg-line-soft text-subtle hover:text-ink"
                         title="Modifier"
                       >
                         <Pencil className="w-3 h-3" />
@@ -495,18 +495,18 @@ export function StockageClient({
                         type="button"
                         onClick={(e) => handleDeleteProduct(product, e)}
                         disabled={loading}
-                        className="p-1 rounded hover:bg-red-50 text-[#64748b] hover:text-red-600 disabled:opacity-50"
+                        className="p-1 rounded hover:bg-red-50 text-subtle hover:text-red-600 disabled:opacity-50"
                         title="Supprimer"
                       >
                         <Trash2 className="w-3 h-3" />
                       </button>
                     </div>
                   </div>
-                  <p className="text-sm font-semibold text-[#0b1f3a] mb-2">
+                  <p className="text-sm font-semibold text-ink mb-2">
                     {Number(product.price).toFixed(2)} €
                   </p>
                   <div className="flex items-center gap-1 mt-auto">
-                    <label className="text-[10px] text-[#64748b]">Qté</label>
+                    <label className="text-[10px] text-subtle">Qté</label>
                     <input
                       type="number"
                       min="0"
@@ -528,7 +528,7 @@ export function StockageClient({
                           }, 500);
                         }
                       }}
-                      className="w-12 px-1 py-1 border border-[#e1e8f2] rounded text-center text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40"
+                      className="w-12 px-1 py-1 border border-line rounded text-center text-xs font-medium focus:outline-none focus:ring-2 focus:ring-brand/40"
                     />
                   </div>
                 </div>
@@ -540,21 +540,21 @@ export function StockageClient({
 
       {/* Section types */}
       {productTypes.length > 0 && (
-        <details className="rounded-[12px] border border-[#e1e8f2] bg-[#f8fafc] p-4">
-          <summary className="cursor-pointer font-medium text-[#64748b] text-sm">
+        <details className="rounded-[14px] border border-line bg-panel p-4">
+          <summary className="cursor-pointer font-medium text-subtle text-sm">
             Gérer les types de produits ({productTypes.length})
           </summary>
           <div className="mt-4 flex flex-wrap gap-2">
             {productTypes.map((type) => (
               <div
                 key={type.id}
-                className="flex items-center gap-1 bg-white rounded-[9px] px-3 py-2 border border-[#e1e8f2]"
+                className="flex items-center gap-1 bg-white rounded-[9px] px-3 py-2 border border-line"
               >
-                <span className="text-sm text-[#0b1f3a]">{type.name}</span>
+                <span className="text-sm text-ink">{type.name}</span>
                 <button
                   type="button"
                   onClick={() => openEditTypeModal(type)}
-                  className="p-1 rounded hover:bg-[#f1f5f9] text-[#64748b]"
+                  className="p-1 rounded hover:bg-line-soft text-subtle"
                   title="Modifier"
                 >
                   <Pencil className="w-3.5 h-3.5" />
@@ -581,15 +581,15 @@ export function StockageClient({
           onClick={() => setShowAddModal(false)}
         >
           <div
-            className="rounded-[12px] border border-[#e1e8f2] bg-white shadow-[0_4px_24px_rgba(13,38,76,.12)] p-6 max-w-md w-full max-h-[90vh] overflow-y-auto"
+            className="rounded-[14px] border border-line bg-white shadow-[0_4px_24px_rgba(16,24,40,.12)] p-6 max-w-md w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-semibold text-[#0b1f3a]">Nouveau produit</h3>
+              <h3 className="text-lg font-semibold text-ink">Nouveau produit</h3>
               <button
                 type="button"
                 onClick={() => setShowAddModal(false)}
-                className="p-2 rounded-[9px] hover:bg-[#f1f5f9] text-[#64748b]"
+                className="p-2 rounded-[9px] hover:bg-line-soft text-subtle"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -629,7 +629,7 @@ export function StockageClient({
                   <select
                     value={newProductTypeId}
                     onChange={(e) => setNewProductTypeId(e.target.value)}
-                    className="flex-1 px-3 py-2 text-sm border border-[#e1e8f2] rounded-[9px] bg-white text-[#0b1f3a] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40"
+                    className="flex-1 px-3 py-2 text-sm border border-line rounded-[9px] bg-white text-ink focus:outline-none focus:ring-2 focus:ring-brand/40"
                   >
                     {productTypes.map((t) => (
                       <option key={t.id} value={t.id}>
@@ -640,7 +640,7 @@ export function StockageClient({
                   <button
                     type="button"
                     onClick={() => setShowNewTypeInput(!showNewTypeInput)}
-                    className="px-3 py-2 border border-[#e1e8f2] rounded-[9px] hover:bg-[#f1f5f9] text-[#64748b]"
+                    className="px-3 py-2 border border-line rounded-[9px] hover:bg-line-soft text-subtle"
                     title="Ajouter un type"
                   >
                     <Plus className="w-5 h-5" />
@@ -653,7 +653,7 @@ export function StockageClient({
                       value={newTypeName}
                       onChange={(e) => setNewTypeName(e.target.value)}
                       placeholder="Nouveau type..."
-                      className="flex-1 px-3 py-2 text-sm border border-[#e1e8f2] rounded-[9px] bg-white text-[#0b1f3a] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40"
+                      className="flex-1 px-3 py-2 text-sm border border-line rounded-[9px] bg-white text-ink focus:outline-none focus:ring-2 focus:ring-brand/40"
                       onKeyDown={(e) =>
                         e.key === "Enter" && (e.preventDefault(), handleCreateType())
                       }
@@ -662,7 +662,7 @@ export function StockageClient({
                       type="button"
                       onClick={handleCreateType}
                       disabled={!newTypeName.trim() || loading}
-                      className="px-4 py-2 bg-[#0b1f3a] text-white rounded-[9px] hover:bg-[#1e3a5f] disabled:opacity-50 text-sm font-medium"
+                      className="px-4 py-2 bg-ink text-white rounded-[9px] hover:bg-ink-soft disabled:opacity-50 text-sm font-medium"
                     >
                       Créer
                     </button>
@@ -672,7 +672,7 @@ export function StockageClient({
                         setShowNewTypeInput(false);
                         setNewTypeName("");
                       }}
-                      className="px-3 py-2 border border-[#e1e8f2] rounded-[9px] hover:bg-[#f1f5f9] text-[#64748b]"
+                      className="px-3 py-2 border border-line rounded-[9px] hover:bg-line-soft text-subtle"
                     >
                       <X className="w-5 h-5" />
                     </button>
@@ -705,20 +705,20 @@ export function StockageClient({
                     type="color"
                     value={newProductColor || "#000000"}
                     onChange={(e) => setNewProductColor(e.target.value)}
-                    className="w-10 h-10 rounded-[9px] border border-[#e1e8f2] cursor-pointer p-0.5"
+                    className="w-10 h-10 rounded-[9px] border border-line cursor-pointer p-0.5"
                   />
                   <input
                     type="text"
                     value={newProductColor}
                     onChange={(e) => setNewProductColor(e.target.value)}
                     placeholder="#000000"
-                    className="flex-1 px-3 py-2 text-sm border border-[#e1e8f2] rounded-[9px] bg-white text-[#0b1f3a] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40"
+                    className="flex-1 px-3 py-2 text-sm border border-line rounded-[9px] bg-white text-ink focus:outline-none focus:ring-2 focus:ring-brand/40"
                   />
                   {newProductColor && (
                     <button
                       type="button"
                       onClick={() => setNewProductColor("")}
-                      className="text-sm text-[#64748b] hover:text-[#0b1f3a]"
+                      className="text-sm text-subtle hover:text-ink"
                     >
                       Effacer
                     </button>
@@ -730,14 +730,14 @@ export function StockageClient({
                   type="button"
                   variant="outline"
                   onClick={() => setShowAddModal(false)}
-                  className="flex-1 border-[#e1e8f2] text-[#64748b] hover:bg-[#f1f5f9]"
+                  className="flex-1 border-line text-subtle hover:bg-line-soft"
                 >
                   Annuler
                 </Button>
                 <Button
                   type="submit"
                   disabled={loading || !newProductName.trim() || !newProductTypeId}
-                  className="flex-1 bg-[#2563eb] hover:bg-[#1d4ed8] text-white disabled:opacity-50"
+                  className="flex-1 bg-brand hover:bg-brand-hover text-white disabled:opacity-50"
                 >
                   Créer le produit
                 </Button>
@@ -754,15 +754,15 @@ export function StockageClient({
           onClick={() => setEditingProduct(null)}
         >
           <div
-            className="rounded-[12px] border border-[#e1e8f2] bg-white shadow-[0_4px_24px_rgba(13,38,76,.12)] p-6 max-w-md w-full max-h-[90vh] overflow-y-auto"
+            className="rounded-[14px] border border-line bg-white shadow-[0_4px_24px_rgba(16,24,40,.12)] p-6 max-w-md w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-semibold text-[#0b1f3a]">Modifier le produit</h3>
+              <h3 className="text-lg font-semibold text-ink">Modifier le produit</h3>
               <button
                 type="button"
                 onClick={() => setEditingProduct(null)}
-                className="p-2 rounded-[9px] hover:bg-[#f1f5f9] text-[#64748b]"
+                className="p-2 rounded-[9px] hover:bg-line-soft text-subtle"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -830,20 +830,20 @@ export function StockageClient({
                     type="color"
                     value={editColor || "#000000"}
                     onChange={(e) => setEditColor(e.target.value)}
-                    className="w-10 h-10 rounded-[9px] border border-[#e1e8f2] cursor-pointer p-0.5"
+                    className="w-10 h-10 rounded-[9px] border border-line cursor-pointer p-0.5"
                   />
                   <input
                     type="text"
                     value={editColor}
                     onChange={(e) => setEditColor(e.target.value)}
                     placeholder="#000000"
-                    className="flex-1 px-3 py-2 text-sm border border-[#e1e8f2] rounded-[9px] bg-white text-[#0b1f3a] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40"
+                    className="flex-1 px-3 py-2 text-sm border border-line rounded-[9px] bg-white text-ink focus:outline-none focus:ring-2 focus:ring-brand/40"
                   />
                   {editColor && (
                     <button
                       type="button"
                       onClick={() => setEditColor("")}
-                      className="text-sm text-[#64748b] hover:text-[#0b1f3a]"
+                      className="text-sm text-subtle hover:text-ink"
                     >
                       Effacer
                     </button>
@@ -855,14 +855,14 @@ export function StockageClient({
                   type="button"
                   variant="outline"
                   onClick={() => setEditingProduct(null)}
-                  className="flex-1 border-[#e1e8f2] text-[#64748b] hover:bg-[#f1f5f9]"
+                  className="flex-1 border-line text-subtle hover:bg-line-soft"
                 >
                   Annuler
                 </Button>
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="flex-1 bg-[#2563eb] hover:bg-[#1d4ed8] text-white disabled:opacity-50"
+                  className="flex-1 bg-brand hover:bg-brand-hover text-white disabled:opacity-50"
                 >
                   Enregistrer
                 </Button>
@@ -879,15 +879,15 @@ export function StockageClient({
           onClick={() => setEditingType(null)}
         >
           <div
-            className="rounded-[12px] border border-[#e1e8f2] bg-white shadow-[0_4px_24px_rgba(13,38,76,.12)] p-6 max-w-md w-full"
+            className="rounded-[14px] border border-line bg-white shadow-[0_4px_24px_rgba(16,24,40,.12)] p-6 max-w-md w-full"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-semibold text-[#0b1f3a]">Modifier le type</h3>
+              <h3 className="text-lg font-semibold text-ink">Modifier le type</h3>
               <button
                 type="button"
                 onClick={() => setEditingType(null)}
-                className="p-2 rounded-[9px] hover:bg-[#f1f5f9] text-[#64748b]"
+                className="p-2 rounded-[9px] hover:bg-line-soft text-subtle"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -908,14 +908,14 @@ export function StockageClient({
                   type="button"
                   variant="outline"
                   onClick={() => setEditingType(null)}
-                  className="flex-1 border-[#e1e8f2] text-[#64748b] hover:bg-[#f1f5f9]"
+                  className="flex-1 border-line text-subtle hover:bg-line-soft"
                 >
                   Annuler
                 </Button>
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="flex-1 bg-[#2563eb] hover:bg-[#1d4ed8] text-white disabled:opacity-50"
+                  className="flex-1 bg-brand hover:bg-brand-hover text-white disabled:opacity-50"
                 >
                   Enregistrer
                 </Button>
@@ -932,15 +932,15 @@ export function StockageClient({
           onClick={() => setShowSuppliersModal(false)}
         >
           <div
-            className="rounded-[12px] border border-[#e1e8f2] bg-white shadow-[0_4px_24px_rgba(13,38,76,.12)] p-6 max-w-md w-full max-h-[80vh] flex flex-col"
+            className="rounded-[14px] border border-line bg-white shadow-[0_4px_24px_rgba(16,24,40,.12)] p-6 max-w-md w-full max-h-[80vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-semibold text-[#0b1f3a]">Fournisseurs</h3>
+              <h3 className="text-lg font-semibold text-ink">Fournisseurs</h3>
               <button
                 type="button"
                 onClick={() => setShowSuppliersModal(false)}
-                className="p-2 rounded-[9px] hover:bg-[#f1f5f9] text-[#64748b]"
+                className="p-2 rounded-[9px] hover:bg-line-soft text-subtle"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -951,7 +951,7 @@ export function StockageClient({
                 value={newSupplierName}
                 onChange={(e) => setNewSupplierName(e.target.value)}
                 placeholder="Nom du fournisseur..."
-                className="flex-1 px-3 py-2 text-sm border border-[#e1e8f2] rounded-[9px] bg-white text-[#0b1f3a] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40"
+                className="flex-1 px-3 py-2 text-sm border border-line rounded-[9px] bg-white text-ink focus:outline-none focus:ring-2 focus:ring-brand/40"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
@@ -963,23 +963,23 @@ export function StockageClient({
                 type="button"
                 onClick={handleCreateSupplier}
                 disabled={!newSupplierName.trim() || loading}
-                className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white disabled:opacity-50"
+                className="bg-brand hover:bg-brand-hover text-white disabled:opacity-50"
               >
                 Ajouter
               </Button>
             </div>
             <div className="flex-1 overflow-y-auto space-y-2">
               {suppliers.length === 0 ? (
-                <p className="text-sm text-[#64748b] text-center py-4">
+                <p className="text-sm text-subtle text-center py-4">
                   Aucun fournisseur. Ajoutez-en un ci-dessus.
                 </p>
               ) : (
                 suppliers.map((supplier) => (
                   <div
                     key={supplier.id}
-                    className="flex items-center justify-between px-4 py-3 bg-[#f8fafc] rounded-[9px] border border-[#e1e8f2]"
+                    className="flex items-center justify-between px-4 py-3 bg-panel rounded-[9px] border border-line"
                   >
-                    <span className="text-sm font-medium text-[#0b1f3a]">{supplier.name}</span>
+                    <span className="text-sm font-medium text-ink">{supplier.name}</span>
                     <button
                       type="button"
                       onClick={() => handleDeleteSupplier(supplier)}

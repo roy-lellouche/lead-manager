@@ -126,35 +126,35 @@ export function TeleproLeadsTable({ leads, statusSort }: TeleproLeadsTableProps)
   };
 
   return (
-    <div className="rounded-[12px] border border-[#e1e8f2] bg-white shadow-[0_1px_2px_rgba(13,38,76,.06)] overflow-hidden">
+    <div className="rounded-[14px] border border-line bg-white shadow-card overflow-hidden">
       <Table>
-        <TableHeader className="bg-[#f4f7fb] border-b border-[#e1e8f2]">
+        <TableHeader className="bg-canvas border-b border-line">
           <TableRow className="hover:bg-transparent border-0">
-            <TableHead className="py-3 text-xs font-semibold text-[#64748b] uppercase tracking-wide">
+            <TableHead className="py-3 text-xs font-semibold text-subtle uppercase tracking-wide">
               Nom
             </TableHead>
-            <TableHead className="py-3 text-xs font-semibold text-[#64748b] uppercase tracking-wide">
+            <TableHead className="py-3 text-xs font-semibold text-subtle uppercase tracking-wide">
               Téléphone
             </TableHead>
-            <TableHead className="py-3 text-xs font-semibold text-[#64748b] uppercase tracking-wide">
+            <TableHead className="py-3 text-xs font-semibold text-subtle uppercase tracking-wide">
               <button
                 type="button"
                 onClick={toggleStatusSort}
-                className="inline-flex items-center gap-1 hover:text-[#0b1f3a] transition-colors"
+                className="inline-flex items-center gap-1 hover:text-ink transition-colors"
               >
                 Statut
-                {statusSort === "none" && <ArrowUpDown className="w-3.5 h-3.5 text-[#64748b]" />}
-                {statusSort === "desc" && <ArrowDown className="w-3.5 h-3.5 text-[#2563eb]" />}
-                {statusSort === "asc" && <ArrowUp className="w-3.5 h-3.5 text-[#2563eb]" />}
+                {statusSort === "none" && <ArrowUpDown className="w-3.5 h-3.5 text-subtle" />}
+                {statusSort === "desc" && <ArrowDown className="w-3.5 h-3.5 text-brand" />}
+                {statusSort === "asc" && <ArrowUp className="w-3.5 h-3.5 text-brand" />}
               </button>
             </TableHead>
-            <TableHead className="py-3 text-xs font-semibold text-[#64748b] uppercase tracking-wide">
+            <TableHead className="py-3 text-xs font-semibold text-subtle uppercase tracking-wide">
               Rappel
             </TableHead>
-            <TableHead className="py-3 text-xs font-semibold text-[#64748b] uppercase tracking-wide">
+            <TableHead className="py-3 text-xs font-semibold text-subtle uppercase tracking-wide">
               Date ajout
             </TableHead>
-            <TableHead className="py-3 text-xs font-semibold text-[#64748b] uppercase tracking-wide min-w-[180px]">
+            <TableHead className="py-3 text-xs font-semibold text-subtle uppercase tracking-wide min-w-[180px]">
               Commentaires
             </TableHead>
           </TableRow>
@@ -162,7 +162,7 @@ export function TeleproLeadsTable({ leads, statusSort }: TeleproLeadsTableProps)
         <TableBody>
           {leads.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={6} className="py-12 text-center text-[#64748b]">
+              <TableCell colSpan={6} className="py-12 text-center text-subtle">
                 Aucun lead trouvé
               </TableCell>
             </TableRow>
@@ -171,12 +171,12 @@ export function TeleproLeadsTable({ leads, statusSort }: TeleproLeadsTableProps)
               <TableRow
                 key={lead.id}
                 onClick={() => router.push(`/telepro/leads/${lead.id}`)}
-                className="border-b border-[#e1e8f2] cursor-pointer hover:bg-[#f4f7fb] transition-colors"
+                className="border-b border-line cursor-pointer hover:bg-canvas transition-colors"
                 data-testid="lead-row"
                 data-lead-id={lead.id}
               >
                 <TableCell className="py-3">
-                  <span className="font-medium text-[#0b1f3a]">
+                  <span className="font-medium text-ink">
                     {lead.first_name} {lead.last_name}
                     {lead.is_duplicate && (
                       <span className="ml-2 text-xs text-amber-600">
@@ -185,7 +185,7 @@ export function TeleproLeadsTable({ leads, statusSort }: TeleproLeadsTableProps)
                     )}
                   </span>
                 </TableCell>
-                <TableCell className="py-3 text-[#64748b]">{lead.phone}</TableCell>
+                <TableCell className="py-3 text-subtle">{lead.phone}</TableCell>
                 <TableCell
                   className="py-3"
                   onClick={(e) => e.stopPropagation()}
@@ -200,7 +200,7 @@ export function TeleproLeadsTable({ leads, statusSort }: TeleproLeadsTableProps)
                       )
                     }
                     disabled={updatingId === lead.id}
-                    className={`inline-flex px-2 py-1 text-xs font-medium rounded-[9px] border cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40 focus:ring-offset-1 disabled:opacity-50 ${getStatusSelectClass(lead.status)}`}
+                    className={`inline-flex px-2 py-1 text-xs font-medium rounded-[9px] border cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand/40 focus:ring-offset-1 disabled:opacity-50 ${getStatusSelectClass(lead.status)}`}
                   >
                     {LEAD_STATUSES_TELEPRO_SELECTABLE.map((s) => (
                       <option key={s} value={s}>
@@ -212,12 +212,12 @@ export function TeleproLeadsTable({ leads, statusSort }: TeleproLeadsTableProps)
                     ))}
                   </select>
                 </TableCell>
-                <TableCell className="py-3 text-[#64748b]">
+                <TableCell className="py-3 text-subtle">
                   {lead.callback_at
                     ? formatFullDateTimeParis(lead.callback_at)
                     : "-"}
                 </TableCell>
-                <TableCell className="py-3 text-[#64748b] text-sm">
+                <TableCell className="py-3 text-subtle text-sm">
                   {lead.telepro_added_at
                     ? formatDateParis(lead.telepro_added_at)
                     : "-"}
@@ -248,7 +248,7 @@ export function TeleproLeadsTable({ leads, statusSort }: TeleproLeadsTableProps)
                         }
                       }}
                       autoFocus
-                      className="w-full px-2 py-1 text-sm border border-[#e1e8f2] rounded-[9px] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40"
+                      className="w-full px-2 py-1 text-sm border border-line rounded-[9px] focus:outline-none focus:ring-2 focus:ring-brand/40"
                     />
                   ) : (
                     <button
@@ -260,7 +260,7 @@ export function TeleproLeadsTable({ leads, statusSort }: TeleproLeadsTableProps)
                           [lead.id]: lead.commentaire ?? "",
                         }));
                       }}
-                      className="w-full text-left px-2 py-1 text-sm text-[#64748b] hover:bg-[#f4f7fb] rounded-[9px] truncate block"
+                      className="w-full text-left px-2 py-1 text-sm text-subtle hover:bg-canvas rounded-[9px] truncate block"
                       title={lead.commentaire ?? "Cliquer pour ajouter un commentaire"}
                     >
                       {lead.commentaire || "—"}

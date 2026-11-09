@@ -59,33 +59,33 @@ export function UsersTable({ users }: UsersTableProps) {
   const teleproConfigHref = (id: string) => TELEPRO_CONFIG_PATH(id);
 
   return (
-    <div className="rounded-[12px] border border-[#e1e8f2] bg-white shadow-[0_1px_2px_rgba(13,38,76,.06)] overflow-hidden">
+    <div className="rounded-[14px] border border-line bg-white shadow-card overflow-hidden">
       <Table>
-        <TableHeader className="bg-[#f4f7fb] border-b border-[#e1e8f2]">
+        <TableHeader className="bg-canvas border-b border-line">
           <TableRow className="border-0 hover:bg-transparent">
-            <TableHead className="py-3 px-4 text-xs font-semibold text-[#64748b] uppercase tracking-wide">
+            <TableHead className="py-3 px-4 text-xs font-semibold text-subtle uppercase tracking-wide">
               Nom
             </TableHead>
-            <TableHead className="py-3 px-4 text-xs font-semibold text-[#64748b] uppercase tracking-wide">
+            <TableHead className="py-3 px-4 text-xs font-semibold text-subtle uppercase tracking-wide">
               Email
             </TableHead>
-            <TableHead className="py-3 px-4 text-xs font-semibold text-[#64748b] uppercase tracking-wide">
+            <TableHead className="py-3 px-4 text-xs font-semibold text-subtle uppercase tracking-wide">
               Rôle
             </TableHead>
-            <TableHead className="py-3 px-4 text-xs font-semibold text-[#64748b] uppercase tracking-wide w-24">
+            <TableHead className="py-3 px-4 text-xs font-semibold text-subtle uppercase tracking-wide w-24">
               Actions
             </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {admins.map((u) => (
-            <TableRow key={u.id} className="border-b border-[#e1e8f2] hover:bg-[#f4f7fb]/60">
-              <TableCell className="py-3.5 px-4 font-medium text-[#0b1f3a]">
+            <TableRow key={u.id} className="border-b border-line hover:bg-canvas/60">
+              <TableCell className="py-3.5 px-4 font-medium text-ink">
                 {u.full_name || "-"}
               </TableCell>
-              <TableCell className="py-3.5 px-4 text-[#64748b] text-sm">{u.email}</TableCell>
+              <TableCell className="py-3.5 px-4 text-subtle text-sm">{u.email}</TableCell>
               <TableCell className="py-3.5 px-4">
-                <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-[#e0ecfe] text-[#2563eb]">
+                <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-brand-soft text-brand">
                   Admin
                 </span>
               </TableCell>
@@ -93,13 +93,13 @@ export function UsersTable({ users }: UsersTableProps) {
             </TableRow>
           ))}
           {secretaires.map((u) => (
-            <TableRow key={u.id} className="border-b border-[#e1e8f2] hover:bg-[#f4f7fb]/60">
-              <TableCell className="py-3.5 px-4 font-medium text-[#0b1f3a]">
+            <TableRow key={u.id} className="border-b border-line hover:bg-canvas/60">
+              <TableCell className="py-3.5 px-4 font-medium text-ink">
                 {u.full_name || "-"}
               </TableCell>
-              <TableCell className="py-3.5 px-4 text-[#64748b] text-sm">{u.email}</TableCell>
+              <TableCell className="py-3.5 px-4 text-subtle text-sm">{u.email}</TableCell>
               <TableCell className="py-3.5 px-4">
-                <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-[#f1f5f9] text-[#64748b]">
+                <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-line-soft text-subtle">
                   Secrétaire
                 </span>
               </TableCell>
@@ -107,13 +107,13 @@ export function UsersTable({ users }: UsersTableProps) {
             </TableRow>
           ))}
           {stockages.map((u) => (
-            <TableRow key={u.id} className="border-b border-[#e1e8f2] hover:bg-[#f4f7fb]/60">
-              <TableCell className="py-3.5 px-4 font-medium text-[#0b1f3a]">
+            <TableRow key={u.id} className="border-b border-line hover:bg-canvas/60">
+              <TableCell className="py-3.5 px-4 font-medium text-ink">
                 {u.full_name || "-"}
               </TableCell>
-              <TableCell className="py-3.5 px-4 text-[#64748b] text-sm">{u.email}</TableCell>
+              <TableCell className="py-3.5 px-4 text-subtle text-sm">{u.email}</TableCell>
               <TableCell className="py-3.5 px-4">
-                <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-[#f1f5f9] text-[#64748b]">
+                <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-line-soft text-subtle">
                   Stockage
                 </span>
               </TableCell>
@@ -123,7 +123,7 @@ export function UsersTable({ users }: UsersTableProps) {
           {telepros.map((u) => (
             <TableRow
               key={u.id}
-              className="border-b border-[#e1e8f2] hover:bg-[#f4f7fb]/80 group cursor-pointer"
+              className="border-b border-line hover:bg-canvas/80 group cursor-pointer"
               onClick={() => router.push(teleproConfigHref(u.id))}
               role="button"
               tabIndex={0}
@@ -134,12 +134,12 @@ export function UsersTable({ users }: UsersTableProps) {
                 }
               }}
             >
-              <TableCell className="py-3.5 px-4 font-medium text-[#2563eb]">
+              <TableCell className="py-3.5 px-4 font-medium text-brand">
                 {u.full_name || "-"}
               </TableCell>
-              <TableCell className="py-3.5 px-4 text-[#64748b] text-sm">{u.email}</TableCell>
+              <TableCell className="py-3.5 px-4 text-subtle text-sm">{u.email}</TableCell>
               <TableCell className="py-3.5 px-4">
-                <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-[#e1e8f2] text-[#0b1f3a]">
+                <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-line text-ink">
                   Télépro
                 </span>
               </TableCell>
@@ -150,7 +150,7 @@ export function UsersTable({ users }: UsersTableProps) {
                 <div className="flex items-center gap-1">
                   <Link
                     href={teleproConfigHref(u.id)}
-                    className="p-1.5 text-[#64748b] hover:bg-[#e1e8f2] rounded-[7px] inline-flex transition-colors"
+                    className="p-1.5 text-subtle hover:bg-line rounded-[7px] inline-flex transition-colors"
                     title="Configurer l'agent IA"
                   >
                     <Settings className="w-4 h-4" />

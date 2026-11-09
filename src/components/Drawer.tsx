@@ -108,22 +108,22 @@ export function Drawer({ role, userName, unreadNotifications = 0, statusCounts =
     <>
       <button
         onClick={() => setOpen(true)}
-        className="fixed top-4 left-4 z-40 p-2 rounded-lg bg-[#2e3034] border border-[#8a8f96]/50 lg:hidden"
+        className="fixed top-3 left-3 z-40 p-2 rounded-lg bg-white border border-line shadow-card lg:hidden"
         aria-label="Ouvrir le menu"
       >
-        <Menu className="w-6 h-6 text-white" />
+        <Menu className="w-5 h-5 text-ink" />
       </button>
 
       {open && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/30 backdrop-blur-[1px] z-40 lg:hidden"
           onClick={() => setOpen(false)}
           aria-hidden="true"
         />
       )}
 
       <aside
-        className={`fixed top-0 left-0 h-full w-64 gothic-surface border-r border-[#8a8f96]/30 z-50 transform transition-transform duration-200 ease-in-out lg:translate-x-0 ${
+        className={`fixed top-0 left-0 h-full w-64 gothic-surface border-r border-line z-50 transform transition-transform duration-200 ease-in-out lg:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -139,18 +139,18 @@ export function Drawer({ role, userName, unreadNotifications = 0, statusCounts =
                   alt="RS ÉCOLOGIE"
                   width={509}
                   height={498}
-                  className="h-14 w-auto object-contain"
+                  className="h-12 w-auto object-contain"
                   priority
                 />
               </Link>
               <span className="font-gothic chrome-text text-2xl leading-tight">RS Écologie</span>
-              <span className="text-[11px] font-medium uppercase tracking-[0.18em] text-[#a9aeb5]">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-subtle">
                 {isAdminSpace ? adminSpaceLabel : "Espace télépro"}
               </span>
             </div>
             <button
               onClick={() => setOpen(false)}
-              className="p-2 rounded-lg hover:bg-white/20 lg:hidden text-white"
+              className="p-2 rounded-lg hover:bg-black/5 lg:hidden text-ink"
               aria-label="Fermer le menu"
             >
               <X className="w-5 h-5" />
@@ -163,7 +163,7 @@ export function Drawer({ role, userName, unreadNotifications = 0, statusCounts =
             <div className="chrome-rule flex-1" />
           </div>
 
-          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+          <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
             {nav.map((item) => {
               const homeHref = isAdminSpace ? adminSpaceHome : "/telepro";
               const isLeadsPage = pathname.startsWith("/admin/leads") && (item.href === "/admin/leads" || item.href.startsWith("/admin/leads?")) || (pathname.startsWith("/telepro/leads") && item.href === "/telepro/leads");
@@ -185,10 +185,10 @@ export function Drawer({ role, userName, unreadNotifications = 0, statusCounts =
                   {"hasStatusSubmenu" in item && item.hasStatusSubmenu ? (
                     <>
                       <div
-                        className={`flex items-center gap-1 px-4 py-3 rounded-lg transition-colors ${
+                        className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm transition-colors ${
                           isActive
-                            ? "bg-white/[0.07] text-white font-medium shadow-[inset_0_0_0_1px_rgba(214,217,221,.55)]"
-                            : "text-[#b9bec5] hover:bg-white/10"
+                            ? "bg-white text-ink font-semibold shadow-card ring-1 ring-line"
+                            : "text-body hover:bg-black/[0.04] hover:text-ink"
                         }`}
                       >
                         <Link
@@ -197,7 +197,7 @@ export function Drawer({ role, userName, unreadNotifications = 0, statusCounts =
                           className="flex items-center gap-3 flex-1 min-w-0"
                           data-testid="nav-leads"
                         >
-                          <item.icon className="w-5 h-5 shrink-0" />
+                          <item.icon className="w-[18px] h-[18px] shrink-0" />
                           {item.label}
                         </Link>
                         <button
@@ -206,20 +206,20 @@ export function Drawer({ role, userName, unreadNotifications = 0, statusCounts =
                             e.preventDefault();
                             setCategoriesExpanded((v) => !v);
                           }}
-                          className="p-1.5 rounded-md hover:bg-white/20 text-white shrink-0"
+                          className="p-1 rounded-md hover:bg-black/5 text-subtle shrink-0"
                           aria-label={categoriesExpanded ? "Replier les catégories" : "Déplier les catégories"}
                           aria-expanded={categoriesExpanded}
                           data-testid="nav-leads-toggle"
                         >
                           {categoriesExpanded ? (
-                            <ChevronDown className="w-5 h-5" />
+                            <ChevronDown className="w-4 h-4" />
                           ) : (
-                            <ChevronRight className="w-5 h-5" />
+                            <ChevronRight className="w-4 h-4" />
                           )}
                         </button>
                       </div>
                       {categoriesExpanded && (
-                        <div className="pl-4 pr-2 py-1 space-y-1">
+                        <div className="ml-5 pl-2 border-l border-line-strong/70 py-1 space-y-0.5">
                           {LEAD_CATEGORIES.map((cat) => {
                             const isCatActive = currentCategory === cat;
                             const isCatExpanded = expandedCategory === cat;
@@ -228,8 +228,8 @@ export function Drawer({ role, userName, unreadNotifications = 0, statusCounts =
                                 <div
                                   className={`flex items-center gap-1 px-2 py-2 rounded-md transition-colors ${
                                     isCatActive
-                                      ? "bg-white/15 text-white font-medium"
-                                      : "text-[#b9bec5] hover:bg-white/10"
+                                      ? "bg-white text-ink font-semibold ring-1 ring-line"
+                                      : "text-body hover:bg-black/[0.04] hover:text-ink"
                                   }`}
                                 >
                                   <Link
@@ -239,7 +239,7 @@ export function Drawer({ role, userName, unreadNotifications = 0, statusCounts =
                                     data-testid={`nav-category-${cat}`}
                                   >
                                     <span className="truncate">{LEAD_CATEGORY_LABELS[cat]}</span>
-                                    <span className="text-white/70 tabular-nums">{catTotal(cat)}</span>
+                                    <span className="text-faint text-xs tabular-nums">{catTotal(cat)}</span>
                                   </Link>
                                   <button
                                     type="button"
@@ -247,7 +247,7 @@ export function Drawer({ role, userName, unreadNotifications = 0, statusCounts =
                                       e.preventDefault();
                                       setExpandedCategory((v) => (v === cat ? null : cat));
                                     }}
-                                    className="p-1 rounded-md hover:bg-white/20 text-white shrink-0"
+                                    className="p-1 rounded-md hover:bg-black/5 text-subtle shrink-0"
                                     aria-label={isCatExpanded ? "Replier les statuts" : "Déplier les statuts"}
                                     aria-expanded={isCatExpanded}
                                   >
@@ -265,12 +265,12 @@ export function Drawer({ role, userName, unreadNotifications = 0, statusCounts =
                                       onClick={() => setOpen(false)}
                                       className={`flex items-center justify-between w-full px-3 py-2 text-sm rounded-md transition-colors ${
                                         isCatActive && !currentStatus
-                                          ? "bg-white/15 text-white font-medium"
-                                          : "text-[#d6d9dd] hover:bg-white/10"
+                                          ? "bg-white text-ink font-semibold ring-1 ring-line"
+                                          : "text-subtle hover:bg-black/[0.04] hover:text-ink"
                                       }`}
                                     >
                                       <span>Tous</span>
-                                      <span className="text-white/70 tabular-nums">{catTotal(cat)}</span>
+                                      <span className="text-faint text-xs tabular-nums">{catTotal(cat)}</span>
                                     </Link>
                                     {statuses.map((s) => (
                                       <Link
@@ -280,12 +280,12 @@ export function Drawer({ role, userName, unreadNotifications = 0, statusCounts =
                                         data-testid={`nav-status-${cat}-${s}`}
                                         className={`flex items-center justify-between w-full px-3 py-2 text-sm rounded-md transition-colors ${
                                           isCatActive && currentStatus === s
-                                            ? "bg-white/15 text-white font-medium"
-                                            : "text-[#d6d9dd] hover:bg-white/10"
+                                            ? "bg-white text-ink font-semibold ring-1 ring-line"
+                                            : "text-subtle hover:bg-black/[0.04] hover:text-ink"
                                         }`}
                                       >
                                         <span>{LEAD_STATUS_LABELS[s as LeadStatus]}</span>
-                                        <span className="text-white/70 tabular-nums">
+                                        <span className="text-faint text-xs tabular-nums">
                                           {statusCounts[cat]?.[s] ?? 0}
                                         </span>
                                       </Link>
@@ -302,16 +302,16 @@ export function Drawer({ role, userName, unreadNotifications = 0, statusCounts =
                     <Link
                       href={item.href}
                       onClick={() => setOpen(false)}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
                         isActive
-                          ? "bg-white/[0.07] text-white font-medium shadow-[inset_0_0_0_1px_rgba(214,217,221,.55)]"
-                          : "text-[#b9bec5] hover:bg-white/10"
+                          ? "bg-white text-ink font-semibold shadow-card ring-1 ring-line"
+                          : "text-body hover:bg-black/[0.04] hover:text-ink"
                       }`}
                     >
-                      <item.icon className="w-5 h-5 shrink-0" />
+                      <item.icon className="w-[18px] h-[18px] shrink-0" />
                       {item.label}
                       {"tasksBadge" in item && item.tasksBadge && pendingTasks > 0 && (
-                        <span className="ml-auto bg-white/30 text-white text-xs font-medium px-2 py-0.5 rounded-full tabular-nums">
+                        <span className="ml-auto bg-brand text-white text-[11px] font-semibold px-1.5 min-w-5 text-center py-0.5 rounded-full tabular-nums">
                           {pendingTasks}
                         </span>
                       )}
@@ -322,30 +322,30 @@ export function Drawer({ role, userName, unreadNotifications = 0, statusCounts =
             })}
           </nav>
 
-          <div className="p-4 border-t border-[#8a8f96]/30 space-y-2">
+          <div className="p-3 border-t border-line space-y-1">
             {unreadNotifications > 0 && (
               <Link
                 href={isAdminSpace ? "/admin/notifications" : "/telepro/notifications"}
                 onClick={() => setOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 rounded-lg text-[#b9bec5] hover:bg-white/10"
+                className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-body hover:bg-black/[0.04]"
               >
-                <Bell className="w-5 h-5 shrink-0" />
+                <Bell className="w-[18px] h-[18px] shrink-0" />
                 <span>Notifications</span>
-                <span className="ml-auto bg-white/30 text-white text-xs font-medium px-2 py-0.5 rounded-full">
+                <span className="ml-auto bg-red-500 text-white text-[11px] font-semibold px-1.5 min-w-5 text-center py-0.5 rounded-full">
                   {unreadNotifications}
                 </span>
               </Link>
             )}
             {userName && (
-              <div className="px-4 py-2 text-sm text-white/80 truncate">
+              <div className="px-3 py-1.5 text-xs font-medium text-subtle truncate">
                 {userName}
               </div>
             )}
             <button
               onClick={handleLogout}
-              className="flex items-center gap-3 w-full px-4 py-3 rounded-lg text-white hover:bg-red-500/25 transition-colors"
+              className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm text-body hover:bg-red-50 hover:text-red-700 transition-colors"
             >
-              <LogOut className="w-5 h-5 shrink-0" />
+              <LogOut className="w-[18px] h-[18px] shrink-0" />
               Déconnexion
             </button>
           </div>

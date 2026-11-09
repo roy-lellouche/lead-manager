@@ -120,7 +120,7 @@ export function SavForm({ endpoint, onSuccess, submitLabel = "Envoyer la demande
       </div>
 
       <div>
-        <label htmlFor="sav-email" className={LABEL_CLS}>Email <span className="font-normal text-[#64748b]">(facultatif)</span></label>
+        <label htmlFor="sav-email" className={LABEL_CLS}>Email <span className="font-normal text-subtle">(facultatif)</span></label>
         <input id="sav-email" type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={INPUT_CLS} />
       </div>
 
@@ -161,7 +161,7 @@ export function SavForm({ endpoint, onSuccess, submitLabel = "Envoyer la demande
       </div>
 
       <div>
-        <span className={LABEL_CLS}>Photos de la panne <span className="font-normal text-[#64748b]">(facultatif)</span></span>
+        <span className={LABEL_CLS}>Photos de la panne <span className="font-normal text-subtle">(facultatif)</span></span>
         <input
           ref={fileInput}
           type="file"
@@ -173,7 +173,7 @@ export function SavForm({ endpoint, onSuccess, submitLabel = "Envoyer la demande
         />
         <div className="flex flex-wrap gap-3">
           {photos.map((p, i) => (
-            <div key={p.preview} className="relative h-24 w-24 overflow-hidden rounded-xl border border-[#d5deec]">
+            <div key={p.preview} className="relative h-24 w-24 overflow-hidden rounded-xl border border-line-strong">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={p.preview} alt={`Photo ${i + 1}`} className="h-full w-full object-cover" />
               <button
@@ -189,14 +189,14 @@ export function SavForm({ endpoint, onSuccess, submitLabel = "Envoyer la demande
           {photos.length < SAV_MAX_PHOTOS && (
             <label
               htmlFor="sav-photos"
-              className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-[#b8c6dc] text-xs text-[#475569] hover:border-[#2563eb] hover:text-[#2563eb]"
+              className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-[#b8c6dc] text-xs text-body hover:border-brand hover:text-brand"
             >
               <Camera className="h-6 w-6" />
               Ajouter
             </label>
           )}
         </div>
-        <p className="mt-1.5 text-xs text-[#64748b]">Jusqu&apos;à {SAV_MAX_PHOTOS} photos.</p>
+        <p className="mt-1.5 text-xs text-subtle">Jusqu&apos;à {SAV_MAX_PHOTOS} photos.</p>
       </div>
 
       {error && (
@@ -208,7 +208,7 @@ export function SavForm({ endpoint, onSuccess, submitLabel = "Envoyer la demande
       <button
         type="submit"
         disabled={submitting}
-        className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#2563eb] px-4 text-base font-semibold text-white transition-colors hover:bg-[#1d4ed8] disabled:opacity-60"
+        className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand px-4 text-base font-semibold text-white transition-colors hover:bg-brand-hover disabled:opacity-60"
       >
         {submitting && <Loader2 className="h-5 w-5 animate-spin" />}
         {submitting ? "Envoi en cours…" : submitLabel}

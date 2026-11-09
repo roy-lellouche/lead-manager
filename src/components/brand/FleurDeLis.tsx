@@ -13,11 +13,11 @@ export function FleurDeLis({ className = "w-6 h-6", title }: { className?: strin
     >
       <defs>
         <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#ffffff" />
-          <stop offset="30%" stopColor="#bfc3c9" />
-          <stop offset="50%" stopColor="#6f747b" />
-          <stop offset="70%" stopColor="#e6e8eb" />
-          <stop offset="100%" stopColor="#8a8f96" />
+          <stop offset="0%" stopColor="#9aa0a8" />
+          <stop offset="35%" stopColor="#3f444c" />
+          <stop offset="55%" stopColor="#b7bcc3" />
+          <stop offset="80%" stopColor="#4b5058" />
+          <stop offset="100%" stopColor="#80868e" />
         </linearGradient>
       </defs>
       <path fill={`url(#${gradientId})`} d={FLEUR_DE_LIS_PATH} />

@@ -70,7 +70,7 @@ export default async function AppLayout({
             pendingTasks={tasksRes.count || 0}
           />
         </Suspense>
-        <main className="flex-1 min-w-0 lg:ml-64 min-h-screen pt-4 pb-8 px-4 lg:px-8 bg-[#f4f7fb]">
+        <main className="flex-1 min-w-0 lg:ml-64 min-h-screen pt-16 lg:pt-8 pb-10 px-4 lg:px-10 bg-canvas">
           {children}
         </main>
       </div>

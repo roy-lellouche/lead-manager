@@ -71,10 +71,10 @@ export const PRIORITY_STYLES: Record<
 };
 
 const INPUT_CLS =
-  "w-full px-3 py-2 text-sm border border-[#e1e8f2] rounded-[9px] bg-white text-[#0b1f3a] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40";
-const LABEL_CLS = "block text-sm font-medium text-[#0b1f3a] mb-1";
+  "w-full px-3 py-2 text-sm border border-line rounded-[9px] bg-white text-ink focus:outline-none focus:ring-2 focus:ring-brand/40";
+const LABEL_CLS = "block text-sm font-medium text-ink mb-1";
 const CARD_CLS =
-  "rounded-[12px] border border-[#e1e8f2] bg-white shadow-[0_1px_2px_rgba(13,38,76,.06)]";
+  "rounded-[14px] border border-line bg-white shadow-card";
 
 type Scope = "received" | "sent" | "team";
 type StatusView = "todo" | "done";
@@ -107,7 +107,7 @@ function SegmentedControl<T extends string>({
   options: { value: T; label: string; count?: number }[];
 }) {
   return (
-    <div className="inline-flex rounded-[10px] border border-[#e1e8f2] bg-white p-1 gap-1">
+    <div className="inline-flex rounded-[10px] border border-line bg-white p-1 gap-1">
       {options.map((opt) => (
         <button
           key={opt.value}
@@ -115,15 +115,15 @@ function SegmentedControl<T extends string>({
           onClick={() => onChange(opt.value)}
           className={`px-3 py-1.5 text-sm rounded-[7px] transition-colors flex items-center gap-2 ${
             value === opt.value
-              ? "bg-[#0b1f3a] text-white font-medium"
-              : "text-[#64748b] hover:bg-[#f1f5f9]"
+              ? "bg-ink text-white font-medium"
+              : "text-subtle hover:bg-line-soft"
           }`}
         >
           {opt.label}
           {opt.count !== undefined && (
             <span
               className={`text-xs tabular-nums px-1.5 rounded-full ${
-                value === opt.value ? "bg-white/20" : "bg-[#f1f5f9]"
+                value === opt.value ? "bg-white/20" : "bg-line-soft"
               }`}
             >
               {opt.count}
@@ -324,8 +324,8 @@ export function TasksClient({
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <p
-                className={`font-semibold text-[#0b1f3a] break-words ${
-                  task.completed_at ? "line-through decoration-[#94a3b8]" : ""
+                className={`font-semibold text-ink break-words ${
+                  task.completed_at ? "line-through decoration-faint" : ""
                 }`}
               >
                 {task.title}
@@ -343,21 +343,21 @@ export function TasksClient({
               )}
             </div>
             {task.description && (
-              <p className="text-sm text-[#475569] mt-1 whitespace-pre-line break-words">
+              <p className="text-sm text-body mt-1 whitespace-pre-line break-words">
                 {task.description}
               </p>
             )}
-            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#64748b]">
+            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-subtle">
               {showAssignee && (
                 <span className="flex items-center gap-1">
                   <User className="w-3.5 h-3.5" />
-                  Pour : <span className="font-medium text-[#0b1f3a]">{personName(task.assigned_to)}</span>
+                  Pour : <span className="font-medium text-ink">{personName(task.assigned_to)}</span>
                 </span>
               )}
               {showCreator && (
                 <span className="flex items-center gap-1">
                   <User className="w-3.5 h-3.5" />
-                  De : <span className="font-medium text-[#0b1f3a]">{personName(task.created_by)}</span>
+                  De : <span className="font-medium text-ink">{personName(task.created_by)}</span>
                 </span>
               )}
               {task.remind_at && (
@@ -388,7 +388,7 @@ export function TasksClient({
               <button
                 type="button"
                 onClick={() => openEdit(task)}
-                className="p-1.5 rounded-[7px] hover:bg-[#f1f5f9] text-[#64748b]"
+                className="p-1.5 rounded-[7px] hover:bg-line-soft text-subtle"
                 aria-label="Modifier"
                 title="Modifier"
               >
@@ -400,7 +400,7 @@ export function TasksClient({
                 type="button"
                 onClick={() => handleDelete(task)}
                 disabled={busy}
-                className="p-1.5 rounded-[7px] hover:bg-red-50 text-[#64748b] hover:text-red-600 disabled:opacity-50"
+                className="p-1.5 rounded-[7px] hover:bg-red-50 text-subtle hover:text-red-600 disabled:opacity-50"
                 aria-label="Supprimer"
                 title="Supprimer"
               >
@@ -416,7 +416,7 @@ export function TasksClient({
               size="sm"
               disabled={busy}
               onClick={() => toggleComplete(task, false)}
-              className="gap-1 border-[#e1e8f2] text-[#64748b]"
+              className="gap-1 border-line text-subtle"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               Rouvrir
@@ -450,7 +450,7 @@ export function TasksClient({
         title="Tâches"
         subtitle="Créez des tâches pour vous ou pour un collègue, avec un rappel si besoin"
         actions={
-          <Button onClick={openCreate} className="gap-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-white">
+          <Button onClick={openCreate} className="gap-2 bg-brand hover:bg-brand-hover text-white">
             <Plus className="w-4 h-4" />
             Nouvelle tâche
           </Button>
@@ -461,19 +461,19 @@ export function TasksClient({
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className={`${CARD_CLS} p-4 border-l-4 border-l-red-600`}>
           <p className="text-xs font-medium uppercase tracking-wide text-red-700">Urgentes</p>
-          <p className="text-2xl font-bold text-[#0b1f3a] tabular-nums">{stats.urgent}</p>
+          <p className="text-2xl font-bold text-ink tabular-nums">{stats.urgent}</p>
         </div>
         <div className={`${CARD_CLS} p-4 border-l-4 border-l-orange-500`}>
           <p className="text-xs font-medium uppercase tracking-wide text-orange-700">Importantes</p>
-          <p className="text-2xl font-bold text-[#0b1f3a] tabular-nums">{stats.important}</p>
+          <p className="text-2xl font-bold text-ink tabular-nums">{stats.important}</p>
         </div>
         <div className={`${CARD_CLS} p-4`}>
-          <p className="text-xs font-medium uppercase tracking-wide text-[#64748b] flex items-center gap-1">
+          <p className="text-xs font-medium uppercase tracking-wide text-subtle flex items-center gap-1">
             <BellRing className="w-3.5 h-3.5" /> Rappels dépassés
           </p>
           <p
             className={`text-2xl font-bold tabular-nums ${
-              stats.due > 0 ? "text-red-600" : "text-[#0b1f3a]"
+              stats.due > 0 ? "text-red-600" : "text-ink"
             }`}
           >
             {stats.due}
@@ -481,7 +481,7 @@ export function TasksClient({
         </div>
         <div className={`${CARD_CLS} p-4`}>
           <p className="text-xs font-medium uppercase tracking-wide text-emerald-700">Terminées</p>
-          <p className="text-2xl font-bold text-[#0b1f3a] tabular-nums">{stats.done}</p>
+          <p className="text-2xl font-bold text-ink tabular-nums">{stats.done}</p>
         </div>
       </div>
 
@@ -493,7 +493,7 @@ export function TasksClient({
             <select
               value={personFilter}
               onChange={(e) => setPersonFilter(e.target.value)}
-              className="px-3 py-2 text-sm border border-[#e1e8f2] rounded-[9px] bg-white text-[#0b1f3a] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40"
+              className="px-3 py-2 text-sm border border-line rounded-[9px] bg-white text-ink focus:outline-none focus:ring-2 focus:ring-brand/40"
               aria-label="Filtrer par personne"
             >
               <option value="all">Tout le monde</option>
@@ -518,7 +518,7 @@ export function TasksClient({
 
       {statusView === "todo" ? (
         todo.length === 0 ? (
-          <div className={`${CARD_CLS} p-8 text-center text-[#64748b]`}>
+          <div className={`${CARD_CLS} p-8 text-center text-subtle`}>
             <p className="font-medium">{emptyText}</p>
           </div>
         ) : (
@@ -542,7 +542,7 @@ export function TasksClient({
                     <span className="text-sm font-semibold tabular-nums">{column.length}</span>
                   </div>
                   {column.length === 0 ? (
-                    <p className="text-sm text-[#94a3b8] px-4 py-6 text-center border border-dashed border-[#e1e8f2] rounded-[12px]">
+                    <p className="text-sm text-faint px-4 py-6 text-center border border-dashed border-line rounded-[14px]">
                       Aucune tâche {priority === "urgent" ? "urgente" : "importante"}
                     </p>
                   ) : (
@@ -554,7 +554,7 @@ export function TasksClient({
           </div>
         )
       ) : done.length === 0 ? (
-        <div className={`${CARD_CLS} p-8 text-center text-[#64748b]`}>
+        <div className={`${CARD_CLS} p-8 text-center text-subtle`}>
           <p className="font-medium">Aucune tâche terminée.</p>
         </div>
       ) : (
@@ -564,15 +564,15 @@ export function TasksClient({
       {/* Modal création / modification */}
       {form && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="rounded-[12px] border border-[#e1e8f2] bg-white shadow-[0_4px_24px_rgba(13,38,76,.12)] w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-4 border-b border-[#e1e8f2]">
-              <h3 className="text-lg font-semibold text-[#0b1f3a]">
+          <div className="rounded-[14px] border border-line bg-white shadow-[0_4px_24px_rgba(16,24,40,.12)] w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b border-line">
+              <h3 className="text-lg font-semibold text-ink">
                 {form.id ? "Modifier la tâche" : "Nouvelle tâche"}
               </h3>
               <button
                 type="button"
                 onClick={() => setForm(null)}
-                className="p-1 rounded-[9px] hover:bg-[#f1f5f9] text-[#64748b]"
+                className="p-1 rounded-[9px] hover:bg-line-soft text-subtle"
                 aria-label="Fermer"
               >
                 <X className="w-5 h-5" />
@@ -595,7 +595,7 @@ export function TasksClient({
               </div>
               <div>
                 <label className={LABEL_CLS} htmlFor="task-description">
-                  Description <span className="font-normal text-[#94a3b8]">(optionnelle)</span>
+                  Description <span className="font-normal text-faint">(optionnelle)</span>
                 </label>
                 <textarea
                   id="task-description"
@@ -650,15 +650,15 @@ export function TasksClient({
                     ))}
                 </select>
               </div>
-              <div className="rounded-[9px] border border-[#e1e8f2] p-3 space-y-3">
-                <label className="flex items-center gap-2 text-sm font-medium text-[#0b1f3a] cursor-pointer">
+              <div className="rounded-[9px] border border-line p-3 space-y-3">
+                <label className="flex items-center gap-2 text-sm font-medium text-ink cursor-pointer">
                   <input
                     type="checkbox"
                     checked={form.withReminder}
                     onChange={(e) => setForm({ ...form, withReminder: e.target.checked })}
-                    className="w-4 h-4 accent-[#2563eb]"
+                    className="w-4 h-4 accent-brand"
                   />
-                  <Bell className="w-4 h-4 text-[#64748b]" />
+                  <Bell className="w-4 h-4 text-subtle" />
                   Programmer un rappel
                 </label>
                 {form.withReminder && (
@@ -670,7 +670,7 @@ export function TasksClient({
                       className={INPUT_CLS}
                       aria-label="Date et heure du rappel"
                     />
-                    <p className="text-xs text-[#64748b]">
+                    <p className="text-xs text-subtle">
                       À cette heure-là, une notification s&apos;affichera chez le destinataire et
                       restera visible tant que la tâche n&apos;est pas validée.
                     </p>
@@ -679,18 +679,18 @@ export function TasksClient({
               </div>
               {error && <p className="text-sm text-red-600">{error}</p>}
             </div>
-            <div className="p-4 border-t border-[#e1e8f2] flex justify-end gap-3">
+            <div className="p-4 border-t border-line flex justify-end gap-3">
               <Button
                 variant="outline"
                 onClick={() => setForm(null)}
-                className="border-[#e1e8f2] text-[#64748b] hover:bg-[#f1f5f9]"
+                className="border-line text-subtle hover:bg-line-soft"
               >
                 Annuler
               </Button>
               <Button
                 onClick={handleSave}
                 disabled={saving || !form.title.trim()}
-                className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white disabled:opacity-50"
+                className="bg-brand hover:bg-brand-hover text-white disabled:opacity-50"
               >
                 {saving ? "Enregistrement..." : form.id ? "Enregistrer" : "Créer la tâche"}
               </Button>

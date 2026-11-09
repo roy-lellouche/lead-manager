@@ -93,11 +93,11 @@ export default function SavMap({ items, selectedId, onSelect }: Props) {
 
   return (
     <div className="relative h-full w-full">
-      <div ref={containerRef} className="h-full w-full rounded-[12px]" />
+      <div ref={containerRef} className="h-full w-full rounded-[14px]" />
       <button
         type="button"
         onClick={() => mapRef.current?.flyToBounds(FRANCE_BOUNDS, { duration: 0.6 })}
-        className="absolute right-3 top-3 z-[500] flex items-center gap-1.5 rounded-lg border border-[#e1e8f2] bg-white px-2.5 py-1.5 text-xs font-medium text-[#0b1f3a] shadow hover:bg-[#f4f7fb]"
+        className="absolute right-3 top-3 z-[500] flex items-center gap-1.5 rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs font-medium text-ink shadow hover:bg-canvas"
       >
         <Locate className="h-3.5 w-3.5" />
         Vue France

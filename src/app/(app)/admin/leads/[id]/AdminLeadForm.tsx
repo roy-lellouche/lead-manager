@@ -89,15 +89,15 @@ function buildUpdates(lead: Record<string, unknown>) {
 }
 
 const SELECT_CLS =
-  "h-9 w-full px-3 border border-[#e1e8f2] rounded-[9px] bg-white text-[#0b1f3a] text-sm focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40";
+  "h-9 w-full px-3 border border-line rounded-[9px] bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-brand/40";
 
 const CARD_CLS =
-  "rounded-[12px] border border-[#e1e8f2] bg-white shadow-[0_1px_2px_rgba(13,38,76,.06)] p-5";
+  "rounded-[14px] border border-line bg-white shadow-card p-5";
 
 const SECTION_TITLE_CLS =
-  "text-xs font-semibold text-[#64748b] uppercase tracking-wide mb-4";
+  "text-xs font-semibold text-subtle uppercase tracking-wide mb-4";
 
-const LABEL_CLS = "block text-sm font-medium text-[#0b1f3a] mb-1.5";
+const LABEL_CLS = "block text-sm font-medium text-ink mb-1.5";
 
 export function AdminLeadForm({ lead: initialLead }: AdminLeadFormProps) {
   const [lead, setLead] = useState(initialLead);
@@ -306,7 +306,7 @@ export function AdminLeadForm({ lead: initialLead }: AdminLeadFormProps) {
           <select
             value={(lead.status as string) || ""}
             onChange={(e) => updateField("status", e.target.value)}
-            className="h-9 w-full max-w-xs px-3 border border-[#e1e8f2] rounded-[9px] bg-white text-[#0b1f3a] text-sm focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40"
+            className="h-9 w-full max-w-xs px-3 border border-line rounded-[9px] bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-brand/40"
           >
             {(Object.keys(LEAD_STATUS_LABELS) as LeadStatus[]).map((s) => (
               <option key={s} value={s}>
@@ -539,7 +539,7 @@ export function AdminLeadForm({ lead: initialLead }: AdminLeadFormProps) {
                 const current = (lead.radiator_type as string[] | null) ?? [];
                 const checked = current.includes(t);
                 return (
-                  <label key={t} className="flex items-center gap-2 text-sm text-[#0b1f3a] cursor-pointer">
+                  <label key={t} className="flex items-center gap-2 text-sm text-ink cursor-pointer">
                     <input
                       type="checkbox"
                       checked={checked}
@@ -549,7 +549,7 @@ export function AdminLeadForm({ lead: initialLead }: AdminLeadFormProps) {
                           : current.filter((x) => x !== t);
                         updateField("radiator_type", next.length ? next : null);
                       }}
-                      className="rounded border-[#e1e8f2] accent-[#2563eb]"
+                      className="rounded border-line accent-brand"
                     />
                     {RADIATOR_TYPE_LABELS[t]}
                   </label>
@@ -579,12 +579,12 @@ export function AdminLeadForm({ lead: initialLead }: AdminLeadFormProps) {
             </h2>
             <div className="flex flex-wrap gap-4">
               {CHANTIER_STATUS_FIELDS.map(({ field, label }) => (
-                <label key={field} className="flex items-center gap-2 text-sm text-[#0b1f3a] cursor-pointer">
+                <label key={field} className="flex items-center gap-2 text-sm text-ink cursor-pointer">
                   <input
                     type="checkbox"
                     checked={!!(lead[field as keyof typeof lead] as boolean)}
                     onChange={(e) => updateField(field, e.target.checked)}
-                    className="rounded border-[#e1e8f2] accent-[#2563eb]"
+                    className="rounded border-line accent-brand"
                   />
                   {label}
                 </label>
@@ -714,7 +714,7 @@ export function AdminLeadForm({ lead: initialLead }: AdminLeadFormProps) {
                   type="text"
                   value={(lead.profitability as number)?.toFixed(2) ?? ""}
                   readOnly
-                  className="bg-[#f4f7fb] cursor-default"
+                  className="bg-canvas cursor-default"
                 />
               </div>
               <div className="md:col-span-2">

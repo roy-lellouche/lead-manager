@@ -32,24 +32,24 @@
   --radius-card: 12px;
   --shadow-soft: 0 1px 2px rgba(13, 38, 76, .06);
   --shadow-elevated: 0 10px 30px rgba(11, 31, 58, .18);
-  --background: #f4f7fb;
-  --foreground: #0b1f3a;
+  --background: #f6f7f9;
+  --foreground: #16181d;
   --card: #ffffff;
-  --card-foreground: #0b1f3a;
+  --card-foreground: #16181d;
   --popover: #ffffff;
-  --popover-foreground: #0b1f3a;
-  --primary: #2563eb;
+  --popover-foreground: #16181d;
+  --primary: #1f2328;
   --primary-foreground: #ffffff;
-  --secondary: #f1f5f9;
-  --secondary-foreground: #0b1f3a;
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
-  --accent: #e0ecfe;
-  --accent-foreground: #2563eb;
-  --destructive: #ef4444;
-  --border: #e1e8f2;
-  --input: #e1e8f2;
-  --ring: #3b82f6;
+  --secondary: #f1f2f4;
+  --secondary-foreground: #16181d;
+  --muted: #f1f2f4;
+  --muted-foreground: #6b7280;
+  --accent: #eef2ff;
+  --accent-foreground: #4338ca;
+  --destructive: #dc2626;
+  --border: #e6e8ec;
+  --input: #e1e3e8;
+  --ring: #6366f1;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -108,6 +108,23 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* Palette du CRM (gris neutres légèrement froids + accent indigo) */
+  --color-ink: #16181d;
+  --color-ink-soft: #2a2f37;
+  --color-body: #4b5563;
+  --color-subtle: #6b7280;
+  --color-faint: #9ca3af;
+  --color-line-strong: #d1d5db;
+  --color-line: #e6e8ec;
+  --color-line-soft: #f1f2f4;
+  --color-canvas: #f6f7f9;
+  --color-panel: #f9fafb;
+  --color-brand: #4f46e5;
+  --color-brand-hover: #4338ca;
+  --color-brand-strong: #3730a3;
+  --color-brand-soft: #eef2ff;
+  --color-brand-line: #c7d2fe;
 }
 
 @layer base {
@@ -186,12 +203,12 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
-/* ── Thème « gothique chromé » : noir, argent, fleurs de lys ─────────────── */
+/* ── Identité « fleurs de lys » argentée, version claire ──────────────── */
 .gothic-surface {
-  background-color: #2e3034;
+  background-color: #eceef1;
   background-image:
     url("/fleur-de-lis-pattern.svg"),
-    linear-gradient(180deg, #3a3c41 0%, #2e3034 55%, #26282b 100%);
+    linear-gradient(180deg, #f3f4f6 0%, #eceef1 60%, #e6e8ec 100%);
   background-size: 64px 64px, 100% 100%;
 }
 
@@ -200,9 +217,9 @@
   letter-spacing: 0.01em;
 }
 
-/* Texte argent chromé (dégradé métallique) */
+/* Texte « argent chromé » foncé, lisible sur fond clair */
 .chrome-text {
-  background: linear-gradient(180deg, #ffffff 0%, #d4d7db 35%, #7c8188 55%, #eceef0 75%, #9aa0a7 100%);
+  background: linear-gradient(180deg, #4b5058 0%, #1b1d22 45%, #5d636c 70%, #24272d 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -211,5 +228,10 @@
 /* Filet argent avec reflet, utilisé comme séparateur */
 .chrome-rule {
   height: 1px;
-  background: linear-gradient(90deg, transparent, #8a8f96 20%, #f2f3f5 50%, #8a8f96 80%, transparent);
+  background: linear-gradient(90deg, transparent, #b8bcc3 20%, #6b7078 50%, #b8bcc3 80%, transparent);
+}
+
+/* Cartes : ombre douce commune */
+.shadow-card {
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.04);
 }

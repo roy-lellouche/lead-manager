@@ -70,7 +70,7 @@ export default async function AdminLeadPage({
     <div className="space-y-5">
       <Link
         href="/admin/leads"
-        className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "gap-1.5 text-[#64748b] hover:text-[#0b1f3a] -ml-1")}
+        className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "gap-1.5 text-subtle hover:text-ink -ml-1")}
       >
         <ArrowLeft className="w-4 h-4" />
         Retour aux leads

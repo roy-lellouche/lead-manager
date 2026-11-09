@@ -121,7 +121,7 @@ export function AddressAutocomplete({ value, onChange, required, id }: Props) {
       {open && suggestions.length > 0 && (
         <ul
           role="listbox"
-          className="absolute z-30 mt-1 w-full overflow-hidden rounded-xl border border-[#e1e8f2] bg-white shadow-[0_10px_30px_rgba(11,31,58,.15)]"
+          className="absolute z-30 mt-1 w-full overflow-hidden rounded-xl border border-line bg-white shadow-[0_10px_30px_rgba(16,24,40,.15)]"
         >
           {suggestions.map((s, i) => (
             <li key={s.id} role="option" aria-selected={i === active}>
@@ -133,10 +133,10 @@ export function AddressAutocomplete({ value, onChange, required, id }: Props) {
                   void choose(s);
                 }}
                 className={`flex w-full items-start gap-2 px-3 py-2.5 text-left text-sm ${
-                  i === active ? "bg-[#eef4ff]" : "hover:bg-[#f4f7fb]"
+                  i === active ? "bg-[#eef4ff]" : "hover:bg-canvas"
                 }`}
               >
-                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#2563eb]" />
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
                 <span>{s.label}</span>
               </button>
             </li>

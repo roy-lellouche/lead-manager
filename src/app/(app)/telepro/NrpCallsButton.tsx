@@ -125,7 +125,7 @@ export function NrpCallsButton() {
         </p>
       )}
       {success && !error && !noAnswer && (
-        <p className="text-sm text-[#64748b]">{success}</p>
+        <p className="text-sm text-subtle">{success}</p>
       )}
     </div>
   );

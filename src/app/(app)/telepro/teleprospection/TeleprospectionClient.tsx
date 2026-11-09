@@ -156,11 +156,11 @@ export function TeleprospectionClient({
   if (!initialLeadId) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-        <div className="rounded-[12px] border border-[#e1e8f2] bg-white shadow-[0_1px_2px_rgba(13,38,76,.06)] p-10 max-w-md">
-          <h1 className="text-2xl font-bold text-[#0b1f3a] mb-2">
+        <div className="rounded-[14px] border border-line bg-white shadow-card p-10 max-w-md">
+          <h1 className="text-2xl font-bold text-ink mb-2">
             Aucun lead à traiter
           </h1>
-          <p className="text-[#64748b] mb-6">
+          <p className="text-subtle mb-6">
             Tous vos leads ont été traités ou sont en attente de rappel.
           </p>
           <Link
@@ -182,11 +182,11 @@ export function TeleprospectionClient({
           <div className="flex items-center gap-2">
             <Link
               href="/telepro/leads"
-              className={cn(buttonVariants({ variant: "ghost" }), "text-[#64748b]")}
+              className={cn(buttonVariants({ variant: "ghost" }), "text-subtle")}
             >
               Liste des leads
             </Link>
-            <div className="flex items-center gap-1 rounded-[12px] border border-[#e1e8f2] bg-white shadow-[0_1px_2px_rgba(13,38,76,.06)] p-1">
+            <div className="flex items-center gap-1 rounded-[14px] border border-line bg-white shadow-card p-1">
               <Button
                 onClick={goToPrev}
                 disabled={!hasPrev}
@@ -196,7 +196,7 @@ export function TeleprospectionClient({
               >
                 <ChevronLeft className="w-5 h-5" />
               </Button>
-              <span className="px-3 py-1 text-sm text-[#64748b]">
+              <span className="px-3 py-1 text-sm text-subtle">
                 {currentIndex + 1} sur {leadIds.length}
               </span>
               <Button
@@ -214,13 +214,13 @@ export function TeleprospectionClient({
       />
 
       {loading ? (
-        <div className="rounded-[12px] border border-[#e1e8f2] bg-white shadow-[0_1px_2px_rgba(13,38,76,.06)] p-12 text-center text-[#64748b]">
+        <div className="rounded-[14px] border border-line bg-white shadow-card p-12 text-center text-subtle">
           Chargement...
         </div>
       ) : loadError ? (
-        <div className="rounded-[12px] border border-amber-200 bg-white shadow-[0_1px_2px_rgba(13,38,76,.06)] p-12 text-center">
+        <div className="rounded-[14px] border border-amber-200 bg-white shadow-card p-12 text-center">
           <p className="text-amber-800 font-medium">Impossible de charger ce lead.</p>
-          <p className="text-[#64748b] text-sm mt-2">
+          <p className="text-subtle text-sm mt-2">
             Vérifiez qu&apos;il vous est bien assigné.
           </p>
         </div>
@@ -252,7 +252,7 @@ export function TeleprospectionClient({
           </div>
         </div>
       ) : (
-        <div className="rounded-[12px] border border-[#e1e8f2] bg-white shadow-[0_1px_2px_rgba(13,38,76,.06)] p-12 text-center text-[#64748b]">
+        <div className="rounded-[14px] border border-line bg-white shadow-card p-12 text-center text-subtle">
           Chargement...
         </div>
       )}

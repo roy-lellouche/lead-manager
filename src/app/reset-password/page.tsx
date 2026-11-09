@@ -69,8 +69,8 @@ function ResetPasswordForm() {
 
   if (!ready && !error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f4f7fb]">
-        <div className="text-[#64748b]">Vérification du lien...</div>
+      <div className="min-h-screen flex items-center justify-center bg-canvas">
+        <div className="text-subtle">Vérification du lien...</div>
       </div>
     );
   }
@@ -80,12 +80,12 @@ function ResetPasswordForm() {
       <AuthShell
         title="Lien invalide"
         footer={
-          <Link href="/login" className="text-[#2563eb] hover:underline">
+          <Link href="/login" className="text-brand hover:underline">
             Retour à la connexion
           </Link>
         }
       >
-        <p className="mb-6 text-sm text-[#64748b]">{error}</p>
+        <p className="mb-6 text-sm text-subtle">{error}</p>
         <Link href="/forgot-password" className={cn(buttonVariants(), "w-full justify-center")}>
           Demander un nouveau lien
         </Link>
@@ -98,7 +98,7 @@ function ResetPasswordForm() {
       title="Nouveau mot de passe"
       subtitle="Choisissez un nouveau mot de passe (minimum 6 caractères)"
       footer={
-        <Link href="/login" className="text-[#2563eb] hover:underline">
+        <Link href="/login" className="text-brand hover:underline">
           Retour à la connexion
         </Link>
       }
@@ -110,7 +110,7 @@ function ResetPasswordForm() {
           </div>
         )}
         <div className="space-y-1.5">
-          <label htmlFor="password" className="text-sm font-medium text-[#0b1f3a]">
+          <label htmlFor="password" className="text-sm font-medium text-ink">
             Nouveau mot de passe
           </label>
           <Input
@@ -123,7 +123,7 @@ function ResetPasswordForm() {
           />
         </div>
         <div className="space-y-1.5">
-          <label htmlFor="confirmPassword" className="text-sm font-medium text-[#0b1f3a]">
+          <label htmlFor="confirmPassword" className="text-sm font-medium text-ink">
             Confirmer le mot de passe
           </label>
           <Input
@@ -147,8 +147,8 @@ export default function ResetPasswordPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center bg-[#f4f7fb]">
-          <div className="text-[#64748b]">Chargement...</div>
+        <div className="min-h-screen flex items-center justify-center bg-canvas">
+          <div className="text-subtle">Chargement...</div>
         </div>
       }
     >

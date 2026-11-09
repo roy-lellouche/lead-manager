@@ -1,8 +1,11 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { INSTALLATION_TYPE_LABELS, INSTALLATION_TYPES } from "@/lib/types";
-import { StatsSecretaireFilters } from "./StatsSecretaireFilters";
-import { StatCard } from "../stats/StatCard";
+import { FileCheck } from "lucide-react";
+import { DELEGATAIRE_GROUPS, INSTALLATION_CHART_COLORS, INSTALLATION_TYPE_LABELS, INSTALLATION_TYPES } from "@/lib/types";
 import { PageHeader } from "@/components/ui-kit/PageHeader";
+import { StatCard } from "@/components/ui-kit/StatCard";
+import { Panel } from "@/components/ui-kit/Panel";
+import { BarList } from "@/components/ui-kit/BarList";
+import { PeriodFilter, DelegataireChips } from "@/components/ui-kit/PeriodFilter";
 
 export default async function StatsSecretairePage({
   searchParams,
@@ -12,7 +15,7 @@ export default async function StatsSecretairePage({
   const adminClient = createAdminClient();
   const params = await searchParams;
   const from = params.from || new Date(new Date().getFullYear(), 0, 1).toISOString().slice(0, 10);
-  const to = params.to || new Date().toISOString().slice(0, 10);
+  const to = params.to || `${new Date().getFullYear()}-12-31`;
   const delegataireParam = params.delegataire;
   const selectedDelegataires = Array.isArray(delegataireParam)
     ? delegataireParam
@@ -51,41 +54,53 @@ export default async function StatsSecretairePage({
     return acc;
   }, {});
 
+  const listUrl = `/admin/documents-recus?from=${from}&to=${to}${delegataireUrlPart ? `&${delegataireUrlPart}` : ""}`;
+  const year = new Date().getFullYear();
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Statistiques"
-        subtitle="Types d'installation des dossiers documents reçus. Cliquez sur une stat pour voir les dossiers."
+        subtitle="Dossiers en « Documents reçus » par type d'installation. Cliquez pour ouvrir la liste."
       />
 
-      <StatsSecretaireFilters />
+      <PeriodFilter defaultFrom={`${year}-01-01`} defaultTo={`${year}-12-31`}>
+        <DelegataireChips
+          options={[
+            ...DELEGATAIRE_GROUPS.map((d) => ({ value: d, label: d })),
+            { value: "__non_assigne__", label: "Non assigné" },
+          ]}
+        />
+      </PeriodFilter>
 
-      {selectedDelegataires.length > 0 && (
-        <p className="text-sm text-amber-700 bg-amber-50 px-4 py-2 rounded-lg border border-amber-200">
-          Filtre actif : <strong>{selectedDelegataires.map((d) => d === "__non_assigne__" ? "Non assigné" : d).join(", ")}</strong>
-        </p>
-      )}
-
-      <div>
-        <h2 className="font-semibold text-[#0b1f3a] mb-1">Types d&apos;installation (documents reçus)</h2>
-        <p className="text-sm text-[#64748b] mb-3">
-          Nombre de dossiers par type d&apos;installation
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          {INSTALLATION_TYPES.map((type) => (
-            <StatCard
-              key={type}
-              label={INSTALLATION_TYPE_LABELS[type]}
-              value={installationTypeCounts[type] ?? 0}
-              href={`/admin/documents-recus?from=${from}&to=${to}${delegataireUrlPart ? `&${delegataireUrlPart}` : ""}`}
-            />
-          ))}
-          <StatCard
-            label="Non renseigné"
-            value={installationTypeCounts["non_renseigne"] ?? 0}
-            href={`/admin/documents-recus?from=${from}&to=${to}${delegataireUrlPart ? `&${delegataireUrlPart}` : ""}`}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <StatCard
+          label="Documents reçus"
+          value={leads.length}
+          icon={FileCheck}
+          tone="success"
+          size="lg"
+          href={listUrl}
+          hint="Dossiers mis à jour sur la période"
+        />
+        <Panel title="Types d'installation" className="lg:col-span-2">
+          <BarList
+            items={[
+              ...INSTALLATION_TYPES.map((type) => ({
+                label: INSTALLATION_TYPE_LABELS[type],
+                value: installationTypeCounts[type] ?? 0,
+                color: INSTALLATION_CHART_COLORS[type],
+                href: listUrl,
+              })),
+              {
+                label: "Non renseigné",
+                value: installationTypeCounts["non_renseigne"] ?? 0,
+                color: "#9ca3af",
+                href: listUrl,
+              },
+            ]}
           />
-        </div>
+        </Panel>
       </div>
     </div>
   );

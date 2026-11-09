@@ -23,10 +23,10 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui-kit/PageHeader";
 
 const INPUT_CLS =
-  "w-full px-3 py-2 text-sm border border-[#e1e8f2] rounded-[9px] bg-white text-[#0b1f3a] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40";
+  "w-full px-3 py-2 text-sm border border-line rounded-[9px] bg-white text-ink focus:outline-none focus:ring-2 focus:ring-brand/40";
 const SELECT_CLS =
-  "w-full px-3 py-2 text-sm border border-[#e1e8f2] rounded-[9px] bg-white text-[#0b1f3a] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40";
-const LABEL_CLS = "block text-sm font-medium text-[#0b1f3a] mb-1";
+  "w-full px-3 py-2 text-sm border border-line rounded-[9px] bg-white text-ink focus:outline-none focus:ring-2 focus:ring-brand/40";
+const LABEL_CLS = "block text-sm font-medium text-ink mb-1";
 
 interface CourrierEvent {
   id: string;
@@ -190,7 +190,7 @@ export function AgendaCourrierClient({ courrierEvents, rappelEvents }: AgendaCou
               setShowCreateRappel(true);
               setNewRappelDate(toDatetimeLocalValueParis(new Date().toISOString()));
             }}
-            className="gap-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-white"
+            className="gap-2 bg-brand hover:bg-brand-hover text-white"
           >
             <Plus className="w-4 h-4" />
             Nouveau rappel
@@ -199,28 +199,28 @@ export function AgendaCourrierClient({ courrierEvents, rappelEvents }: AgendaCou
       />
 
       {/* Calendrier */}
-      <div className="rounded-[12px] border border-[#e1e8f2] bg-white shadow-[0_1px_2px_rgba(13,38,76,.06)] overflow-hidden">
-        <div className="p-4 border-b border-[#e1e8f2] flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-[#0b1f3a]">
+      <div className="rounded-[14px] border border-line bg-white shadow-card overflow-hidden">
+        <div className="p-4 border-b border-line flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-ink">
             {format(currentMonth, "MMMM yyyy", { locale: fr })}
           </h2>
           <div className="flex items-center gap-1">
             <button
               onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-              className="p-2 rounded-[9px] hover:bg-[#f1f5f9] text-[#64748b]"
+              className="p-2 rounded-[9px] hover:bg-line-soft text-subtle"
               aria-label="Mois précédent"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
             <button
               onClick={() => setCurrentMonth(new Date())}
-              className="px-3 py-1 text-sm text-[#64748b] hover:bg-[#f1f5f9] rounded-[9px]"
+              className="px-3 py-1 text-sm text-subtle hover:bg-line-soft rounded-[9px]"
             >
               Aujourd&apos;hui
             </button>
             <button
               onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-              className="p-2 rounded-[9px] hover:bg-[#f1f5f9] text-[#64748b]"
+              className="p-2 rounded-[9px] hover:bg-line-soft text-subtle"
               aria-label="Mois suivant"
             >
               <ChevronRight className="w-5 h-5" />
@@ -229,9 +229,9 @@ export function AgendaCourrierClient({ courrierEvents, rappelEvents }: AgendaCou
         </div>
 
         <div className="p-4">
-          <div className="grid grid-cols-7 gap-px bg-[#e1e8f2] rounded-[9px] overflow-hidden">
+          <div className="grid grid-cols-7 gap-px bg-line rounded-[9px] overflow-hidden">
             {WEEKDAYS.map((d) => (
-              <div key={d} className="bg-[#f8fafc] py-2 text-center text-sm font-medium text-[#64748b]">
+              <div key={d} className="bg-panel py-2 text-center text-sm font-medium text-subtle">
                 {d}
               </div>
             ))}
@@ -243,15 +243,15 @@ export function AgendaCourrierClient({ courrierEvents, rappelEvents }: AgendaCou
               return (
                 <div
                   key={date.toISOString()}
-                  className={`min-h-[100px] p-2 bg-white ${!isCurrentMonth ? "bg-[#f8fafc]" : ""}`}
+                  className={`min-h-[100px] p-2 bg-white ${!isCurrentMonth ? "bg-panel" : ""}`}
                 >
                   <div
                     className={`text-sm font-medium mb-1 ${
                       isToday
-                        ? "bg-[#2563eb] text-white w-8 h-8 rounded-full flex items-center justify-center"
+                        ? "bg-brand text-white w-8 h-8 rounded-full flex items-center justify-center"
                         : isCurrentMonth
-                        ? "text-[#0b1f3a]"
-                        : "text-[#94a3b8]"
+                        ? "text-ink"
+                        : "text-faint"
                     }`}
                   >
                     {format(date, "d")}
@@ -264,7 +264,7 @@ export function AgendaCourrierClient({ courrierEvents, rappelEvents }: AgendaCou
                         className={`w-full text-left px-2 py-1.5 rounded text-xs transition-colors truncate ${
                           event.type === "courrier"
                             ? "bg-rose-100 text-rose-800 hover:bg-rose-200"
-                            : "bg-[#eff6ff] text-[#1d4ed8] hover:bg-[#dbeafe]"
+                            : "bg-brand-soft text-brand-hover hover:bg-brand-soft"
                         }`}
                         title={event.type === "courrier" ? `${event.title} - ${(event as CourrierEvent).phone}` : event.title}
                       >
@@ -281,7 +281,7 @@ export function AgendaCourrierClient({ courrierEvents, rappelEvents }: AgendaCou
         </div>
 
         {allEvents.length === 0 && (
-          <div className="p-4 mx-4 mb-4 bg-[#f8fafc] rounded-[9px] border border-[#e1e8f2] text-center text-[#64748b]">
+          <div className="p-4 mx-4 mb-4 bg-panel rounded-[9px] border border-line text-center text-subtle">
             <p className="font-medium">Aucun rappel planifié</p>
             <p className="text-sm mt-1">
               Les rappels et codes courrier avec une date de rappel apparaîtront ici.
@@ -293,12 +293,12 @@ export function AgendaCourrierClient({ courrierEvents, rappelEvents }: AgendaCou
       {/* Modal création rappel */}
       {showCreateRappel && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="rounded-[12px] border border-[#e1e8f2] bg-white shadow-[0_4px_24px_rgba(13,38,76,.12)] w-full max-w-md">
-            <div className="flex items-center justify-between p-4 border-b border-[#e1e8f2]">
-              <h3 className="text-lg font-semibold text-[#0b1f3a]">Nouveau rappel</h3>
+          <div className="rounded-[14px] border border-line bg-white shadow-[0_4px_24px_rgba(16,24,40,.12)] w-full max-w-md">
+            <div className="flex items-center justify-between p-4 border-b border-line">
+              <h3 className="text-lg font-semibold text-ink">Nouveau rappel</h3>
               <button
                 onClick={() => { setShowCreateRappel(false); setNewRappelName(""); setNewRappelDesc(""); setNewRappelDate(""); }}
-                className="p-1 rounded-[9px] hover:bg-[#f1f5f9] text-[#64748b]"
+                className="p-1 rounded-[9px] hover:bg-line-soft text-subtle"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -320,7 +320,7 @@ export function AgendaCourrierClient({ courrierEvents, rappelEvents }: AgendaCou
                   value={newRappelDesc}
                   onChange={(e) => setNewRappelDesc(e.target.value)}
                   rows={3}
-                  className="w-full px-3 py-2 text-sm border border-[#e1e8f2] rounded-[9px] bg-white text-[#0b1f3a] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40 resize-none"
+                  className="w-full px-3 py-2 text-sm border border-line rounded-[9px] bg-white text-ink focus:outline-none focus:ring-2 focus:ring-brand/40 resize-none"
                   placeholder="Description optionnelle..."
                 />
               </div>
@@ -334,18 +334,18 @@ export function AgendaCourrierClient({ courrierEvents, rappelEvents }: AgendaCou
                 />
               </div>
             </div>
-            <div className="p-4 border-t border-[#e1e8f2] flex justify-end gap-3">
+            <div className="p-4 border-t border-line flex justify-end gap-3">
               <Button
                 variant="outline"
                 onClick={() => { setShowCreateRappel(false); setNewRappelName(""); setNewRappelDesc(""); setNewRappelDate(""); }}
-                className="border-[#e1e8f2] text-[#64748b] hover:bg-[#f1f5f9]"
+                className="border-line text-subtle hover:bg-line-soft"
               >
                 Annuler
               </Button>
               <Button
                 onClick={handleCreateRappel}
                 disabled={creating || !newRappelName.trim() || !newRappelDate}
-                className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white disabled:opacity-50"
+                className="bg-brand hover:bg-brand-hover text-white disabled:opacity-50"
               >
                 {creating ? "Enregistrement..." : "Enregistrer"}
               </Button>
@@ -357,12 +357,12 @@ export function AgendaCourrierClient({ courrierEvents, rappelEvents }: AgendaCou
       {/* Modal détail code courrier */}
       {showCourrierModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="rounded-[12px] border border-[#e1e8f2] bg-white shadow-[0_4px_24px_rgba(13,38,76,.12)] w-full max-w-md">
-            <div className="flex items-center justify-between p-4 border-b border-[#e1e8f2]">
-              <h3 className="text-lg font-semibold text-[#0b1f3a]">Code courrier</h3>
+          <div className="rounded-[14px] border border-line bg-white shadow-[0_4px_24px_rgba(16,24,40,.12)] w-full max-w-md">
+            <div className="flex items-center justify-between p-4 border-b border-line">
+              <h3 className="text-lg font-semibold text-ink">Code courrier</h3>
               <button
                 onClick={() => { setShowCourrierModal(null); setFollowUpAction(""); setCallbackDate(""); }}
-                className="p-1 rounded-[9px] hover:bg-[#f1f5f9] text-[#64748b]"
+                className="p-1 rounded-[9px] hover:bg-line-soft text-subtle"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -370,41 +370,41 @@ export function AgendaCourrierClient({ courrierEvents, rappelEvents }: AgendaCou
             <div className="p-4 space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <p className="text-xs text-[#64748b]">Nom</p>
-                  <p className="font-medium text-[#0b1f3a]">{showCourrierModal.last_name}</p>
+                  <p className="text-xs text-subtle">Nom</p>
+                  <p className="font-medium text-ink">{showCourrierModal.last_name}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-[#64748b]">Prénom</p>
-                  <p className="font-medium text-[#0b1f3a]">{showCourrierModal.first_name}</p>
+                  <p className="text-xs text-subtle">Prénom</p>
+                  <p className="font-medium text-ink">{showCourrierModal.first_name}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-[#64748b]">Téléphone</p>
-                  <p className="font-medium text-[#0b1f3a]">{showCourrierModal.phone}</p>
+                  <p className="text-xs text-subtle">Téléphone</p>
+                  <p className="font-medium text-ink">{showCourrierModal.phone}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-[#64748b]">Date de création</p>
-                  <p className="font-medium text-[#0b1f3a]">{formatDateParis(showCourrierModal.created_at)}</p>
+                  <p className="text-xs text-subtle">Date de création</p>
+                  <p className="font-medium text-ink">{formatDateParis(showCourrierModal.created_at)}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-[#64748b]">Jours écoulés</p>
-                  <p className="font-medium text-[#0b1f3a]">{getDaysSinceCreation(showCourrierModal.created_at)} jour(s)</p>
+                  <p className="text-xs text-subtle">Jours écoulés</p>
+                  <p className="font-medium text-ink">{getDaysSinceCreation(showCourrierModal.created_at)} jour(s)</p>
                 </div>
                 <div>
-                  <p className="text-xs text-[#64748b]">NRP</p>
-                  <p className="font-medium text-[#0b1f3a]">{showCourrierModal.nrp_count}</p>
+                  <p className="text-xs text-subtle">NRP</p>
+                  <p className="font-medium text-ink">{showCourrierModal.nrp_count}</p>
                 </div>
               </div>
 
               {showCourrierModal.callback_at && (
-                <div className="bg-[#eff6ff] border border-[#bfdbfe] rounded-[9px] p-3">
-                  <p className="text-sm text-[#1d4ed8]">
+                <div className="bg-brand-soft border border-brand-line rounded-[9px] p-3">
+                  <p className="text-sm text-brand-hover">
                     <CalendarIcon className="w-4 h-4 inline mr-1" />
                     Rappel prévu le {formatDateParis(showCourrierModal.callback_at)}
                   </p>
                 </div>
               )}
 
-              <div className="border-t border-[#e1e8f2] pt-3">
+              <div className="border-t border-line pt-3">
                 <label className={LABEL_CLS + " mb-2"}>Suivi</label>
                 <select
                   value={followUpAction}
@@ -437,18 +437,18 @@ export function AgendaCourrierClient({ courrierEvents, rappelEvents }: AgendaCou
                 )}
               </div>
             </div>
-            <div className="p-4 border-t border-[#e1e8f2] flex justify-end gap-3">
+            <div className="p-4 border-t border-line flex justify-end gap-3">
               <Button
                 variant="outline"
                 onClick={() => { setShowCourrierModal(null); setFollowUpAction(""); setCallbackDate(""); }}
-                className="border-[#e1e8f2] text-[#64748b] hover:bg-[#f1f5f9]"
+                className="border-line text-subtle hover:bg-line-soft"
               >
                 Fermer
               </Button>
               <Button
                 onClick={handleFollowUp}
                 disabled={actionLoading || !followUpAction || (followUpAction === "a_rappeler" && !callbackDate)}
-                className="bg-[#2563eb] hover:bg-[#1d4ed8] text-white disabled:opacity-50"
+                className="bg-brand hover:bg-brand-hover text-white disabled:opacity-50"
               >
                 {actionLoading ? "En cours..." : "Valider"}
               </Button>
@@ -460,32 +460,32 @@ export function AgendaCourrierClient({ courrierEvents, rappelEvents }: AgendaCou
       {/* Modal détail rappel libre */}
       {showRappelModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="rounded-[12px] border border-[#e1e8f2] bg-white shadow-[0_4px_24px_rgba(13,38,76,.12)] w-full max-w-md">
-            <div className="flex items-center justify-between p-4 border-b border-[#e1e8f2]">
-              <h3 className="text-lg font-semibold text-[#0b1f3a]">Rappel</h3>
-              <button onClick={() => setShowRappelModal(null)} className="p-1 rounded-[9px] hover:bg-[#f1f5f9] text-[#64748b]">
+          <div className="rounded-[14px] border border-line bg-white shadow-[0_4px_24px_rgba(16,24,40,.12)] w-full max-w-md">
+            <div className="flex items-center justify-between p-4 border-b border-line">
+              <h3 className="text-lg font-semibold text-ink">Rappel</h3>
+              <button onClick={() => setShowRappelModal(null)} className="p-1 rounded-[9px] hover:bg-line-soft text-subtle">
                 <X className="w-5 h-5" />
               </button>
             </div>
             <div className="p-4 space-y-3">
               <div>
-                <p className="text-xs text-[#64748b]">Nom</p>
-                <p className="font-medium text-[#0b1f3a]">{showRappelModal.title}</p>
+                <p className="text-xs text-subtle">Nom</p>
+                <p className="font-medium text-ink">{showRappelModal.title}</p>
               </div>
               {showRappelModal.description && (
                 <div>
-                  <p className="text-xs text-[#64748b]">Description</p>
-                  <p className="text-[#0b1f3a] text-sm whitespace-pre-wrap">{showRappelModal.description}</p>
+                  <p className="text-xs text-subtle">Description</p>
+                  <p className="text-ink text-sm whitespace-pre-wrap">{showRappelModal.description}</p>
                 </div>
               )}
-              <div className="bg-[#eff6ff] border border-[#bfdbfe] rounded-[9px] p-3">
-                <p className="text-sm text-[#1d4ed8]">
+              <div className="bg-brand-soft border border-brand-line rounded-[9px] p-3">
+                <p className="text-sm text-brand-hover">
                   <CalendarIcon className="w-4 h-4 inline mr-1" />
                   {formatDateParis(showRappelModal.callback_at)} à {formatTimeParis(showRappelModal.callback_at)}
                 </p>
               </div>
             </div>
-            <div className="p-4 border-t border-[#e1e8f2] flex justify-between">
+            <div className="p-4 border-t border-line flex justify-between">
               <Button
                 variant="ghost"
                 onClick={handleDeleteRappel}
@@ -498,7 +498,7 @@ export function AgendaCourrierClient({ courrierEvents, rappelEvents }: AgendaCou
               <Button
                 variant="outline"
                 onClick={() => setShowRappelModal(null)}
-                className="border-[#e1e8f2] text-[#64748b] hover:bg-[#f1f5f9]"
+                className="border-line text-subtle hover:bg-line-soft"
               >
                 Fermer
               </Button>

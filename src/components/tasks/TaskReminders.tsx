@@ -116,23 +116,23 @@ export function TaskReminders({ tasksHref }: { tasksHref: string }) {
         return (
           <div
             key={task.id}
-            className={`rounded-[12px] border border-[#e1e8f2] border-l-4 ${style.border} bg-white shadow-[0_6px_20px_rgba(13,38,76,.18)] p-4`}
+            className={`rounded-[14px] border border-line border-l-4 ${style.border} bg-white shadow-[0_6px_20px_rgba(16,24,40,.18)] p-4`}
           >
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide">
               <BellRing
                 className={`w-4 h-4 ${task.priority === "urgent" ? "text-red-600" : "text-orange-500"}`}
               />
-              <span className="text-[#64748b]">Rappel de tâche</span>
+              <span className="text-subtle">Rappel de tâche</span>
               <span className={`ml-auto px-2 py-0.5 rounded-full border ${style.badge} flex items-center gap-1`}>
                 {task.priority === "urgent" && <AlertTriangle className="w-3 h-3" />}
                 {TASK_PRIORITY_LABELS[task.priority]}
               </span>
             </div>
-            <p className="font-semibold text-[#0b1f3a] mt-2 break-words">{task.title}</p>
+            <p className="font-semibold text-ink mt-2 break-words">{task.title}</p>
             {task.description && (
-              <p className="text-sm text-[#64748b] mt-0.5 line-clamp-2 break-words">{task.description}</p>
+              <p className="text-sm text-subtle mt-0.5 line-clamp-2 break-words">{task.description}</p>
             )}
-            <p className="text-xs text-[#94a3b8] mt-1">
+            <p className="text-xs text-faint mt-1">
               {formatFullDateTimeParis(task.remind_at)}
               {task.created_by_name ? ` · De : ${task.created_by_name}` : ""}
             </p>
@@ -140,7 +140,7 @@ export function TaskReminders({ tasksHref }: { tasksHref: string }) {
               <button
                 type="button"
                 onClick={() => router.push(tasksHref)}
-                className="px-3 py-1.5 text-sm rounded-[8px] border border-[#e1e8f2] text-[#64748b] hover:bg-[#f1f5f9]"
+                className="px-3 py-1.5 text-sm rounded-[8px] border border-line text-subtle hover:bg-line-soft"
               >
                 Voir
               </button>
@@ -161,7 +161,7 @@ export function TaskReminders({ tasksHref }: { tasksHref: string }) {
         <button
           type="button"
           onClick={() => router.push(tasksHref)}
-          className="rounded-[12px] bg-[#0b1f3a] text-white text-sm font-medium px-4 py-2 shadow-[0_6px_20px_rgba(13,38,76,.18)] hover:bg-[#13294b]"
+          className="rounded-[14px] bg-ink text-white text-sm font-medium px-4 py-2 shadow-[0_6px_20px_rgba(16,24,40,.18)] hover:bg-ink-soft"
         >
           + {hidden} autre{hidden > 1 ? "s" : ""} rappel{hidden > 1 ? "s" : ""} — voir les tâches
         </button>

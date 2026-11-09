@@ -17,9 +17,9 @@ import {
 } from "@/components/ui/table";
 
 const SELECT_CLS =
-  "w-full h-8 px-2.5 text-sm border border-[#e1e8f2] rounded-[9px] bg-white text-[#0b1f3a] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40";
+  "w-full h-8 px-2.5 text-sm border border-line rounded-[9px] bg-white text-ink focus:outline-none focus:ring-2 focus:ring-brand/40";
 
-const LABEL_CLS = "block text-sm font-medium text-[#0b1f3a] mb-1";
+const LABEL_CLS = "block text-sm font-medium text-ink mb-1";
 
 interface CodeCourrier {
   id: string;
@@ -161,24 +161,24 @@ export function CodeCourrierClient({ codeCourriers, telepros }: CodeCourrierClie
       />
 
       {/* Tableau */}
-      <div className="rounded-[12px] border border-[#e1e8f2] bg-white shadow-[0_1px_2px_rgba(13,38,76,.06)] overflow-hidden">
+      <div className="rounded-[14px] border border-line bg-white shadow-card overflow-hidden">
         <Table>
-          <TableHeader className="bg-[#f8fafd]">
+          <TableHeader className="bg-panel">
             <TableRow>
-              <TableHead className="py-3 px-4 text-xs font-semibold text-[#64748b] uppercase tracking-wide">Nom</TableHead>
-              <TableHead className="py-3 px-4 text-xs font-semibold text-[#64748b] uppercase tracking-wide">Prénom</TableHead>
-              <TableHead className="py-3 px-4 text-xs font-semibold text-[#64748b] uppercase tracking-wide">N° de tél</TableHead>
-              <TableHead className="py-3 px-4 text-xs font-semibold text-[#64748b] uppercase tracking-wide">Télépro</TableHead>
-              <TableHead className="py-3 px-4 text-xs font-semibold text-[#64748b] uppercase tracking-wide">Date de création</TableHead>
-              <TableHead className="py-3 px-4 text-xs font-semibold text-[#64748b] uppercase tracking-wide">Jours</TableHead>
-              <TableHead className="py-3 px-4 text-xs font-semibold text-[#64748b] uppercase tracking-wide">NRP / Rappel</TableHead>
-              <TableHead className="py-3 px-4 text-xs font-semibold text-[#64748b] uppercase tracking-wide text-right">Actions</TableHead>
+              <TableHead className="py-3 px-4 text-xs font-semibold text-subtle uppercase tracking-wide">Nom</TableHead>
+              <TableHead className="py-3 px-4 text-xs font-semibold text-subtle uppercase tracking-wide">Prénom</TableHead>
+              <TableHead className="py-3 px-4 text-xs font-semibold text-subtle uppercase tracking-wide">N° de tél</TableHead>
+              <TableHead className="py-3 px-4 text-xs font-semibold text-subtle uppercase tracking-wide">Télépro</TableHead>
+              <TableHead className="py-3 px-4 text-xs font-semibold text-subtle uppercase tracking-wide">Date de création</TableHead>
+              <TableHead className="py-3 px-4 text-xs font-semibold text-subtle uppercase tracking-wide">Jours</TableHead>
+              <TableHead className="py-3 px-4 text-xs font-semibold text-subtle uppercase tracking-wide">NRP / Rappel</TableHead>
+              <TableHead className="py-3 px-4 text-xs font-semibold text-subtle uppercase tracking-wide text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {codeCourriers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="py-12 text-center text-[#64748b]">
+                <TableCell colSpan={8} className="py-12 text-center text-subtle">
                   Aucun code courrier
                 </TableCell>
               </TableRow>
@@ -192,11 +192,11 @@ export function CodeCourrierClient({ codeCourriers, telepros }: CodeCourrierClie
                     onClick={() => openDetail(cc)}
                     className="cursor-pointer"
                   >
-                    <TableCell className="py-3 px-4 font-medium text-[#0b1f3a]">{cc.last_name}</TableCell>
-                    <TableCell className="py-3 px-4 text-[#0b1f3a]">{cc.first_name}</TableCell>
-                    <TableCell className="py-3 px-4 text-[#64748b]">{cc.phone}</TableCell>
-                    <TableCell className="py-3 px-4 text-[#64748b] text-sm">{getTeleproLabel(cc)}</TableCell>
-                    <TableCell className="py-3 px-4 text-[#64748b] text-sm">{formatDateParis(cc.created_at)}</TableCell>
+                    <TableCell className="py-3 px-4 font-medium text-ink">{cc.last_name}</TableCell>
+                    <TableCell className="py-3 px-4 text-ink">{cc.first_name}</TableCell>
+                    <TableCell className="py-3 px-4 text-subtle">{cc.phone}</TableCell>
+                    <TableCell className="py-3 px-4 text-subtle text-sm">{getTeleproLabel(cc)}</TableCell>
+                    <TableCell className="py-3 px-4 text-subtle text-sm">{formatDateParis(cc.created_at)}</TableCell>
                     <TableCell className="py-3 px-4">
                       <span
                         className="inline-flex items-center justify-center w-9 h-9 rounded-full text-white text-sm font-bold"
@@ -207,12 +207,12 @@ export function CodeCourrierClient({ codeCourriers, telepros }: CodeCourrierClie
                     </TableCell>
                     <TableCell className="py-3 px-4 text-sm">
                       {cc.callback_at ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#dbeafe] text-[#1e40af] text-xs font-medium">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-soft text-brand-strong text-xs font-medium">
                           <CalendarIcon className="w-3 h-3" />
                           {formatDateParis(cc.callback_at)}
                         </span>
                       ) : (
-                        <span className="text-[#64748b]">
+                        <span className="text-subtle">
                           {cc.nrp_count > 0 ? `${cc.nrp_count} NRP` : "—"}
                         </span>
                       )}
@@ -238,9 +238,9 @@ export function CodeCourrierClient({ codeCourriers, telepros }: CodeCourrierClie
       {/* Modal création */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="rounded-[12px] border border-[#e1e8f2] bg-white shadow-[0_1px_2px_rgba(13,38,76,.06)] w-full max-w-md">
-            <div className="flex items-center justify-between p-4 border-b border-[#e1e8f2]">
-              <h3 className="text-lg font-semibold text-[#0b1f3a]">Nouveau code courrier</h3>
+          <div className="rounded-[14px] border border-line bg-white shadow-card w-full max-w-md">
+            <div className="flex items-center justify-between p-4 border-b border-line">
+              <h3 className="text-lg font-semibold text-ink">Nouveau code courrier</h3>
               <Button variant="ghost" size="icon-sm" onClick={() => setShowCreateModal(false)}>
                 <X />
               </Button>
@@ -291,7 +291,7 @@ export function CodeCourrierClient({ codeCourriers, telepros }: CodeCourrierClie
                 />
               </div>
             </div>
-            <div className="p-4 border-t border-[#e1e8f2] flex justify-end gap-3">
+            <div className="p-4 border-t border-line flex justify-end gap-3">
               <Button
                 variant="outline"
                 onClick={() => setShowCreateModal(false)}
@@ -312,9 +312,9 @@ export function CodeCourrierClient({ codeCourriers, telepros }: CodeCourrierClie
       {/* Modal détail / suivi */}
       {showDetailModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="rounded-[12px] border border-[#e1e8f2] bg-white shadow-[0_1px_2px_rgba(13,38,76,.06)] w-full max-w-md">
-            <div className="flex items-center justify-between p-4 border-b border-[#e1e8f2]">
-              <h3 className="text-lg font-semibold text-[#0b1f3a]">Code courrier</h3>
+          <div className="rounded-[14px] border border-line bg-white shadow-card w-full max-w-md">
+            <div className="flex items-center justify-between p-4 border-b border-line">
+              <h3 className="text-lg font-semibold text-ink">Code courrier</h3>
               <Button
                 variant="ghost"
                 size="icon-sm"
@@ -326,46 +326,46 @@ export function CodeCourrierClient({ codeCourriers, telepros }: CodeCourrierClie
             <div className="p-4 space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <p className="text-xs text-[#64748b]">Nom</p>
-                  <p className="font-medium text-[#0b1f3a]">{showDetailModal.last_name}</p>
+                  <p className="text-xs text-subtle">Nom</p>
+                  <p className="font-medium text-ink">{showDetailModal.last_name}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-[#64748b]">Prénom</p>
-                  <p className="font-medium text-[#0b1f3a]">{showDetailModal.first_name}</p>
+                  <p className="text-xs text-subtle">Prénom</p>
+                  <p className="font-medium text-ink">{showDetailModal.first_name}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-[#64748b]">Téléphone</p>
-                  <p className="font-medium text-[#0b1f3a]">{showDetailModal.phone}</p>
+                  <p className="text-xs text-subtle">Téléphone</p>
+                  <p className="font-medium text-ink">{showDetailModal.phone}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-[#64748b]">Télépro</p>
-                  <p className="font-medium text-[#0b1f3a]">{getTeleproLabel(showDetailModal)}</p>
+                  <p className="text-xs text-subtle">Télépro</p>
+                  <p className="font-medium text-ink">{getTeleproLabel(showDetailModal)}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-[#64748b]">Date de création</p>
-                  <p className="font-medium text-[#0b1f3a]">{formatDateParis(showDetailModal.created_at)}</p>
+                  <p className="text-xs text-subtle">Date de création</p>
+                  <p className="font-medium text-ink">{formatDateParis(showDetailModal.created_at)}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-[#64748b]">Jours écoulés</p>
-                  <p className="font-medium text-[#0b1f3a]">{getDaysSinceCreation(showDetailModal.created_at)} jour(s)</p>
+                  <p className="text-xs text-subtle">Jours écoulés</p>
+                  <p className="font-medium text-ink">{getDaysSinceCreation(showDetailModal.created_at)} jour(s)</p>
                 </div>
                 <div>
-                  <p className="text-xs text-[#64748b]">NRP</p>
-                  <p className="font-medium text-[#0b1f3a]">{showDetailModal.nrp_count}</p>
+                  <p className="text-xs text-subtle">NRP</p>
+                  <p className="font-medium text-ink">{showDetailModal.nrp_count}</p>
                 </div>
               </div>
 
               {showDetailModal.callback_at && (
-                <div className="bg-[#eff6ff] border border-[#bfdbfe] rounded-[10px] p-3">
-                  <p className="text-sm text-[#1e40af]">
+                <div className="bg-brand-soft border border-brand-line rounded-[10px] p-3">
+                  <p className="text-sm text-brand-strong">
                     <CalendarIcon className="w-4 h-4 inline mr-1" />
                     Rappel prévu le {formatDateParis(showDetailModal.callback_at)}
                   </p>
                 </div>
               )}
 
-              <div className="border-t border-[#e1e8f2] pt-3">
-                <label className="block text-sm font-medium text-[#0b1f3a] mb-2">Suivi</label>
+              <div className="border-t border-line pt-3">
+                <label className="block text-sm font-medium text-ink mb-2">Suivi</label>
                 <select
                   value={followUpAction}
                   onChange={(e) => {
@@ -396,7 +396,7 @@ export function CodeCourrierClient({ codeCourriers, telepros }: CodeCourrierClie
                 )}
               </div>
             </div>
-            <div className="p-4 border-t border-[#e1e8f2] flex justify-end gap-3">
+            <div className="p-4 border-t border-line flex justify-end gap-3">
               <Button
                 variant="outline"
                 onClick={() => { setShowDetailModal(null); setFollowUpAction(""); setCallbackDate(""); }}

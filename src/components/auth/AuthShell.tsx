@@ -25,12 +25,12 @@ export function AuthShell({
             <div className="chrome-rule flex-1" />
           </div>
         </div>
-        <div className="rounded-[12px] border border-[#8a8f96]/60 bg-white p-8 shadow-[0_0_0_1px_rgba(255,255,255,.06),0_20px_50px_rgba(0,0,0,.6)]">
-          <h1 className="text-2xl font-bold text-[#0b1f3a]">{title}</h1>
-          {subtitle ? <p className="mt-1 text-sm text-[#64748b]">{subtitle}</p> : null}
+        <div className="rounded-2xl border border-line bg-white p-8 shadow-[0_1px_2px_rgba(16,24,40,.04),0_12px_32px_rgba(16,24,40,.08)]">
+          <h1 className="text-2xl font-bold text-ink">{title}</h1>
+          {subtitle ? <p className="mt-1 text-sm text-subtle">{subtitle}</p> : null}
           <div className="mt-6">{children}</div>
         </div>
-        {footer ? <div className="mt-6 text-center text-sm text-[#a9aeb5] [&_a]:!text-[#d6d9dd]">{footer}</div> : null}
+        {footer ? <div className="mt-6 text-center text-sm text-subtle">{footer}</div> : null}
       </div>
     </div>
   );

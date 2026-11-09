@@ -51,24 +51,24 @@ export function SurfaceFilter({ min, max, onApply }: SurfaceFilterProps) {
 
   return (
     <div>
-      <label className="block text-xs font-medium text-[#64748b] mb-1">Surface (m²)</label>
+      <label className="block text-xs font-medium text-subtle mb-1">Surface (m²)</label>
       <Popover.Root open={open} onOpenChange={handleOpenChange}>
         <Popover.Trigger
           className={cn(
-            "w-full h-9 px-3 flex items-center gap-2 text-sm border rounded-[9px] bg-white text-left focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40 focus:border-[#2563eb]",
-            active ? "border-[#2563eb] text-[#2563eb] font-medium" : "border-[#e1e8f2] text-[#0b1f3a]"
+            "w-full h-9 px-3 flex items-center gap-2 text-sm border rounded-[9px] bg-white text-left focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand",
+            active ? "border-brand text-brand font-medium" : "border-line text-ink"
           )}
           data-testid="filter-surface"
         >
           <Ruler className="w-4 h-4 shrink-0" />
           <span className="flex-1 truncate">{formatLabel(min, max)}</span>
-          <ChevronDown className="w-4 h-4 shrink-0 text-[#64748b]" />
+          <ChevronDown className="w-4 h-4 shrink-0 text-subtle" />
         </Popover.Trigger>
         <Popover.Portal>
           <Popover.Positioner sideOffset={4} align="start" className="z-50">
-            <Popover.Popup className="w-64 rounded-[12px] border border-[#e1e8f2] bg-white p-3 shadow-[0_8px_24px_rgba(13,38,76,.12)] outline-none">
+            <Popover.Popup className="w-64 rounded-[14px] border border-line bg-white p-3 shadow-[0_8px_24px_rgba(16,24,40,.12)] outline-none">
               <form onSubmit={apply} className="flex flex-col gap-3">
-                <p className="text-xs font-medium text-[#64748b]">
+                <p className="text-xs font-medium text-subtle">
                   Leads dont la surface est comprise entre :
                 </p>
                 <div className="flex items-center gap-2">
@@ -80,12 +80,12 @@ export function SurfaceFilter({ min, max, onApply }: SurfaceFilterProps) {
                     placeholder="De"
                     value={draftMin}
                     onChange={(e) => setDraftMin(e.target.value)}
-                    className="h-9 border-[#e1e8f2] rounded-[9px] text-[#0b1f3a]"
+                    className="h-9 border-line rounded-[9px] text-ink"
                     aria-label="Surface minimum (m²)"
                     data-testid="filter-surface-min"
                     autoFocus
                   />
-                  <span className="text-sm text-[#64748b]">à</span>
+                  <span className="text-sm text-subtle">à</span>
                   <Input
                     type="number"
                     inputMode="decimal"
@@ -94,13 +94,13 @@ export function SurfaceFilter({ min, max, onApply }: SurfaceFilterProps) {
                     placeholder="À"
                     value={draftMax}
                     onChange={(e) => setDraftMax(e.target.value)}
-                    className="h-9 border-[#e1e8f2] rounded-[9px] text-[#0b1f3a]"
+                    className="h-9 border-line rounded-[9px] text-ink"
                     aria-label="Surface maximum (m²)"
                     data-testid="filter-surface-max"
                   />
-                  <span className="text-sm text-[#64748b]">m²</span>
+                  <span className="text-sm text-subtle">m²</span>
                 </div>
-                <p className="text-[11px] text-[#64748b]">
+                <p className="text-[11px] text-subtle">
                   Les leads sans surface renseignée sont exclus.
                 </p>
                 <div className="flex gap-2">

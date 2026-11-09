@@ -15,9 +15,9 @@ interface TeleproAgentConfigFormProps {
 }
 
 const INPUT_CLS =
-  "w-full h-9 px-3 border border-[#e1e8f2] rounded-[9px] bg-white text-[#0b1f3a] text-sm focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40 focus:border-[#2563eb] transition-colors";
-const LABEL_CLS = "block text-sm font-medium text-[#0b1f3a] mb-1.5";
-const HINT_CLS = "text-xs text-[#64748b] mt-1";
+  "w-full h-9 px-3 border border-line rounded-[9px] bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand transition-colors";
+const LABEL_CLS = "block text-sm font-medium text-ink mb-1.5";
+const HINT_CLS = "text-xs text-subtle mt-1";
 
 export function TeleproAgentConfigForm({
   teleproId,
@@ -61,7 +61,7 @@ export function TeleproAgentConfigForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-[12px] border border-[#e1e8f2] bg-white shadow-[0_1px_2px_rgba(13,38,76,.06)] p-6 space-y-5"
+      className="rounded-[14px] border border-line bg-white shadow-card p-6 space-y-5"
     >
       {error && (
         <div className="p-3 rounded-[9px] bg-red-50 border border-red-200 text-red-700 text-sm">
@@ -133,7 +133,7 @@ export function TeleproAgentConfigForm({
           onChange={(e) => setWelcomeMessage(e.target.value)}
           rows={3}
           placeholder="Un instant, nous vous mettons en relation avec un conseiller."
-          className="w-full px-3 py-2 border border-[#e1e8f2] rounded-[9px] bg-white text-[#0b1f3a] text-sm focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40 focus:border-[#2563eb] transition-colors resize-none"
+          className="w-full px-3 py-2 border border-line rounded-[9px] bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand transition-colors resize-none"
         />
         <p className={HINT_CLS}>
           Message lu au lead dès qu&apos;il décroche, puis en boucle jusqu&apos;à ce que le télépro réponde.
@@ -144,7 +144,7 @@ export function TeleproAgentConfigForm({
         <button
           type="submit"
           disabled={saving}
-          className="h-9 px-5 bg-[#2563eb] text-white text-sm font-medium rounded-[9px] hover:bg-[#1d4ed8] disabled:opacity-50 transition-colors"
+          className="h-9 px-5 bg-brand text-white text-sm font-medium rounded-[9px] hover:bg-brand-hover disabled:opacity-50 transition-colors"
         >
           {saving ? "Enregistrement…" : "Enregistrer"}
         </button>

@@ -65,9 +65,9 @@ export function AgendaClient({ events }: AgendaClientProps) {
   };
 
   return (
-    <div className="rounded-[12px] border border-[#e1e8f2] bg-white shadow-[0_1px_2px_rgba(13,38,76,.06)] overflow-hidden">
-      <div className="px-5 py-4 border-b border-[#e1e8f2] flex items-center justify-between">
-        <h2 className="text-base font-semibold text-[#0b1f3a] capitalize">
+    <div className="rounded-[14px] border border-line bg-white shadow-card overflow-hidden">
+      <div className="px-5 py-4 border-b border-line flex items-center justify-between">
+        <h2 className="text-base font-semibold text-ink capitalize">
           {format(currentMonth, "MMMM yyyy", { locale: fr })}
         </h2>
         <div className="flex items-center gap-1">
@@ -76,7 +76,7 @@ export function AgendaClient({ events }: AgendaClientProps) {
             size="icon"
             onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
             aria-label="Mois précédent"
-            className="h-8 w-8 text-[#64748b] hover:text-[#0b1f3a]"
+            className="h-8 w-8 text-subtle hover:text-ink"
           >
             <ChevronLeft className="w-4 h-4" />
           </Button>
@@ -84,7 +84,7 @@ export function AgendaClient({ events }: AgendaClientProps) {
             variant="ghost"
             size="sm"
             onClick={() => setCurrentMonth(new Date())}
-            className="px-3 h-8 text-sm text-[#64748b] hover:text-[#0b1f3a]"
+            className="px-3 h-8 text-sm text-subtle hover:text-ink"
           >
             Aujourd&apos;hui
           </Button>
@@ -93,7 +93,7 @@ export function AgendaClient({ events }: AgendaClientProps) {
             size="icon"
             onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
             aria-label="Mois suivant"
-            className="h-8 w-8 text-[#64748b] hover:text-[#0b1f3a]"
+            className="h-8 w-8 text-subtle hover:text-ink"
           >
             <ChevronRight className="w-4 h-4" />
           </Button>
@@ -101,11 +101,11 @@ export function AgendaClient({ events }: AgendaClientProps) {
       </div>
 
       <div className="p-4">
-        <div className="grid grid-cols-7 gap-px bg-[#e1e8f2] rounded-lg overflow-hidden">
+        <div className="grid grid-cols-7 gap-px bg-line rounded-lg overflow-hidden">
           {WEEKDAYS.map((d) => (
             <div
               key={d}
-              className="bg-[#f8fafc] py-2 text-center text-xs font-medium text-[#64748b] uppercase tracking-wide"
+              className="bg-panel py-2 text-center text-xs font-medium text-subtle uppercase tracking-wide"
             >
               {d}
             </div>
@@ -119,16 +119,16 @@ export function AgendaClient({ events }: AgendaClientProps) {
               <div
                 key={date.toISOString()}
                 className={`min-h-[100px] p-2 ${
-                  !isCurrentMonth ? "bg-[#f8fafc]/60" : "bg-white"
+                  !isCurrentMonth ? "bg-panel/60" : "bg-white"
                 }`}
               >
                 <div
                   className={`text-sm font-medium mb-1 ${
                     isToday
-                      ? "bg-[#2563eb] text-white w-7 h-7 rounded-full flex items-center justify-center text-xs"
+                      ? "bg-brand text-white w-7 h-7 rounded-full flex items-center justify-center text-xs"
                       : isCurrentMonth
-                      ? "text-[#0b1f3a]"
-                      : "text-[#94a3b8]"
+                      ? "text-ink"
+                      : "text-faint"
                   }`}
                 >
                   {format(date, "d")}
@@ -154,9 +154,9 @@ export function AgendaClient({ events }: AgendaClientProps) {
       </div>
 
       {events.length === 0 && (
-        <div className="px-4 mx-4 mb-4 bg-[#f8fafc] rounded-[8px] border border-[#e1e8f2] text-center py-6">
-          <p className="font-medium text-[#0b1f3a] text-sm">Aucun rappel planifié</p>
-          <p className="text-sm mt-1 text-[#64748b]">
+        <div className="px-4 mx-4 mb-4 bg-panel rounded-[8px] border border-line text-center py-6">
+          <p className="font-medium text-ink text-sm">Aucun rappel planifié</p>
+          <p className="text-sm mt-1 text-subtle">
             Les leads en statut &quot;À rappeler&quot; avec une date de rappel apparaîtront ici.
           </p>
         </div>

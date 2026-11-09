@@ -77,24 +77,24 @@ function LoginForm() {
     <AuthShell
       title="Connexion"
       subtitle="Connectez-vous à votre espace"
-      footer={<Link href="/" className="text-[#2563eb] hover:underline">Retour à l&apos;accueil</Link>}
+      footer={<Link href="/" className="text-brand hover:underline">Retour à l&apos;accueil</Link>}
     >
       <form onSubmit={handleSubmit} data-testid="login-form" className="space-y-4">
         {error && <div className="rounded-[9px] bg-[#fee2e2] px-3 py-2 text-sm text-[#b91c1c]">{error}</div>}
         {success && <div className="rounded-[9px] bg-[#dcfce7] px-3 py-2 text-sm text-[#15803d]">{success}</div>}
         <div className="space-y-1.5">
-          <label htmlFor="email" className="text-sm font-medium text-[#0b1f3a]">Email</label>
+          <label htmlFor="email" className="text-sm font-medium text-ink">Email</label>
           <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </div>
         <div className="space-y-1.5">
-          <label htmlFor="password" className="text-sm font-medium text-[#0b1f3a]">Mot de passe</label>
+          <label htmlFor="password" className="text-sm font-medium text-ink">Mot de passe</label>
           <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
         </div>
         <Button type="submit" disabled={loading} className="w-full">
           {loading ? "Connexion..." : "Se connecter"}
         </Button>
         <p className="text-center">
-          <Link href="/forgot-password" className="text-sm font-medium text-[#2563eb] hover:underline">Mot de passe oublié ?</Link>
+          <Link href="/forgot-password" className="text-sm font-medium text-brand hover:underline">Mot de passe oublié ?</Link>
         </p>
       </form>
     </AuthShell>
@@ -104,8 +104,8 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center p-8 bg-[#f4f7fb]">
-        <div className="text-[#64748b]">Chargement...</div>
+      <div className="min-h-screen flex items-center justify-center p-8 bg-canvas">
+        <div className="text-subtle">Chargement...</div>
       </div>
     }>
       <LoginForm />

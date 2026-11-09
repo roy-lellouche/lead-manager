@@ -1,14 +1,20 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { TeleproCardWithCharts } from "./TeleproCardWithCharts";
+import Link from "next/link";
+import { ChevronRight, FileCheck, Percent, PhoneCall, Users } from "lucide-react";
 import {
   LEAD_STATUS_LABELS,
   LEAD_STATUSES_ADMIN,
   INSTALLATION_TYPE_LABELS,
   INSTALLATION_TYPES,
+  STATUS_CHART_COLORS,
+  INSTALLATION_CHART_COLORS,
 } from "@/lib/types";
-import { StatsTeleproFilters } from "./StatsTeleproFilters";
-import { startOfMonth, endOfMonth } from "date-fns";
+import { startOfMonth, endOfMonth, format } from "date-fns";
 import { PageHeader } from "@/components/ui-kit/PageHeader";
+import { StatCard } from "@/components/ui-kit/StatCard";
+import { Panel } from "@/components/ui-kit/Panel";
+import { BarList, StackedBar } from "@/components/ui-kit/BarList";
+import { PeriodFilter } from "@/components/ui-kit/PeriodFilter";
 
 function getDateRange(from?: string, to?: string) {
   const now = new Date();
@@ -85,103 +91,158 @@ export default async function AdminDashboard({
     }
   }
 
-  const teleprosWithStats = activeTelepros.map((telepro) => {
-    const leads = leadsByTelepro[telepro.id] || [];
-    const docRecus = docRecusByTelepro[telepro.id] || [];
+  const defaultFrom = format(startOfMonth(new Date()), "yyyy-MM-dd");
+  const defaultTo = format(endOfMonth(new Date()), "yyyy-MM-dd");
+  const periodQuery = [params.from && `from=${params.from}`, params.to && `to=${params.to}`]
+    .filter(Boolean)
+    .join("&");
 
-    const statusCounts = leads.reduce<Record<string, number>>((acc, l) => {
-      acc[l.status] = (acc[l.status] || 0) + 1;
-      return acc;
-    }, {});
-
-    const installationCounts = docRecus.reduce<Record<string, number>>(
-      (acc, l) => {
-        const key = l.installation_type || "non_renseigne";
-        acc[key] = (acc[key] || 0) + 1;
+  const rows = activeTelepros
+    .map((telepro) => {
+      const leads = leadsByTelepro[telepro.id] || [];
+      const statusCounts = leads.reduce<Record<string, number>>((acc, l) => {
+        acc[l.status] = (acc[l.status] || 0) + 1;
         return acc;
-      },
-      {}
-    );
+      }, {});
+      const docs = (docRecusByTelepro[telepro.id] || []).length;
+      const total = leads.length;
+      return {
+        ...telepro,
+        name: telepro.full_name || telepro.email,
+        calls: callsByTelepro[telepro.id] ?? 0,
+        total,
+        docs,
+        conversion: total > 0 ? (docs / total) * 100 : 0,
+        statusCounts,
+      };
+    })
+    // Classement : documents reçus, puis appels.
+    .sort((a, b) => b.docs - a.docs || b.calls - a.calls || a.name.localeCompare(b.name));
 
-    const totalLeads = leads.length;
-    const totalWithInstallation = docRecus.length;
+  const teamCalls = rows.reduce((s, r) => s + r.calls, 0);
+  const teamLeads = rows.reduce((s, r) => s + r.total, 0);
+  const teamDocs = rows.reduce((s, r) => s + r.docs, 0);
+  const teamConversion = teamLeads > 0 ? (teamDocs / teamLeads) * 100 : 0;
 
-    const statusData = LEAD_STATUSES_ADMIN.map((s) => ({
-      name: LEAD_STATUS_LABELS[s],
-      value: statusCounts[s] ?? 0,
-      status: s,
-    }))
-      .filter((d) => d.value > 0)
-      .map((d) => ({
-        ...d,
-        percent: totalLeads > 0 ? Math.round((d.value / totalLeads) * 100) : 0,
-      }));
+  const teamStatus = LEAD_STATUSES_ADMIN.map((s) => ({
+    label: LEAD_STATUS_LABELS[s],
+    value: rows.reduce((acc, r) => acc + (r.statusCounts[s] ?? 0), 0),
+    color: STATUS_CHART_COLORS[s],
+  }));
 
-    const installationData = [
-      ...INSTALLATION_TYPES.map((t) => ({
-        name: INSTALLATION_TYPE_LABELS[t],
-        value: installationCounts[t] ?? 0,
-        type: t,
-      })),
-      ...(installationCounts["non_renseigne"]
-        ? [
-            {
-              name: "Non renseigné",
-              value: installationCounts["non_renseigne"],
-              type: "non_renseigne",
-            },
-          ]
-        : []),
-    ]
-      .filter((d) => d.value > 0)
-      .map((d) => ({
-        name: d.name,
-        value: d.value,
-        type: d.type,
-        percent:
-          totalWithInstallation > 0
-            ? Math.round((d.value / totalWithInstallation) * 100)
-            : 0,
-      }));
+  const installCounts: Record<string, number> = {};
+  for (const t of teleproIds) {
+    for (const l of docRecusByTelepro[t] || []) {
+      const key = l.installation_type || "non_renseigne";
+      installCounts[key] = (installCounts[key] || 0) + 1;
+    }
+  }
+  const teamInstall = [
+    ...INSTALLATION_TYPES.map((t) => ({
+      label: INSTALLATION_TYPE_LABELS[t],
+      value: installCounts[t] ?? 0,
+      color: INSTALLATION_CHART_COLORS[t],
+    })),
+    { label: "Non renseigné", value: installCounts["non_renseigne"] ?? 0, color: "#9ca3af" },
+  ];
 
-    return {
-      ...telepro,
-      callsCount: callsByTelepro[telepro.id] ?? 0,
-      statusData,
-      installationData,
-    };
-  });
+  const fmtPct = (n: number) => `${n.toLocaleString("fr-FR", { maximumFractionDigits: 1 })} %`;
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Tableau de bord"
-        subtitle="Consultez les statistiques détaillées de chaque télépro"
+        title="Statistique télépro"
+        subtitle="Performance de l'équipe sur la période, sur les leads créés dans cette période."
       />
 
-      <StatsTeleproFilters />
+      <PeriodFilter defaultFrom={defaultFrom} defaultTo={defaultTo} />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {teleprosWithStats.map((telepro) => (
-          <TeleproCardWithCharts
-            key={telepro.id}
-            id={telepro.id}
-            fullName={telepro.full_name}
-            email={telepro.email}
-            callsCount={telepro.callsCount ?? 0}
-            statusData={telepro.statusData}
-            installationData={telepro.installationData}
-            dateFrom={params.from}
-            dateTo={params.to}
-          />
-        ))}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatCard label="Appels" value={teamCalls} icon={PhoneCall} tone="brand" hint="Actions enregistrées sur les leads" />
+        <StatCard label="Leads de la période" value={teamLeads} icon={Users} tone="neutral" hint={`${rows.length} télépro${rows.length > 1 ? "s" : ""} actif${rows.length > 1 ? "s" : ""}`} />
+        <StatCard label="Documents reçus" value={teamDocs} icon={FileCheck} tone="success" />
+        <StatCard label="Taux de conversion" value={fmtPct(teamConversion)} icon={Percent} tone="warning" hint="Documents reçus / leads" />
       </div>
 
-      {activeTelepros.length === 0 && (
-        <div className="text-center py-12 rounded-[12px] border border-[#e1e8f2] bg-white shadow-[0_1px_2px_rgba(13,38,76,.06)]">
-          <p className="text-[#64748b]">Aucun télépro actif</p>
-        </div>
-      )}
+      <Panel
+        title="Classement des télépros"
+        description="Trié par documents reçus. Cliquez sur une ligne pour le détail."
+        bodyClassName="p-0 pt-3"
+      >
+        {rows.length === 0 ? (
+          <p className="px-5 pb-6 text-sm text-subtle">Aucun télépro actif</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] text-sm">
+              <thead>
+                <tr className="border-y border-line-soft bg-panel text-left text-xs font-medium text-subtle">
+                  <th className="w-10 px-5 py-2.5">#</th>
+                  <th className="px-3 py-2.5">Télépro</th>
+                  <th className="px-3 py-2.5 text-right">Appels</th>
+                  <th className="px-3 py-2.5 text-right">Leads</th>
+                  <th className="px-3 py-2.5 text-right">Docs reçus</th>
+                  <th className="px-3 py-2.5 text-right">Conversion</th>
+                  <th className="w-[28%] px-3 py-2.5">Répartition des statuts</th>
+                  <th className="w-8 px-3 py-2.5" />
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r, i) => {
+                  const href = `/admin/stats-telepro/${r.id}${periodQuery ? `?${periodQuery}` : ""}`;
+                  return (
+                    <tr key={r.id} className="group border-b border-line-soft last:border-0 hover:bg-panel">
+                      <td className="px-5 py-3 text-xs font-semibold tabular-nums text-faint">{i + 1}</td>
+                      <td className="px-3 py-3">
+                        <Link href={href} className="flex items-center gap-3 focus-visible:outline-none">
+                          <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-soft text-xs font-semibold text-brand-strong">
+                            {initials(r.name)}
+                          </span>
+                          <span className="min-w-0">
+                            <span className="block truncate font-medium text-ink group-hover:text-brand">{r.name}</span>
+                            <span className="block truncate text-xs text-subtle">{r.email}</span>
+                          </span>
+                        </Link>
+                      </td>
+                      <td className="px-3 py-3 text-right tabular-nums text-ink">{r.calls}</td>
+                      <td className="px-3 py-3 text-right tabular-nums text-ink">{r.total}</td>
+                      <td className="px-3 py-3 text-right font-semibold tabular-nums text-emerald-700">{r.docs}</td>
+                      <td className="px-3 py-3 text-right tabular-nums text-ink">{fmtPct(r.conversion)}</td>
+                      <td className="px-3 py-3">
+                        <StackedBar
+                          segments={LEAD_STATUSES_ADMIN.map((s) => ({
+                            label: LEAD_STATUS_LABELS[s],
+                            value: r.statusCounts[s] ?? 0,
+                            color: STATUS_CHART_COLORS[s],
+                          }))}
+                        />
+                      </td>
+                      <td className="px-3 py-3">
+                        <Link href={href} aria-label={`Détail de ${r.name}`}>
+                          <ChevronRight className="h-4 w-4 text-faint group-hover:text-brand" />
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Panel>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <Panel title="Statuts des leads" description="Toute l'équipe, leads créés sur la période">
+          <BarList items={teamStatus} hideZero emptyLabel="Aucun lead sur la période" />
+        </Panel>
+        <Panel title="Types d'installation" description="Dossiers en « Documents reçus »">
+          <BarList items={teamInstall} hideZero emptyLabel="Aucun document reçu sur la période" />
+        </Panel>
+      </div>
     </div>
   );
+}
+
+function initials(name: string) {
+  const parts = name.replace(/@.*/, "").split(/[\s._-]+/).filter(Boolean);
+  return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "?";
 }

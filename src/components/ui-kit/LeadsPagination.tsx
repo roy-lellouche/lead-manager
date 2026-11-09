@@ -74,7 +74,7 @@ export function LeadsPagination({ page, per, total }: LeadsPaginationProps) {
       data-testid="pagination"
       className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
     >
-      <p className="text-sm text-[#64748b]">
+      <p className="text-sm text-subtle">
         {first}–{last} sur {total} lead{total > 1 ? "s" : ""}
       </p>
 
@@ -86,7 +86,7 @@ export function LeadsPagination({ page, per, total }: LeadsPaginationProps) {
             onClick={() => goToPage(page - 1)}
             disabled={page <= 1}
             aria-label="Page précédente"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-[#e2e8f0] text-[#0b1f3a] disabled:cursor-not-allowed disabled:opacity-40 hover:enabled:bg-[#f1f5f9]"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-line text-ink disabled:cursor-not-allowed disabled:opacity-40 hover:enabled:bg-line-soft"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -96,7 +96,7 @@ export function LeadsPagination({ page, per, total }: LeadsPaginationProps) {
               <span
                 key={`ellipsis-${index}`}
                 aria-hidden="true"
-                className="px-1 text-sm text-[#94a3b8]"
+                className="px-1 text-sm text-faint"
               >
                 …
               </span>
@@ -112,8 +112,8 @@ export function LeadsPagination({ page, per, total }: LeadsPaginationProps) {
                 className={cn(
                   "h-8 min-w-8 rounded-md border px-2 text-sm",
                   entry === page
-                    ? "cursor-default border-[#2563eb] bg-[#2563eb] font-semibold text-white"
-                    : "border-[#e2e8f0] text-[#0b1f3a] hover:bg-[#f1f5f9]"
+                    ? "cursor-default border-brand bg-brand font-semibold text-white"
+                    : "border-line text-ink hover:bg-line-soft"
                 )}
               >
                 {entry}
@@ -127,7 +127,7 @@ export function LeadsPagination({ page, per, total }: LeadsPaginationProps) {
             onClick={() => goToPage(page + 1)}
             disabled={page >= count}
             aria-label="Page suivante"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-[#e2e8f0] text-[#0b1f3a] disabled:cursor-not-allowed disabled:opacity-40 hover:enabled:bg-[#f1f5f9]"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-line text-ink disabled:cursor-not-allowed disabled:opacity-40 hover:enabled:bg-line-soft"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
@@ -137,7 +137,7 @@ export function LeadsPagination({ page, per, total }: LeadsPaginationProps) {
           data-testid="pagination-goto-form"
           onSubmit={handleGoto}
           noValidate
-          className="flex items-center gap-2 text-sm text-[#64748b]"
+          className="flex items-center gap-2 text-sm text-subtle"
         >
           <label htmlFor="pagination-goto">Aller à</label>
           <input
@@ -149,17 +149,17 @@ export function LeadsPagination({ page, per, total }: LeadsPaginationProps) {
             value={gotoValue}
             onChange={(event) => setGotoValue(event.target.value)}
             aria-label="Aller à la page"
-            className="h-8 w-16 rounded-md border border-[#e2e8f0] bg-white px-2 text-sm text-[#0b1f3a]"
+            className="h-8 w-16 rounded-md border border-line bg-white px-2 text-sm text-ink"
           />
         </form>
 
-        <label className="flex items-center gap-2 text-sm text-[#64748b]">
+        <label className="flex items-center gap-2 text-sm text-subtle">
           Par page
           <select
             data-testid="pagination-per"
             value={per}
             onChange={(event) => changePerPage(event.target.value)}
-            className="h-8 rounded-md border border-[#e2e8f0] bg-white px-2 text-sm text-[#0b1f3a]"
+            className="h-8 rounded-md border border-line bg-white px-2 text-sm text-ink"
           >
             {PER_PAGE_OPTIONS.map((option) => (
               <option key={option} value={option}>

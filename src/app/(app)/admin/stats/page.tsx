@@ -1,10 +1,12 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { CHANTIER_STATUS_FIELDS, DELEGATAIRE_GROUPS, INSTALLATION_TYPE_LABELS, INSTALLATION_TYPES, LEAD_STATUS_LABELS, LEAD_STATUSES_ADMIN, type LeadStatus } from "@/lib/types";
-import { StatsFilters } from "./StatsFilters";
-import { StatCard } from "./StatCard";
-import { DelegataireRow } from "./DelegataireRow";
-import { StatusRow } from "./StatusRow";
+import { Banknote, Coins, Hammer, TrendingUp } from "lucide-react";
+import { STATUS_CHART_COLORS, INSTALLATION_CHART_COLORS } from "@/lib/types";
 import { PageHeader } from "@/components/ui-kit/PageHeader";
+import { StatCard } from "@/components/ui-kit/StatCard";
+import { Panel, SectionTitle } from "@/components/ui-kit/Panel";
+import { BarList } from "@/components/ui-kit/BarList";
+import { PeriodFilter, DelegataireChips } from "@/components/ui-kit/PeriodFilter";
 
 const STATUSES: LeadStatus[] = LEAD_STATUSES_ADMIN;
 
@@ -17,7 +19,7 @@ export default async function AdminStatsPage({
   const adminClient = createAdminClient();
   const params = await searchParams;
   const from = params.from || new Date(new Date().getFullYear(), 0, 1).toISOString().slice(0, 10);
-  const to = params.to || new Date().toISOString().slice(0, 10);
+  const to = params.to || `${new Date().getFullYear()}-12-31`;
   const delegataireParam = params.delegataire;
   const selectedDelegataires = Array.isArray(delegataireParam)
     ? delegataireParam
@@ -111,124 +113,109 @@ export default async function AdminStatsPage({
 
   const benefitCeeNet = totalBenefitCee - totalCosts;
 
-  const financialStats = [
-    { label: "Total apporteur d'affaires", value: `${totalApporteurAffaires.toFixed(2)} €`, href: baseInstalleUrl },
-    { label: "Total bénéfices (CEE + MPR)", value: `${(totalBenefitCee + totalBenefitMpr).toFixed(2)} €`, href: baseInstalleUrl },
-    { label: "Bénéfice CEE (CEE - coûts)", value: `${benefitCeeNet.toFixed(2)} €`, href: baseInstalleUrl },
-    { label: "Bénéfice MPR", value: `${totalBenefitMpr.toFixed(2)} €`, href: baseInstalleUrl },
-    { label: "Total à payer (coûts)", value: `${totalCosts.toFixed(2)} €`, href: baseInstalleUrl },
-    { label: "Rentabilité totale", value: `${totalProfitability.toFixed(2)} €`, href: baseInstalleUrl, highlight: true },
-    { label: "Rentabilité moyenne/dossier", value: `${avgProfitability.toFixed(2)} €`, href: baseInstalleUrl },
-    { label: "Bénéfice moyen/dossier", value: `${avgBenefit.toFixed(2)} €`, href: baseInstalleUrl },
-  ];
+  const eur = (n: number) =>
+    n.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+  const defaultFrom = `${new Date().getFullYear()}-01-01`;
+  const defaultTo = `${new Date().getFullYear()}-12-31`;
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Statistiques"
-        subtitle="Vue d'ensemble des bénéfices et coûts. Cliquez sur une stat pour voir les dossiers."
+        subtitle="Résultats financiers et avancement des dossiers. Chaque chiffre ouvre la liste des dossiers concernés."
       />
 
-      <StatsFilters />
+      <PeriodFilter defaultFrom={defaultFrom} defaultTo={defaultTo}>
+        <DelegataireChips
+          options={[
+            ...DELEGATAIRE_GROUPS.map((d) => ({ value: d, label: d })),
+            { value: "__non_assigne__", label: "Non assigné" },
+          ]}
+        />
+      </PeriodFilter>
+
+      <SectionTitle hint="Dossiers installés sur la période">Finances</SectionTitle>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Rentabilité totale" value={eur(totalProfitability)} icon={TrendingUp} tone="success" size="lg" href={baseInstalleUrl} hint={`${eur(avgProfitability)} en moyenne par dossier`} />
+        <StatCard label="Bénéfices (CEE + MPR)" value={eur(totalBenefitCee + totalBenefitMpr)} icon={Coins} tone="brand" size="lg" href={baseInstalleUrl} hint={`${eur(avgBenefit)} en moyenne par dossier`} />
+        <StatCard label="Total à payer (coûts)" value={eur(totalCosts)} icon={Banknote} tone="danger" size="lg" href={baseInstalleUrl} hint="Pose + matériel + régie" />
+        <StatCard label="Dossiers installés" value={count} icon={Hammer} tone="neutral" size="lg" href={baseInstalleUrl} />
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatCard label="Bénéfice CEE (CEE − coûts)" value={eur(benefitCeeNet)} href={baseInstalleUrl} />
+        <StatCard label="Bénéfice MPR" value={eur(totalBenefitMpr)} href={baseInstalleUrl} />
+        <StatCard label="Apporteur d'affaires" value={eur(totalApporteurAffaires)} href={baseInstalleUrl} />
+      </div>
 
       {selectedDelegataires.length > 0 && (
-        <p className="text-sm text-amber-700 bg-amber-50 px-4 py-2 rounded-lg border border-amber-200">
-          Filtre actif : <strong>{selectedDelegataires.map((d) => d === "__non_assigne__" ? "Non assigné" : d).join(", ")}</strong>
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-800">
+          Filtre actif : <strong>{selectedDelegataires.map((d) => (d === "__non_assigne__" ? "Non assigné" : d)).join(", ")}</strong>
         </p>
       )}
 
-      <div>
-        <h2 className="font-semibold text-[#0b1f3a] mb-1">Types d&apos;installation (installés)</h2>
-        <p className="text-sm text-[#64748b] mb-3">
-          Nombre de dossiers par type d&apos;installation
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          {INSTALLATION_TYPES.map((type) => (
-            <StatCard
-              key={type}
-              label={INSTALLATION_TYPE_LABELS[type]}
-              value={installationTypeCounts[type] ?? 0}
-              href={`${baseInstalleUrl}&installation_type=${encodeURIComponent(type)}`}
-            />
-          ))}
-          <StatCard
-            label="Non renseigné"
-            value={installationTypeCounts["non_renseigne"] ?? 0}
-            href={`${baseInstalleUrl}&installation_type=non_renseigne`}
+      <SectionTitle>Dossiers</SectionTitle>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <Panel title="Types d'installation" description="Dossiers installés">
+          <BarList
+            items={[
+              ...INSTALLATION_TYPES.map((type) => ({
+                label: INSTALLATION_TYPE_LABELS[type],
+                value: installationTypeCounts[type] ?? 0,
+                color: INSTALLATION_CHART_COLORS[type],
+                href: `${baseInstalleUrl}&installation_type=${encodeURIComponent(type)}`,
+              })),
+              {
+                label: "Non renseigné",
+                value: installationTypeCounts["non_renseigne"] ?? 0,
+                color: "#9ca3af",
+                href: `${baseInstalleUrl}&installation_type=non_renseigne`,
+              },
+            ]}
           />
-        </div>
-      </div>
+        </Panel>
 
-      <div>
-        <h2 className="font-semibold text-[#0b1f3a] mb-3">Indicateurs financiers (installés)</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {financialStats.map((stat) => (
-            <StatCard
-              key={stat.label}
-              label={stat.label}
-              value={stat.value}
-              href={stat.href}
-              highlight={stat.highlight}
-            />
-          ))}
-        </div>
-      </div>
-
-      <div className="rounded-[12px] border border-[#e1e8f2] bg-white p-6 shadow-[0_1px_2px_rgba(13,38,76,.06)]">
-        <h2 className="font-semibold text-[#0b1f3a] mb-1">Dossiers par mandataire (installés)</h2>
-        <p className="text-sm text-[#64748b] mb-4">Cliquez sur une ligne pour voir les dossiers filtrés</p>
-        <div className="space-y-0">
-          {DELEGATAIRE_GROUPS.map((d) => (
-            <DelegataireRow
-              key={d}
-              label={d}
-              count={delegataireCounts[d] ?? 0}
-              href={`/admin/leads?status=installe&delegataire=${encodeURIComponent(d)}&from=${from}&to=${to}`}
-            />
-          ))}
-          <DelegataireRow
-            label="Non assigné"
-            count={delegataireCounts["Non assigné"] ?? 0}
-            href={`/admin/leads?status=installe&delegataire=__non_assigne__&from=${from}&to=${to}`}
-            isLast
+        <Panel title="Par mandataire" description="Dossiers installés">
+          <BarList
+            items={[
+              ...DELEGATAIRE_GROUPS.map((d) => ({
+                label: d,
+                value: delegataireCounts[d] ?? 0,
+                href: `/admin/leads?status=installe&delegataire=${encodeURIComponent(d)}&from=${from}&to=${to}`,
+              })),
+              {
+                label: "Non assigné",
+                value: delegataireCounts["Non assigné"] ?? 0,
+                color: "#9ca3af",
+                href: `/admin/leads?status=installe&delegataire=__non_assigne__&from=${from}&to=${to}`,
+              },
+            ]}
           />
-        </div>
-      </div>
+        </Panel>
 
-      <div className="rounded-[12px] border border-[#e1e8f2] bg-white p-6 shadow-[0_1px_2px_rgba(13,38,76,.06)]">
-        <h2 className="font-semibold text-[#0b1f3a] mb-1">Dossiers par statut chantier (installés)</h2>
-        <p className="text-sm text-[#64748b] mb-4">
-          Nombre de dossiers ayant chaque statut (cumulables). Cliquez pour filtrer.
-        </p>
-        <div className="space-y-0">
-          {CHANTIER_STATUS_FIELDS.map(({ field, label }, i) => (
-            <StatusRow
-              key={field}
-              label={label}
-              count={chantierCounts[field] ?? 0}
-              href={`/admin/leads?status=installe&chantier=${field}&from=${from}&to=${to}`}
-              isLast={i === CHANTIER_STATUS_FIELDS.length - 1}
-            />
-          ))}
-        </div>
-      </div>
+        <Panel title="Avancement des chantiers" description="Part des dossiers installés ayant chaque étape (cumulable)">
+          <BarList
+            sort={false}
+            total={count}
+            defaultColor="#0ABAB5"
+            items={CHANTIER_STATUS_FIELDS.map(({ field, label }) => ({
+              label,
+              value: chantierCounts[field] ?? 0,
+              href: `/admin/leads?status=installe&chantier=${field}&from=${from}&to=${to}`,
+            }))}
+          />
+        </Panel>
 
-      <div className="rounded-[12px] border border-[#e1e8f2] bg-white p-6 shadow-[0_1px_2px_rgba(13,38,76,.06)]">
-        <h2 className="font-semibold text-[#0b1f3a] mb-1">Leads par statut (tous types)</h2>
-        <p className="text-sm text-[#64748b] mb-4">
-          Total : {totalLeads} leads mis à jour dans la période. Cliquez pour filtrer.
-        </p>
-        <div className="space-y-0">
-          {STATUSES.map((status, i) => (
-            <StatusRow
-              key={status}
-              label={LEAD_STATUS_LABELS[status]}
-              count={statusCounts[status] ?? 0}
-              href={`${baseLeadsUrl}&status=${status}`}
-              isLast={i === STATUSES.length - 1}
-            />
-          ))}
-        </div>
+        <Panel title="Leads par statut" description={`${totalLeads} leads mis à jour sur la période`}>
+          <BarList
+            hideZero
+            items={STATUSES.map((status) => ({
+              label: LEAD_STATUS_LABELS[status],
+              value: statusCounts[status] ?? 0,
+              color: STATUS_CHART_COLORS[status],
+              href: `${baseLeadsUrl}&status=${status}`,
+            }))}
+          />
+        </Panel>
       </div>
     </div>
   );

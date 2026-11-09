@@ -103,18 +103,18 @@ export function TeleproDocumentsSection({
   }));
 
   return (
-    <div className="rounded-[12px] border border-[#e1e8f2] bg-white shadow-[0_1px_2px_rgba(13,38,76,.06)] p-5">
-      <h3 className="text-xs font-semibold text-[#64748b] uppercase tracking-wide mb-1">
+    <div className="rounded-[14px] border border-line bg-white shadow-card p-5">
+      <h3 className="text-xs font-semibold text-subtle uppercase tracking-wide mb-1">
         Documents (télépro)
       </h3>
-      <p className="text-xs text-[#64748b] mb-4">
+      <p className="text-xs text-subtle mb-4">
         PDF, JPEG, JPG, HEIC, PNG, WebP — max 5 Mo
       </p>
       <div className="space-y-5">
         {groupedDocs.map(({ value, label, docs }) => (
           <div key={value}>
             <div className="flex items-center justify-between mb-2">
-              <h4 className="text-sm font-medium text-[#0b1f3a]">{label}</h4>
+              <h4 className="text-sm font-medium text-ink">{label}</h4>
               <label className="cursor-pointer">
                 <input
                   type="file"
@@ -125,25 +125,25 @@ export function TeleproDocumentsSection({
                   disabled={uploading}
                   className="hidden"
                 />
-                <span className="text-xs text-[#2563eb] hover:underline">
+                <span className="text-xs text-brand hover:underline">
                   + Ajouter
                 </span>
               </label>
             </div>
             <div className="space-y-2">
               {docs.length === 0 ? (
-                <p className="text-sm text-[#64748b]">Aucun document</p>
+                <p className="text-sm text-subtle">Aucun document</p>
               ) : (
                 docs.map((doc) => (
                   <div
                     key={doc.id}
-                    className="flex items-center justify-between px-3 py-2 bg-[#f4f7fb] rounded-[9px] border border-[#e1e8f2]"
+                    className="flex items-center justify-between px-3 py-2 bg-canvas rounded-[9px] border border-line"
                   >
                     <a
                       href={getDocUrl(doc.storage_path)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-sm text-[#2563eb] hover:underline"
+                      className="flex items-center gap-2 text-sm text-brand hover:underline"
                     >
                       <FileText className="w-4 h-4" />
                       {doc.file_name}

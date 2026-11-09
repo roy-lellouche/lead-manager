@@ -35,7 +35,7 @@ export default function RootLayout({
 
   return (
     <html lang="fr">
-      <body className={`${inter.variable} ${gothic.variable} font-sans antialiased bg-[#f4f7fb] text-[#0b1f3a]`}>
+      <body className={`${inter.variable} ${gothic.variable} font-sans antialiased bg-canvas text-ink`}>
         <script dangerouslySetInnerHTML={{ __html: envScript }} />
         {children}
       </body>

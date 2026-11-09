@@ -99,8 +99,8 @@ export default function SetupPage() {
 
   if (canSetup === null && !checkError) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f4f7fb]">
-        <div className="animate-pulse text-[#64748b]">Chargement...</div>
+      <div className="min-h-screen flex items-center justify-center bg-canvas">
+        <div className="animate-pulse text-subtle">Chargement...</div>
       </div>
     );
   }
@@ -110,7 +110,7 @@ export default function SetupPage() {
       <AuthShell
         title="Erreur de vérification"
         footer={
-          <Link href="/" className="text-[#2563eb] hover:underline">
+          <Link href="/" className="text-brand hover:underline">
             Retour à l&apos;accueil
           </Link>
         }
@@ -119,7 +119,7 @@ export default function SetupPage() {
           <div className="rounded-[9px] bg-[#fee2e2] px-3 py-2 text-sm text-[#b91c1c]">
             {checkError}
           </div>
-          <p className="text-sm text-[#64748b]">
+          <p className="text-sm text-subtle">
             Vérifiez que la migration Supabase a été exécutée et que les variables d&apos;environnement sont correctes dans .env.local
           </p>
           <div className="flex flex-col gap-3">
@@ -146,7 +146,7 @@ export default function SetupPage() {
     return (
       <AuthShell title="Configuration déjà effectuée">
         <div className="space-y-4">
-          <p className="text-sm text-[#64748b]">
+          <p className="text-sm text-subtle">
             Un administrateur existe déjà. Utilisez la page de connexion.
           </p>
           <Link href="/login" className={cn(buttonVariants(), "w-full justify-center")}>
@@ -162,7 +162,7 @@ export default function SetupPage() {
       title="Première configuration"
       subtitle="Créez le compte administrateur"
       footer={
-        <Link href="/" className="text-[#2563eb] hover:underline">
+        <Link href="/" className="text-brand hover:underline">
           Retour à l&apos;accueil
         </Link>
       }
@@ -174,7 +174,7 @@ export default function SetupPage() {
           </div>
         )}
         <div className="space-y-1.5">
-          <label htmlFor="fullName" className="text-sm font-medium text-[#0b1f3a]">
+          <label htmlFor="fullName" className="text-sm font-medium text-ink">
             Nom complet
           </label>
           <Input
@@ -185,7 +185,7 @@ export default function SetupPage() {
           />
         </div>
         <div className="space-y-1.5">
-          <label htmlFor="email" className="text-sm font-medium text-[#0b1f3a]">
+          <label htmlFor="email" className="text-sm font-medium text-ink">
             Email
           </label>
           <Input
@@ -197,7 +197,7 @@ export default function SetupPage() {
           />
         </div>
         <div className="space-y-1.5">
-          <label htmlFor="password" className="text-sm font-medium text-[#0b1f3a]">
+          <label htmlFor="password" className="text-sm font-medium text-ink">
             Mot de passe
           </label>
           <Input

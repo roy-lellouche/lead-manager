@@ -31,12 +31,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 
 const CARD_CLS =
-  "rounded-[12px] border border-[#e1e8f2] bg-white shadow-[0_1px_2px_rgba(13,38,76,.06)] p-5";
+  "rounded-[14px] border border-line bg-white shadow-card p-5";
 const SECTION_TITLE_CLS =
-  "text-xs font-semibold text-[#64748b] uppercase tracking-wide mb-4";
-const LABEL_CLS = "block text-sm font-medium text-[#0b1f3a] mb-1.5";
+  "text-xs font-semibold text-subtle uppercase tracking-wide mb-4";
+const LABEL_CLS = "block text-sm font-medium text-ink mb-1.5";
 const SELECT_CLS =
-  "h-9 w-full px-3 border border-[#e1e8f2] rounded-[9px] bg-white text-[#0b1f3a] text-sm focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40";
+  "h-9 w-full px-3 border border-line rounded-[9px] bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-brand/40";
 
 interface TeleproDoc {
   id: string;
@@ -513,7 +513,7 @@ export function TeleproLeadForm({
                 const current = (lead.radiator_type as string[] | null) ?? [];
                 const checked = current.includes(t);
                 return (
-                  <label key={t} className="flex items-center gap-2 text-sm text-[#0b1f3a] cursor-pointer">
+                  <label key={t} className="flex items-center gap-2 text-sm text-ink cursor-pointer">
                     <input
                       type="checkbox"
                       checked={checked}
@@ -523,7 +523,7 @@ export function TeleproLeadForm({
                           : current.filter((x) => x !== t);
                         handleFieldChange("radiator_type", next.length ? next : null);
                       }}
-                      className="rounded border-[#e1e8f2] accent-[#2563eb]"
+                      className="rounded border-line accent-brand"
                     />
                     {RADIATOR_TYPE_LABELS[t]}
                   </label>
@@ -602,7 +602,7 @@ function getDefaultCallbackDatetime(): string {
 }
 
 function getStatusButtonClass(status: LeadStatus, isSelected: boolean): string {
-  if (!isSelected) return "border border-[#e1e8f2] text-[#64748b] hover:border-[#2563eb]/40 hover:text-[#2563eb]";
+  if (!isSelected) return "border border-line text-subtle hover:border-brand/40 hover:text-brand";
   switch (status) {
     case "nouveau": return "bg-slate-100 text-slate-700 border border-slate-200";
     case "nrp": return "bg-[#fef9c3] text-[#a16207] border border-[#fde68a]";
@@ -664,13 +664,13 @@ function StatusButton({
               type="datetime-local"
               value={callbackAt}
               onChange={(e) => setCallbackAt(e.target.value)}
-              className="h-9 px-3 border border-[#e1e8f2] rounded-[9px] text-sm text-[#0b1f3a] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40"
+              className="h-9 px-3 border border-line rounded-[9px] text-sm text-ink focus:outline-none focus:ring-2 focus:ring-brand/40"
             />
             <button
               type="button"
               onClick={handleSaveCallback}
               disabled={disabled || !callbackAt}
-              className="px-4 h-9 bg-[#2563eb] text-white rounded-[9px] text-sm font-medium hover:bg-[#1d4ed8] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 h-9 bg-brand text-white rounded-[9px] text-sm font-medium hover:bg-brand-hover disabled:opacity-50 disabled:cursor-not-allowed"
             >
               OK
             </button>
@@ -678,7 +678,7 @@ function StatusButton({
               <button
                 type="button"
                 onClick={() => setShowCallback(false)}
-                className="text-[#64748b] text-sm hover:text-[#0b1f3a]"
+                className="text-subtle text-sm hover:text-ink"
               >
                 Annuler
               </button>

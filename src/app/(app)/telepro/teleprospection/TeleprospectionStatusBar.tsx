@@ -8,7 +8,7 @@ import {
 } from "@/lib/date";
 
 const CARD_CLS =
-  "rounded-[12px] border border-[#e1e8f2] bg-white shadow-[0_1px_2px_rgba(13,38,76,.06)]";
+  "rounded-[14px] border border-line bg-white shadow-card";
 
 function formatPhoneDisplay(phone: string): string {
   const digits = String(phone ?? "").replace(/\D/g, "");
@@ -23,11 +23,11 @@ function formatPhoneDisplay(phone: string): string {
 }
 
 function getStatusButtonClass(status: LeadStatus, isSelected: boolean): string {
-  if (!isSelected) return "bg-[#f8fafc] hover:bg-[#f1f5f9] border border-[#e1e8f2] text-[#64748b]";
+  if (!isSelected) return "bg-panel hover:bg-line-soft border border-line text-subtle";
   switch (status) {
     case "nouveau": return "bg-slate-100 text-slate-700 border border-slate-200";
     case "nrp": return "bg-[#fef9c3] text-[#a16207] border border-[#fde68a]";
-    case "a_rappeler": return "bg-[#1e3a5f] text-white border border-[#1e3a5f]";
+    case "a_rappeler": return "bg-ink-soft text-white border border-ink-soft";
     case "en_attente_doc": return "bg-[#d1fae5] text-[#065f46] border border-[#6ee7b7]";
     case "documents_recus": return "bg-[#065f46] text-white border border-[#065f46]";
     case "devis_a_envoyer": return "bg-[#f3e8ff] text-[#7e22ce] border border-[#e9d5ff]";
@@ -36,10 +36,10 @@ function getStatusButtonClass(status: LeadStatus, isSelected: boolean): string {
     case "bloque_mpr": return "bg-[#7f1d1d] text-white border border-[#7f1d1d]";
     case "valide": return "bg-[#14532d] text-white border border-[#14532d]";
     case "installe": return "bg-[#99f6e4] text-[#134e4a] border border-[#5eead4]";
-    case "ancien_documents_recus": return "bg-[#94a3b8] text-white border border-[#94a3b8]";
+    case "ancien_documents_recus": return "bg-faint text-white border border-faint";
     case "transfert": return "bg-[#e0f2fe] text-[#0369a1] border border-[#bae6fd]";
     case "annule": return "bg-[#fee2e2] text-[#b91c1c] border border-[#fca5a5]";
-    default: return "bg-[#f8fafc] text-[#64748b] border border-[#e1e8f2]";
+    default: return "bg-panel text-subtle border border-line";
   }
 }
 
@@ -92,13 +92,13 @@ function StatusButton({
               type="datetime-local"
               value={callbackAt}
               onChange={(e) => setCallbackAt(e.target.value)}
-              className="h-9 px-3 border border-[#e1e8f2] rounded-[9px] text-sm text-[#0b1f3a] bg-white focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40"
+              className="h-9 px-3 border border-line rounded-[9px] text-sm text-ink bg-white focus:outline-none focus:ring-2 focus:ring-brand/40"
             />
             <button
               type="button"
               onClick={handleSaveCallback}
               disabled={disabled || !callbackAt}
-              className="h-9 px-4 bg-[#1e3a5f] text-white rounded-[9px] text-sm font-medium hover:bg-[#162d4a] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="h-9 px-4 bg-ink-soft text-white rounded-[9px] text-sm font-medium hover:bg-[#162d4a] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               OK
             </button>
@@ -106,7 +106,7 @@ function StatusButton({
               <button
                 type="button"
                 onClick={() => setShowCallback(false)}
-                className="text-[#64748b] text-sm hover:text-[#0b1f3a]"
+                className="text-subtle text-sm hover:text-ink"
               >
                 Annuler
               </button>
@@ -209,13 +209,13 @@ export function TeleprospectionStatusBar({
     <div className={`${CARD_CLS} p-6 mt-4`}>
       <div className="space-y-4">
         <div>
-          <p className="text-xs font-semibold text-[#64748b] uppercase tracking-wide mb-3">
+          <p className="text-xs font-semibold text-subtle uppercase tracking-wide mb-3">
             Disposition de l&apos;appel
           </p>
-          <p className="text-xl font-semibold text-[#0b1f3a]">
+          <p className="text-xl font-semibold text-ink">
             {String(lead.first_name ?? "")} {String(lead.last_name ?? "")}
           </p>
-          <p className="text-2xl font-bold text-[#0b1f3a] mt-1">
+          <p className="text-2xl font-bold text-ink mt-1">
             {formatPhoneDisplay(lead.phone as string)}
           </p>
         </div>

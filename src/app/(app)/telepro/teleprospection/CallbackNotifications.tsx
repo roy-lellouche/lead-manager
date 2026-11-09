@@ -80,13 +80,13 @@ export function CallbackNotifications() {
           tabIndex={0}
           onClick={() => handleClick(lead.id)}
           onKeyDown={(e) => e.key === "Enter" && handleClick(lead.id)}
-          className="rounded-[12px] border border-rose-200 bg-white shadow-[0_4px_12px_rgba(190,18,60,.12)] hover:shadow-[0_4px_16px_rgba(190,18,60,.18)] cursor-pointer transition-all flex items-start gap-3 p-4"
+          className="rounded-[14px] border border-rose-200 bg-white shadow-[0_4px_12px_rgba(190,18,60,.12)] hover:shadow-[0_4px_16px_rgba(190,18,60,.18)] cursor-pointer transition-all flex items-start gap-3 p-4"
         >
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-[#0b1f3a]">
+            <p className="font-semibold text-ink">
               {lead.first_name} {lead.last_name}
             </p>
-            <p className="text-sm text-[#64748b] mt-0.5">{lead.phone}</p>
+            <p className="text-sm text-subtle mt-0.5">{lead.phone}</p>
             <p className="text-xs text-rose-600 mt-1 font-medium uppercase tracking-wide">
               Rappel à effectuer
             </p>
@@ -94,7 +94,7 @@ export function CallbackNotifications() {
           <button
             type="button"
             onClick={(e) => handleDismiss(e, lead.id)}
-            className="p-1 rounded-[6px] hover:bg-rose-50 text-[#64748b] shrink-0 transition-colors"
+            className="p-1 rounded-[6px] hover:bg-rose-50 text-subtle shrink-0 transition-colors"
             aria-label="Fermer"
           >
             <X className="w-4 h-4" />

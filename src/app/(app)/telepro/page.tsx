@@ -1,10 +1,13 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { startOfDay, startOfWeek, startOfMonth } from "date-fns";
 import Link from "next/link";
-import { LEAD_STATUS_LABELS, LEAD_STATUSES_ADMIN, type LeadStatus } from "@/lib/types";
+import { ArrowRight, CalendarClock, Inbox, PhoneCall, PhoneMissed, Sparkles, Users } from "lucide-react";
+import { LEAD_STATUS_LABELS, LEAD_STATUSES_ADMIN, STATUS_CHART_COLORS, type LeadStatus } from "@/lib/types";
 import { NrpCallsButton } from "./NrpCallsButton";
 import { PageHeader } from "@/components/ui-kit/PageHeader";
 import { StatCard } from "@/components/ui-kit/StatCard";
+import { Panel } from "@/components/ui-kit/Panel";
+import { BarList } from "@/components/ui-kit/BarList";
 import { getSessionUser } from "@/lib/supabase/session";
 
 export default async function TeleproDashboard() {
@@ -64,67 +67,95 @@ export default async function TeleproDashboard() {
       ? ((documentsRecus / (total || 1)) * 100).toFixed(1)
       : "0";
 
-  const stats = [
-    { label: "Leads totaux", value: total || 0 },
-    { label: "Reçus ce mois", value: month || 0 },
-    { label: "Reçus cette semaine", value: week || 0 },
-    { label: "Reçus aujourd'hui", value: today || 0 },
+  const rate = Number(conversionRate);
+
+  const todo = [
+    { status: "a_rappeler" as LeadStatus, label: "À rappeler", icon: CalendarClock, tone: "text-orange-700 bg-orange-50" },
+    { status: "nouveau" as LeadStatus, label: "Nouveaux", icon: Sparkles, tone: "text-brand bg-brand-soft" },
+    { status: "nrp" as LeadStatus, label: "NRP à relancer", icon: PhoneMissed, tone: "text-amber-700 bg-amber-50" },
+    { status: "en_attente_doc" as LeadStatus, label: "En attente de documents", icon: Inbox, tone: "text-violet-700 bg-violet-50" },
   ];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="Tableau de bord"
-        subtitle="Vue d'ensemble de vos leads"
+        subtitle="Vos leads et vos priorités du jour"
+        actions={
+          <>
+            <Link
+              href="/telepro/leads"
+              className="inline-flex h-9 items-center gap-2 rounded-lg border border-line bg-white px-3.5 text-sm font-medium text-ink shadow-card transition-colors hover:bg-panel"
+            >
+              <Users className="h-4 w-4" /> Mes leads
+            </Link>
+            <Link
+              href="/telepro/teleprospection"
+              className="inline-flex h-9 items-center gap-2 rounded-lg bg-ink px-3.5 text-sm font-medium text-white shadow-card transition-colors hover:bg-ink-soft"
+            >
+              <PhoneCall className="h-4 w-4" /> Démarrer la téléprospection
+            </Link>
+          </>
+        }
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat) => (
-          <StatCard key={stat.label} label={stat.label} value={stat.value} />
-        ))}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatCard label="Reçus aujourd'hui" value={today || 0} tone="brand" size="lg" />
+        <StatCard label="Reçus cette semaine" value={week || 0} />
+        <StatCard label="Reçus ce mois" value={month || 0} />
+        <StatCard label="Leads au total" value={total || 0} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="rounded-[12px] border border-[#e1e8f2] bg-white p-6 shadow-[0_1px_2px_rgba(13,38,76,.06)]">
-          <h2 className="font-medium text-[#0b1f3a] mb-4">Leads par statut</h2>
-          <div className="space-y-2">
-            {LEAD_STATUSES_ADMIN.map((s) => (
-              <div
-                key={s}
-                className="flex justify-between text-sm"
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <Panel title="À traiter" description="Cliquez pour ouvrir la liste" className="lg:col-span-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {todo.map((t) => (
+              <Link
+                key={t.status}
+                href={`/telepro/leads?status=${t.status}`}
+                className="group flex items-center gap-3 rounded-xl border border-line p-3 transition-all hover:border-brand-line hover:shadow-card"
               >
-                <span className="text-[#64748b]">{LEAD_STATUS_LABELS[s]}</span>
-                <span className="font-medium text-[#0b1f3a]">{statusCounts[s] || 0}</span>
-              </div>
+                <span className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${t.tone}`}>
+                  <t.icon className="h-5 w-5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm text-subtle">{t.label}</span>
+                  <span className="block text-xl font-bold tabular-nums text-ink">{statusCounts[t.status] || 0}</span>
+                </span>
+                <ArrowRight className="h-4 w-4 text-faint transition-colors group-hover:text-brand" />
+              </Link>
             ))}
           </div>
-        </div>
-        <div className="rounded-[12px] border border-[#e1e8f2] bg-white p-6 shadow-[0_1px_2px_rgba(13,38,76,.06)]">
-          <h2 className="font-medium text-[#0b1f3a] mb-4">Taux de conversion</h2>
-          <p className="text-3xl font-bold text-emerald-600">
-            {conversionRate} %
+          <div className="mt-4 border-t border-line-soft pt-4">
+            <NrpCallsButton />
+          </div>
+        </Panel>
+
+        <Panel title="Taux de conversion" description="Documents reçus (y compris anciens) / total">
+          <p className="text-4xl font-bold tracking-tight tabular-nums text-emerald-700">
+            {conversionRate.replace(".", ",")} %
           </p>
-          <p className="text-sm text-[#64748b] mt-1">
-            Leads &quot;Documents reçus&quot; + &quot;Ancien documents reçus&quot; / Total
+          <div className="mt-4 h-2 overflow-hidden rounded-full bg-line-soft">
+            <div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.min(100, rate)}%` }} />
+          </div>
+          <p className="mt-3 text-sm text-subtle">
+            {documentsRecus} dossier{documentsRecus > 1 ? "s" : ""} sur {total || 0} lead{(total || 0) > 1 ? "s" : ""}
           </p>
-        </div>
+        </Panel>
       </div>
 
-      <div className="flex flex-wrap gap-4 items-end">
-        <NrpCallsButton />
-        <Link
-          href="/telepro/leads"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-[#2563eb] text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          Voir mes leads
-        </Link>
-        <Link
-          href="/telepro/teleprospection"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-[#0b1f3a] text-white font-medium rounded-lg hover:opacity-90 transition-colors"
-        >
-          Démarrer la téléprospection
-        </Link>
-      </div>
+      <Panel title="Mes leads par statut">
+        <BarList
+          hideZero
+          emptyLabel="Aucun lead pour le moment"
+          items={LEAD_STATUSES_ADMIN.map((st) => ({
+            label: LEAD_STATUS_LABELS[st],
+            value: statusCounts[st] || 0,
+            color: STATUS_CHART_COLORS[st],
+            href: `/telepro/leads?status=${st}`,
+          }))}
+        />
+      </Panel>
     </div>
   );
 }

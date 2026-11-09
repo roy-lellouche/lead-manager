@@ -99,13 +99,13 @@ export function DocumentsSection({ leadId, documents: initialDocs }: DocumentsSe
   }));
 
   return (
-    <div className="rounded-[12px] border border-[#e1e8f2] bg-white shadow-[0_1px_2px_rgba(13,38,76,.06)] p-5">
-      <h2 className="text-xs font-semibold text-[#64748b] uppercase tracking-wide mb-4">Documents</h2>
+    <div className="rounded-[14px] border border-line bg-white shadow-card p-5">
+      <h2 className="text-xs font-semibold text-subtle uppercase tracking-wide mb-4">Documents</h2>
       <div className="space-y-6">
         {groupedDocs.map(({ value, label, canUpload, docs }) => (
           <div key={value}>
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium text-[#0b1f3a]">{label}</h3>
+              <h3 className="text-sm font-medium text-ink">{label}</h3>
               {canUpload && (
                 <label className="cursor-pointer">
                   <input
@@ -117,7 +117,7 @@ export function DocumentsSection({ leadId, documents: initialDocs }: DocumentsSe
                     disabled={uploading}
                     className="hidden"
                   />
-                  <span className="text-sm font-medium text-[#2563eb] hover:underline">
+                  <span className="text-sm font-medium text-brand hover:underline">
                     + Ajouter
                   </span>
                 </label>
@@ -125,18 +125,18 @@ export function DocumentsSection({ leadId, documents: initialDocs }: DocumentsSe
             </div>
             <div className="space-y-2">
               {docs.length === 0 ? (
-                <p className="text-sm text-[#64748b]">Aucun document</p>
+                <p className="text-sm text-subtle">Aucun document</p>
               ) : (
                 docs.map((doc) => (
                   <div
                     key={doc.id}
-                    className="flex items-center justify-between p-2 bg-[#f4f7fb] rounded-[9px] border border-[#e1e8f2]"
+                    className="flex items-center justify-between p-2 bg-canvas rounded-[9px] border border-line"
                   >
                     <a
                       href={getDocUrl(doc.storage_path)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 text-[#2563eb] hover:underline text-sm"
+                      className="flex items-center gap-2 text-brand hover:underline text-sm"
                     >
                       <FileText className="w-4 h-4" />
                       {doc.file_name}

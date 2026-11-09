@@ -53,10 +53,10 @@ export default async function AdminImportPage() {
         {stats.map((stat) => (
           <div
             key={stat.label}
-            className="rounded-[12px] border border-[#e1e8f2] bg-white shadow-[0_1px_2px_rgba(13,38,76,.06)] p-6"
+            className="rounded-[14px] border border-line bg-white shadow-card p-6"
           >
-            <p className="text-sm text-[#64748b]">{stat.label}</p>
-            <p className="text-3xl font-bold text-[#0b1f3a] mt-1">{stat.value}</p>
+            <p className="text-sm text-subtle">{stat.label}</p>
+            <p className="text-3xl font-bold text-ink mt-1">{stat.value}</p>
           </div>
         ))}
       </div>

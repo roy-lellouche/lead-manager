@@ -37,7 +37,7 @@ function BoolCell({ value }: { value: boolean }) {
   return value ? (
     <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold">✓</span>
   ) : (
-    <span className="text-[#64748b]">—</span>
+    <span className="text-subtle">—</span>
   );
 }
 
@@ -63,41 +63,41 @@ export function DocumentsRecusTable({ leads }: DocumentsRecusTableProps) {
   }, [router]);
 
   return (
-    <div className="rounded-[12px] border border-[#e1e8f2] bg-white shadow-[0_1px_2px_rgba(13,38,76,.06)] overflow-hidden">
+    <div className="rounded-[14px] border border-line bg-white shadow-card overflow-hidden">
       <Table>
-        <TableHeader className="bg-[#f4f7fb] border-b border-[#e1e8f2]">
+        <TableHeader className="bg-canvas border-b border-line">
           <TableRow className="hover:bg-transparent border-0">
-            <TableHead className="py-3 text-xs font-semibold text-[#64748b] uppercase tracking-wide">
+            <TableHead className="py-3 text-xs font-semibold text-subtle uppercase tracking-wide">
               Nom
             </TableHead>
-            <TableHead className="py-3 text-xs font-semibold text-[#64748b] uppercase tracking-wide">
+            <TableHead className="py-3 text-xs font-semibold text-subtle uppercase tracking-wide">
               Mandataire
             </TableHead>
-            <TableHead className="py-3 text-xs font-semibold text-[#64748b] uppercase tracking-wide">
+            <TableHead className="py-3 text-xs font-semibold text-subtle uppercase tracking-wide">
               Type d&apos;installation
             </TableHead>
-            <TableHead className="py-3 text-xs font-semibold text-[#64748b] uppercase tracking-wide">
+            <TableHead className="py-3 text-xs font-semibold text-subtle uppercase tracking-wide">
               Télépro
             </TableHead>
-            <TableHead className="py-3 text-xs font-semibold text-[#64748b] uppercase tracking-wide">
+            <TableHead className="py-3 text-xs font-semibold text-subtle uppercase tracking-wide">
               Installé
             </TableHead>
-            <TableHead className="py-3 text-xs font-semibold text-[#64748b] uppercase tracking-wide">
+            <TableHead className="py-3 text-xs font-semibold text-subtle uppercase tracking-wide">
               Dépôt MPR
             </TableHead>
-            <TableHead className="py-3 text-xs font-semibold text-[#64748b] uppercase tracking-wide">
+            <TableHead className="py-3 text-xs font-semibold text-subtle uppercase tracking-wide">
               CEE payé
             </TableHead>
-            <TableHead className="py-3 text-xs font-semibold text-[#64748b] uppercase tracking-wide">
+            <TableHead className="py-3 text-xs font-semibold text-subtle uppercase tracking-wide">
               MPR payé
             </TableHead>
-            <TableHead className="py-3 text-xs font-semibold text-[#64748b] uppercase tracking-wide">
+            <TableHead className="py-3 text-xs font-semibold text-subtle uppercase tracking-wide">
               Rentabilité
             </TableHead>
-            <TableHead className="py-3 text-xs font-semibold text-[#64748b] uppercase tracking-wide">
+            <TableHead className="py-3 text-xs font-semibold text-subtle uppercase tracking-wide">
               Date ajout
             </TableHead>
-            <TableHead className="py-3 text-xs font-semibold text-[#64748b] uppercase tracking-wide min-w-[180px]">
+            <TableHead className="py-3 text-xs font-semibold text-subtle uppercase tracking-wide min-w-[180px]">
               Commentaires
             </TableHead>
           </TableRow>
@@ -105,7 +105,7 @@ export function DocumentsRecusTable({ leads }: DocumentsRecusTableProps) {
         <TableBody>
           {leads.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={11} className="py-12 text-center text-[#64748b]">
+              <TableCell colSpan={11} className="py-12 text-center text-subtle">
                 Aucun lead en Documents reçus
               </TableCell>
             </TableRow>
@@ -114,22 +114,22 @@ export function DocumentsRecusTable({ leads }: DocumentsRecusTableProps) {
               <TableRow
                 key={lead.id}
                 onClick={() => router.push(`/admin/leads/${lead.id}`)}
-                className="border-b border-[#e1e8f2] cursor-pointer hover:bg-[#f4f7fb] transition-colors"
+                className="border-b border-line cursor-pointer hover:bg-canvas transition-colors"
               >
                 <TableCell className="py-3">
-                  <span className="font-medium text-[#0b1f3a]">
+                  <span className="font-medium text-ink">
                     {lead.first_name} {lead.last_name}
                   </span>
                 </TableCell>
-                <TableCell className="py-3 text-[#64748b]">
+                <TableCell className="py-3 text-subtle">
                   {lead.delegataire_group || "—"}
                 </TableCell>
-                <TableCell className="py-3 text-[#64748b]">
+                <TableCell className="py-3 text-subtle">
                   {lead.installation_type
                     ? INSTALLATION_TYPE_LABELS[lead.installation_type]
                     : "—"}
                 </TableCell>
-                <TableCell className="py-3 text-[#64748b]">
+                <TableCell className="py-3 text-subtle">
                   {lead.profile?.full_name || "—"}
                 </TableCell>
                 <TableCell className="py-3">
@@ -144,12 +144,12 @@ export function DocumentsRecusTable({ leads }: DocumentsRecusTableProps) {
                 <TableCell className="py-3">
                   <BoolCell value={lead.is_mpe_paye} />
                 </TableCell>
-                <TableCell className="py-3 font-medium text-[#0b1f3a]">
+                <TableCell className="py-3 font-medium text-ink">
                   {lead.profitability != null
                     ? `${Number(lead.profitability).toFixed(2)} €`
                     : "—"}
                 </TableCell>
-                <TableCell className="py-3 text-[#64748b] text-sm">
+                <TableCell className="py-3 text-subtle text-sm">
                   {lead.added_at
                     ? formatDateParis(lead.added_at)
                     : "—"}
@@ -180,7 +180,7 @@ export function DocumentsRecusTable({ leads }: DocumentsRecusTableProps) {
                         }
                       }}
                       autoFocus
-                      className="w-full px-2 py-1 text-sm border border-[#e1e8f2] rounded-[9px] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40"
+                      className="w-full px-2 py-1 text-sm border border-line rounded-[9px] focus:outline-none focus:ring-2 focus:ring-brand/40"
                     />
                   ) : (
                     <button
@@ -192,7 +192,7 @@ export function DocumentsRecusTable({ leads }: DocumentsRecusTableProps) {
                           [lead.id]: lead.commentaire ?? "",
                         }));
                       }}
-                      className="w-full text-left px-2 py-1 text-sm text-[#64748b] hover:bg-[#f4f7fb] rounded-[9px] truncate block"
+                      className="w-full text-left px-2 py-1 text-sm text-subtle hover:bg-canvas rounded-[9px] truncate block"
                       title={lead.commentaire ?? "Cliquer pour ajouter un commentaire"}
                     >
                       {lead.commentaire || "—"}

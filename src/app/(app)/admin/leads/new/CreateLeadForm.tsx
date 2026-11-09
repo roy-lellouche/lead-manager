@@ -32,15 +32,15 @@ interface CreateLeadFormProps {
 }
 
 const SELECT_CLS =
-  "h-9 w-full px-3 border border-[#e1e8f2] rounded-[9px] bg-white text-[#0b1f3a] text-sm focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40";
+  "h-9 w-full px-3 border border-line rounded-[9px] bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-brand/40";
 
 const CARD_CLS =
-  "rounded-[12px] border border-[#e1e8f2] bg-white shadow-[0_1px_2px_rgba(13,38,76,.06)] p-5";
+  "rounded-[14px] border border-line bg-white shadow-card p-5";
 
 const SECTION_TITLE_CLS =
-  "text-xs font-semibold text-[#64748b] uppercase tracking-wide mb-4";
+  "text-xs font-semibold text-subtle uppercase tracking-wide mb-4";
 
-const LABEL_CLS = "block text-sm font-medium text-[#0b1f3a] mb-1.5";
+const LABEL_CLS = "block text-sm font-medium text-ink mb-1.5";
 
 export function CreateLeadForm({ telepros }: CreateLeadFormProps) {
   const router = useRouter();
@@ -353,7 +353,7 @@ export function CreateLeadForm({ telepros }: CreateLeadFormProps) {
                 const current = form.radiator_type ?? [];
                 const checked = current.includes(t);
                 return (
-                  <label key={t} className="flex items-center gap-2 text-sm text-[#0b1f3a]">
+                  <label key={t} className="flex items-center gap-2 text-sm text-ink">
                     <input
                       type="checkbox"
                       checked={checked}
@@ -363,7 +363,7 @@ export function CreateLeadForm({ telepros }: CreateLeadFormProps) {
                           : current.filter((x) => x !== t);
                         update("radiator_type", next);
                       }}
-                      className="rounded border-[#e1e8f2] accent-[#2563eb]"
+                      className="rounded border-line accent-brand"
                     />
                     {RADIATOR_TYPE_LABELS[t]}
                   </label>

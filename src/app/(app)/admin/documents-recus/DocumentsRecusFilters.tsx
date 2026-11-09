@@ -56,16 +56,16 @@ export function DocumentsRecusFilters() {
   };
 
   return (
-    <div className="rounded-[12px] border border-[#e1e8f2] bg-white shadow-[0_1px_2px_rgba(13,38,76,.06)] p-4 flex flex-col gap-4">
+    <div className="rounded-[14px] border border-line bg-white shadow-card p-4 flex flex-col gap-4">
       <form onSubmit={handleSearch} className="w-full flex gap-2">
         <div className="relative flex-1 min-w-0">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#64748b]" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-subtle" />
           <Input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Rechercher par nom, prénom ou téléphone..."
-            className="pl-9 h-9 border-[#e1e8f2] rounded-[9px] text-[#0b1f3a] placeholder:text-[#64748b]"
+            className="pl-9 h-9 border-line rounded-[9px] text-ink placeholder:text-subtle"
           />
         </div>
         <Button type="submit" size="sm" className="h-9 shrink-0">
@@ -74,16 +74,16 @@ export function DocumentsRecusFilters() {
       </form>
 
       <div className="flex flex-wrap gap-x-4 gap-y-2 items-center">
-        <span className="text-xs font-semibold text-[#64748b] uppercase tracking-wide">Mandataire :</span>
+        <span className="text-xs font-semibold text-subtle uppercase tracking-wide">Mandataire :</span>
         {DELEGATAIRE_GROUPS.map((d) => (
           <label key={d} className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
               checked={selectedDelegataires.includes(d)}
               onChange={() => handleDelegataireToggle(d)}
-              className="rounded border-[#e1e8f2] text-[#2563eb] focus:ring-[#2563eb]/40"
+              className="rounded border-line text-brand focus:ring-brand/40"
             />
-            <span className="text-sm text-[#0b1f3a]">{d}</span>
+            <span className="text-sm text-ink">{d}</span>
           </label>
         ))}
         <label className="flex items-center gap-2 cursor-pointer">
@@ -91,14 +91,14 @@ export function DocumentsRecusFilters() {
             type="checkbox"
             checked={selectedDelegataires.includes("__non_assigne__")}
             onChange={() => handleDelegataireToggle("__non_assigne__")}
-            className="rounded border-[#e1e8f2] text-[#2563eb] focus:ring-[#2563eb]/40"
+            className="rounded border-line text-brand focus:ring-brand/40"
           />
-          <span className="text-sm text-[#0b1f3a]">Non assigné</span>
+          <span className="text-sm text-ink">Non assigné</span>
         </label>
         <select
           value={currentChantier}
           onChange={(e) => handleChantierChange(e.target.value)}
-          className="h-9 px-3 py-1.5 text-sm border border-[#e1e8f2] rounded-[9px] bg-white text-[#0b1f3a] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40 focus:border-[#2563eb]"
+          className="h-9 px-3 py-1.5 text-sm border border-line rounded-[9px] bg-white text-ink focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand"
         >
           <option value="">Statut chantier</option>
           {CHANTIER_STATUS_FIELDS.map(({ field, label }) => (
@@ -111,21 +111,21 @@ export function DocumentsRecusFilters() {
 
       <div className="flex flex-wrap gap-4 items-end">
         <div>
-          <label className="block text-xs font-medium text-[#64748b] mb-1">Du</label>
+          <label className="block text-xs font-medium text-subtle mb-1">Du</label>
           <Input
             type="date"
             value={from}
             onChange={(e) => setFrom(e.target.value)}
-            className="h-9 border-[#e1e8f2] rounded-[9px] text-[#0b1f3a]"
+            className="h-9 border-line rounded-[9px] text-ink"
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-[#64748b] mb-1">Au</label>
+          <label className="block text-xs font-medium text-subtle mb-1">Au</label>
           <Input
             type="date"
             value={to}
             onChange={(e) => setTo(e.target.value)}
-            className="h-9 border-[#e1e8f2] rounded-[9px] text-[#0b1f3a]"
+            className="h-9 border-line rounded-[9px] text-ink"
           />
         </div>
         <Button

@@ -36,7 +36,7 @@ import {
 // Leaflet touche `window` : la carte n'est rendue que côté navigateur.
 const SavMap = dynamic(() => import("./SavMap"), {
   ssr: false,
-  loading: () => <div className="h-full w-full animate-pulse rounded-[12px] bg-[#e1e8f2]" />,
+  loading: () => <div className="h-full w-full animate-pulse rounded-[14px] bg-line" />,
 });
 
 type Filter = "all" | SavStatus;
@@ -134,8 +134,8 @@ export function SavClient({ initialItems }: { initialItems: SavRequestWithUrls[]
         </div>
 
         {showForm && (
-          <div className="rounded-[12px] border border-[#e1e8f2] bg-white p-5 shadow-sm">
-            <h2 className="mb-4 text-lg font-semibold text-[#0b1f3a]">Nouvelle demande de SAV</h2>
+          <div className="rounded-[14px] border border-line bg-white p-5 shadow-sm">
+            <h2 className="mb-4 text-lg font-semibold text-ink">Nouvelle demande de SAV</h2>
             <SavForm
               endpoint="/api/admin/sav"
               submitLabel="Enregistrer le SAV"
@@ -151,7 +151,7 @@ export function SavClient({ initialItems }: { initialItems: SavRequestWithUrls[]
           </div>
         )}
 
-        <div role="tablist" className="inline-flex rounded-[10px] border border-[#e1e8f2] bg-white p-1 shadow-sm">
+        <div role="tablist" className="inline-flex rounded-[10px] border border-line bg-white p-1 shadow-sm">
           {views.map((v) => (
             <button
               key={v.key}
@@ -160,7 +160,7 @@ export function SavClient({ initialItems }: { initialItems: SavRequestWithUrls[]
               aria-selected={view === v.key}
               onClick={() => switchView(v.key)}
               className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
-                view === v.key ? "bg-[#0b1f3a] text-white" : "text-[#475569] hover:bg-[#f4f7fb]"
+                view === v.key ? "bg-ink text-white" : "text-body hover:bg-canvas"
               }`}
             >
               {v.icon}
@@ -170,7 +170,7 @@ export function SavClient({ initialItems }: { initialItems: SavRequestWithUrls[]
         </div>
 
         {view === "archives" ? (
-          <p className="text-sm text-[#64748b]">
+          <p className="text-sm text-subtle">
             SAV résolus. Désarchivez-en un pour le remettre dans les SAV en cours.
           </p>
         ) : (
@@ -182,8 +182,8 @@ export function SavClient({ initialItems }: { initialItems: SavRequestWithUrls[]
                 onClick={() => setFilter(f.key)}
                 className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
                   filter === f.key
-                    ? "border-[#2563eb] bg-[#2563eb] text-white"
-                    : "border-[#e1e8f2] bg-white text-[#475569] hover:bg-[#f4f7fb]"
+                    ? "border-brand bg-brand text-white"
+                    : "border-line bg-white text-body hover:bg-canvas"
                 }`}
               >
                 {f.label} <span className="tabular-nums opacity-80">{counts[f.key]}</span>
@@ -194,7 +194,7 @@ export function SavClient({ initialItems }: { initialItems: SavRequestWithUrls[]
 
         <div className="space-y-2">
           {visible.length === 0 && (
-            <p className="rounded-[12px] border border-dashed border-[#d5deec] bg-white p-8 text-center text-sm text-[#64748b]">
+            <p className="rounded-[14px] border border-dashed border-line-strong bg-white p-8 text-center text-sm text-subtle">
               {view === "archives"
                 ? "Aucun SAV archivé pour le moment."
                 : active.length === 0
@@ -222,7 +222,7 @@ export function SavClient({ initialItems }: { initialItems: SavRequestWithUrls[]
 
       {/* Carte fixe : seule la colonne de gauche défile (sticky sur grand écran). */}
       <div className="h-80 lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)]">
-        <div className="h-full overflow-hidden rounded-[12px] border border-[#e1e8f2] bg-white shadow-sm">
+        <div className="h-full overflow-hidden rounded-[14px] border border-line bg-white shadow-sm">
           <SavMap items={visible} selectedId={expandedId} onSelect={selectFromMap} />
         </div>
       </div>
@@ -295,43 +295,43 @@ function SavCard({
 
   return (
     <div
-      className={`overflow-hidden rounded-[12px] border bg-white shadow-sm transition-colors ${
-        expanded ? "border-[#2563eb]" : "border-[#e1e8f2]"
+      className={`overflow-hidden rounded-[14px] border bg-white shadow-sm transition-colors ${
+        expanded ? "border-brand" : "border-line"
       }`}
     >
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={expanded}
-        className="flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-[#f8fafd]"
+        className="flex w-full items-start gap-3 px-4 py-3 text-left hover:bg-panel"
       >
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span className="font-semibold text-[#0b1f3a]">{item.name}</span>
+            <span className="font-semibold text-ink">{item.name}</span>
             <StatusBadge status={item.status} />
           </div>
-          <div className="mt-0.5 text-sm text-[#475569]">
+          <div className="mt-0.5 text-sm text-body">
             {item.problem_type} · {item.phone}
           </div>
-          <div className="mt-0.5 flex items-center gap-1 truncate text-xs text-[#64748b]">
+          <div className="mt-0.5 flex items-center gap-1 truncate text-xs text-subtle">
             <MapPin className="h-3 w-3 shrink-0" />
             <span className="truncate">{item.address}</span>
           </div>
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-1 text-xs text-[#64748b]">
+        <div className="flex shrink-0 flex-col items-end gap-1 text-xs text-subtle">
           <span>{formatFullDateTimeParis(item.created_at)}</span>
           <ChevronDown className={`h-4 w-4 transition-transform ${expanded ? "rotate-180" : ""}`} />
         </div>
       </button>
 
       {expanded && (
-        <div className="space-y-4 border-t border-[#e1e8f2] bg-[#fbfcfe] px-4 py-4">
+        <div className="space-y-4 border-t border-line bg-[#fbfcfe] px-4 py-4">
           <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
             <Info label="Nom" value={item.name} />
             <Info
               label="Téléphone"
               value={
-                <a href={`tel:${item.phone}`} className="inline-flex items-center gap-1 text-[#2563eb] hover:underline">
+                <a href={`tel:${item.phone}`} className="inline-flex items-center gap-1 text-brand hover:underline">
                   <Phone className="h-3.5 w-3.5" />
                   {item.phone}
                 </a>
@@ -341,7 +341,7 @@ function SavCard({
               label="Email"
               value={
                 item.email ? (
-                  <a href={`mailto:${item.email}`} className="text-[#2563eb] hover:underline">
+                  <a href={`mailto:${item.email}`} className="text-brand hover:underline">
                     {item.email}
                   </a>
                 ) : (
@@ -364,13 +364,13 @@ function SavCard({
 
           {item.photo_urls.length > 0 && (
             <div>
-              <div className="mb-1.5 text-xs font-medium uppercase tracking-wide text-[#64748b]">
+              <div className="mb-1.5 text-xs font-medium uppercase tracking-wide text-subtle">
                 Photos ({item.photo_urls.length})
               </div>
               <div className="flex flex-wrap gap-2">
                 {item.photo_urls.map((url, i) =>
                   url ? (
-                    <a key={url} href={url} target="_blank" rel="noreferrer" className="block h-24 w-24 overflow-hidden rounded-lg border border-[#e1e8f2]">
+                    <a key={url} href={url} target="_blank" rel="noreferrer" className="block h-24 w-24 overflow-hidden rounded-lg border border-line">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={url} alt={`Photo ${i + 1}`} loading="lazy" className="h-full w-full object-cover" />
                     </a>
@@ -382,13 +382,13 @@ function SavCard({
 
           {rescheduling && (
             <div className="flex flex-wrap items-end gap-2 rounded-lg border border-[#fde68a] bg-[#fffbeb] p-3">
-              <label className="text-sm font-medium text-[#0b1f3a]">
+              <label className="text-sm font-medium text-ink">
                 Nouvelle date et heure
                 <input
                   type="datetime-local"
                   value={when}
                   onChange={(e) => setWhen(e.target.value)}
-                  className="mt-1 block h-9 rounded-lg border border-[#e1e8f2] bg-white px-2 text-sm"
+                  className="mt-1 block h-9 rounded-lg border border-line bg-white px-2 text-sm"
                 />
               </label>
               <Button
@@ -404,7 +404,7 @@ function SavCard({
             </div>
           )}
 
-          <div className="flex flex-wrap gap-2 border-t border-[#e1e8f2] pt-4">
+          <div className="flex flex-wrap gap-2 border-t border-line pt-4">
             {archived ? (
               <Button size="lg" variant="outline" disabled={busy} onClick={() => updateStatus("a_traiter")}>
                 <ArchiveRestore /> Désarchiver
@@ -454,8 +454,8 @@ function SavCard({
 function Info({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
-      <dt className="text-xs font-medium uppercase tracking-wide text-[#64748b]">{label}</dt>
-      <dd className="mt-0.5 text-[#0b1f3a]">{value}</dd>
+      <dt className="text-xs font-medium uppercase tracking-wide text-subtle">{label}</dt>
+      <dd className="mt-0.5 text-ink">{value}</dd>
     </div>
   );
 }
