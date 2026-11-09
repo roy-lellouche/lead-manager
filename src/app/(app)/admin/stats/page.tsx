@@ -139,7 +139,7 @@ export default async function AdminStatsPage({
         <StatCard label="Rentabilité totale" value={eur(totalProfitability)} icon={TrendingUp} tone="success" size="lg" href={baseInstalleUrl} hint={`${eur(avgProfitability)} en moyenne par dossier`} />
         <StatCard label="Bénéfices (CEE + MPR)" value={eur(totalBenefitCee + totalBenefitMpr)} icon={Coins} tone="brand" size="lg" href={baseInstalleUrl} hint={`${eur(avgBenefit)} en moyenne par dossier`} />
         <StatCard label="Total à payer (coûts)" value={eur(totalCosts)} icon={Banknote} tone="danger" size="lg" href={baseInstalleUrl} hint="Pose + matériel + régie" />
-        <StatCard label="Dossiers installés" value={count} icon={Hammer} tone="neutral" size="lg" href={baseInstalleUrl} />
+        <StatCard label="Dossiers installés" value={count} icon={Hammer} tone="amethyst" size="lg" href={baseInstalleUrl} />
       </div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard label="Bénéfice CEE (CEE − coûts)" value={eur(benefitCeeNet)} href={baseInstalleUrl} />

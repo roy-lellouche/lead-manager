@@ -25,7 +25,7 @@
   --color-danger: #ef4444;
   --color-danger-bg: #fee2e2;
   --color-danger-fg: #b91c1c;
-  --color-info: #4338ca;
+  --color-info: #1a40ad;
   --color-info-bg: #e0e7ff;
 
   --radius-control: 9px;
@@ -44,12 +44,12 @@
   --secondary-foreground: #16181d;
   --muted: #f1f2f4;
   --muted-foreground: #6b7280;
-  --accent: #eef2ff;
-  --accent-foreground: #4338ca;
+  --accent: #eaf0ff;
+  --accent-foreground: #1a40ad;
   --destructive: #dc2626;
   --border: #e6e8ec;
   --input: #e1e3e8;
-  --ring: #6366f1;
+  --ring: #3b6ef0;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -120,11 +120,22 @@
   --color-line-soft: #f1f2f4;
   --color-canvas: #f6f7f9;
   --color-panel: #f9fafb;
-  --color-brand: #4f46e5;
-  --color-brand-hover: #4338ca;
-  --color-brand-strong: #3730a3;
-  --color-brand-soft: #eef2ff;
-  --color-brand-line: #c7d2fe;
+  /* Accent principal : saphir */
+  --color-brand: #1f4fd1;
+  --color-brand-hover: #1a40ad;
+  --color-brand-strong: #173a8f;
+  --color-brand-soft: #eaf0ff;
+  --color-brand-line: #c4d3fb;
+
+  /* Pierres précieuses : accents de couleur sur fond argent */
+  --color-ruby: #c0123c;
+  --color-ruby-soft: #fdecf0;
+  --color-emerald: #0b7a55;
+  --color-emerald-soft: #e6f6ef;
+  --color-gold: #a86b12;
+  --color-gold-soft: #fdf4e1;
+  --color-amethyst: #7c3aed;
+  --color-amethyst-soft: #f3edff;
 }
 
 @layer base {
@@ -203,13 +214,13 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
-/* ── Identité « fleurs de lys » argentée, version claire ──────────────── */
+/* ── Identité « croix gothique » argentée, version claire ──────────────── */
 .gothic-surface {
   background-color: #eceef1;
   background-image:
-    url("/fleur-de-lis-pattern.svg"),
+    url("/croix-pattern.svg"),
     linear-gradient(180deg, #f3f4f6 0%, #eceef1 60%, #e6e8ec 100%);
-  background-size: 64px 64px, 100% 100%;
+  background-size: 72px 72px, 100% 100%;
 }
 
 .font-gothic {
@@ -234,4 +245,9 @@
 /* Cartes : ombre douce commune */
 .shadow-card {
   box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.04);
+}
+
+/* Filet « joaillerie » : saphir → améthyste → rubis → or → émeraude */
+.jewel-strip {
+  background: linear-gradient(90deg, #1f4fd1, #7c3aed 25%, #c0123c 50%, #d4a017 75%, #0b7a55);
 }

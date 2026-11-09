@@ -38,7 +38,7 @@ export function isSavArchived(item: { status: SavStatus }): boolean {
 
 /** Couleurs partagées par les badges de la liste et les points de la carte. */
 export const SAV_STATUS_COLORS: Record<SavStatus, string> = {
-  a_traiter: "#4f46e5",
+  a_traiter: "#1f4fd1",
   resolu: "#16a34a",
   a_reprogrammer: "#f59e0b",
   absent: "#dc2626",

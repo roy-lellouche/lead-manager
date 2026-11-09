@@ -608,7 +608,7 @@ function getStatusButtonClass(status: LeadStatus, isSelected: boolean): string {
     case "nrp": return "bg-[#fef9c3] text-[#a16207] border border-[#fde68a]";
     case "a_rappeler": return "bg-[#ffedd5] text-[#c2410c] border border-[#fed7aa]";
     case "en_attente_doc": return "bg-[#ede9fe] text-[#6d28d9] border border-[#ddd6fe]";
-    case "documents_recus": return "bg-[#e0e7ff] text-[#4338ca] border border-[#c7d2fe]";
+    case "documents_recus": return "bg-[#e0e7ff] text-[#1a40ad] border border-[#c4d3fb]";
     case "devis_a_envoyer": return "bg-[#f3e8ff] text-[#7e22ce] border border-[#e9d5ff]";
     case "devis_envoye": return "bg-[#fce7f3] text-[#be185d] border border-[#f9a8d4]";
     case "incomplet": return "bg-[#fef3c7] text-[#b45309] border border-[#fde68a]";

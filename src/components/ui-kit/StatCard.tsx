@@ -2,22 +2,34 @@ import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { ArrowUpRight } from "lucide-react";
 
-export type StatTone = "neutral" | "brand" | "success" | "warning" | "danger";
+export type StatTone = "neutral" | "brand" | "success" | "warning" | "danger" | "amethyst";
 
+// Tons « pierres précieuses » : saphir, émeraude, or, rubis, améthyste.
 const TONE_ICON: Record<StatTone, string> = {
   neutral: "bg-line-soft text-body",
   brand: "bg-brand-soft text-brand",
-  success: "bg-emerald-50 text-emerald-700",
-  warning: "bg-amber-50 text-amber-700",
-  danger: "bg-red-50 text-red-700",
+  success: "bg-emerald-soft text-emerald",
+  warning: "bg-gold-soft text-gold",
+  danger: "bg-ruby-soft text-ruby",
+  amethyst: "bg-amethyst-soft text-amethyst",
 };
 
 const TONE_VALUE: Record<StatTone, string> = {
   neutral: "text-ink",
   brand: "text-ink",
-  success: "text-emerald-700",
+  success: "text-emerald",
   warning: "text-ink",
-  danger: "text-red-700",
+  danger: "text-ruby",
+  amethyst: "text-ink",
+};
+
+const TONE_BAR: Record<StatTone, string> = {
+  neutral: "bg-line-strong",
+  brand: "bg-brand",
+  success: "bg-emerald",
+  warning: "bg-gold",
+  danger: "bg-ruby",
+  amethyst: "bg-amethyst",
 };
 
 /** Carte d'indicateur (KPI) : libellé, grande valeur, précision facultative. Cliquable si `href`. */
@@ -40,10 +52,11 @@ export function StatCard({
 }) {
   const body = (
     <div
-      className={`group relative h-full rounded-[14px] border border-line bg-white p-4 shadow-card transition-all ${
+      className={`group relative h-full overflow-hidden rounded-[14px] border border-line bg-white p-4 shadow-card transition-all ${
         href ? "hover:border-brand-line hover:shadow-md" : ""
       }`}
     >
+      <span className={`absolute inset-x-0 top-0 h-[3px] ${TONE_BAR[tone]}`} aria-hidden="true" />
       <div className="flex items-start justify-between gap-3">
         <div className="text-[13px] font-medium text-subtle leading-snug">{label}</div>
         {Icon ? (

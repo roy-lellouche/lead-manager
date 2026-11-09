@@ -148,7 +148,7 @@ export default async function TeleproStatsDetailPage({
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard label="Appels" value={callsInPeriod ?? 0} icon={PhoneCall} tone="brand" hint="Actions enregistrées sur les leads" />
-        <StatCard label="Leads de la période" value={totalLeads} icon={Users} />
+        <StatCard label="Leads de la période" value={totalLeads} icon={Users} tone="amethyst" />
         <StatCard label="Documents reçus" value={totalWithInstallation} icon={FileCheck} tone="success" />
         <StatCard
           label="Taux de conversion"

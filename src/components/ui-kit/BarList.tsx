@@ -17,7 +17,7 @@ export function BarList({
   sort = true,
   hideZero = false,
   emptyLabel = "Aucune donnée sur la période",
-  defaultColor = "#4f46e5",
+  defaultColor = "#1f4fd1",
 }: {
   items: BarListItem[];
   /** Base du pourcentage ; par défaut la somme des valeurs. */

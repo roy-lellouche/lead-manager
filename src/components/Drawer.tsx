@@ -27,7 +27,7 @@ import {
   ListTodo,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { FleurDeLis } from "@/components/brand/FleurDeLis";
+import { GothicCross } from "@/components/brand/GothicCross";
 import { useRouter } from "next/navigation";
 import { LEAD_STATUS_LABELS, LEAD_STATUSES_ADMIN, LEAD_CATEGORIES, LEAD_CATEGORY_LABELS, type LeadStatus, type LeadCategory } from "@/lib/types";
 
@@ -38,6 +38,9 @@ interface DrawerProps {
   statusCounts?: Record<string, Record<string, number>>;
   pendingTasks?: number;
 }
+
+// Icônes du menu teintées « pierres précieuses », en rotation.
+const JEWEL_ICON = ["text-brand", "text-emerald", "text-ruby", "text-gold", "text-amethyst"];
 
 const adminNav = [
   { href: "/admin", label: "Statistique télépro", icon: TrendingUp },
@@ -128,6 +131,7 @@ export function Drawer({ role, userName, unreadNotifications = 0, statusCounts =
         }`}
       >
         <div className="flex flex-col h-full">
+          <div className="jewel-strip h-[3px] shrink-0" aria-hidden="true" />
           <div className="p-4 flex items-center justify-between">
             <div className="flex flex-col gap-1">
               <Link href={isAdminSpace ? adminSpaceHome : "/telepro"} className="block">
@@ -159,12 +163,12 @@ export function Drawer({ role, userName, unreadNotifications = 0, statusCounts =
 
           <div className="flex items-center gap-2 px-4" aria-hidden="true">
             <div className="chrome-rule flex-1" />
-            <FleurDeLis className="w-5 h-5 shrink-0" />
+            <GothicCross className="w-8 h-8 shrink-0" />
             <div className="chrome-rule flex-1" />
           </div>
 
           <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-            {nav.map((item) => {
+            {nav.map((item, idx) => {
               const homeHref = isAdminSpace ? adminSpaceHome : "/telepro";
               const isLeadsPage = pathname.startsWith("/admin/leads") && (item.href === "/admin/leads" || item.href.startsWith("/admin/leads?")) || (pathname.startsWith("/telepro/leads") && item.href === "/telepro/leads");
               const isActive =
@@ -187,7 +191,7 @@ export function Drawer({ role, userName, unreadNotifications = 0, statusCounts =
                       <div
                         className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm transition-colors ${
                           isActive
-                            ? "bg-white text-ink font-semibold shadow-card ring-1 ring-line"
+                            ? "relative bg-white text-ink font-semibold shadow-card ring-1 ring-line before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-full before:bg-brand"
                             : "text-body hover:bg-black/[0.04] hover:text-ink"
                         }`}
                       >
@@ -197,7 +201,7 @@ export function Drawer({ role, userName, unreadNotifications = 0, statusCounts =
                           className="flex items-center gap-3 flex-1 min-w-0"
                           data-testid="nav-leads"
                         >
-                          <item.icon className="w-[18px] h-[18px] shrink-0" />
+                          <item.icon className={`w-[18px] h-[18px] shrink-0 ${JEWEL_ICON[idx % JEWEL_ICON.length]}`} />
                           {item.label}
                         </Link>
                         <button
@@ -304,11 +308,11 @@ export function Drawer({ role, userName, unreadNotifications = 0, statusCounts =
                       onClick={() => setOpen(false)}
                       className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
                         isActive
-                          ? "bg-white text-ink font-semibold shadow-card ring-1 ring-line"
+                          ? "relative bg-white text-ink font-semibold shadow-card ring-1 ring-line before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-full before:bg-brand"
                           : "text-body hover:bg-black/[0.04] hover:text-ink"
                       }`}
                     >
-                      <item.icon className="w-[18px] h-[18px] shrink-0" />
+                      <item.icon className={`w-[18px] h-[18px] shrink-0 ${JEWEL_ICON[idx % JEWEL_ICON.length]}`} />
                       {item.label}
                       {"tasksBadge" in item && item.tasksBadge && pendingTasks > 0 && (
                         <span className="ml-auto bg-brand text-white text-[11px] font-semibold px-1.5 min-w-5 text-center py-0.5 rounded-full tabular-nums">

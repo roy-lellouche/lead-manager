@@ -159,7 +159,7 @@ export default async function AdminDashboard({
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard label="Appels" value={teamCalls} icon={PhoneCall} tone="brand" hint="Actions enregistrées sur les leads" />
-        <StatCard label="Leads de la période" value={teamLeads} icon={Users} tone="neutral" hint={`${rows.length} télépro${rows.length > 1 ? "s" : ""} actif${rows.length > 1 ? "s" : ""}`} />
+        <StatCard label="Leads de la période" value={teamLeads} icon={Users} tone="amethyst" hint={`${rows.length} télépro${rows.length > 1 ? "s" : ""} actif${rows.length > 1 ? "s" : ""}`} />
         <StatCard label="Documents reçus" value={teamDocs} icon={FileCheck} tone="success" />
         <StatCard label="Taux de conversion" value={fmtPct(teamConversion)} icon={Percent} tone="warning" hint="Documents reçus / leads" />
       </div>

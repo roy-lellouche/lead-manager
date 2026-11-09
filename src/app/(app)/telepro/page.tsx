@@ -70,10 +70,10 @@ export default async function TeleproDashboard() {
   const rate = Number(conversionRate);
 
   const todo = [
-    { status: "a_rappeler" as LeadStatus, label: "À rappeler", icon: CalendarClock, tone: "text-orange-700 bg-orange-50" },
+    { status: "a_rappeler" as LeadStatus, label: "À rappeler", icon: CalendarClock, tone: "text-ruby bg-ruby-soft" },
     { status: "nouveau" as LeadStatus, label: "Nouveaux", icon: Sparkles, tone: "text-brand bg-brand-soft" },
-    { status: "nrp" as LeadStatus, label: "NRP à relancer", icon: PhoneMissed, tone: "text-amber-700 bg-amber-50" },
-    { status: "en_attente_doc" as LeadStatus, label: "En attente de documents", icon: Inbox, tone: "text-violet-700 bg-violet-50" },
+    { status: "nrp" as LeadStatus, label: "NRP à relancer", icon: PhoneMissed, tone: "text-gold bg-gold-soft" },
+    { status: "en_attente_doc" as LeadStatus, label: "En attente de documents", icon: Inbox, tone: "text-amethyst bg-amethyst-soft" },
   ];
 
   return (
@@ -101,9 +101,9 @@ export default async function TeleproDashboard() {
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard label="Reçus aujourd'hui" value={today || 0} tone="brand" size="lg" />
-        <StatCard label="Reçus cette semaine" value={week || 0} />
-        <StatCard label="Reçus ce mois" value={month || 0} />
-        <StatCard label="Leads au total" value={total || 0} />
+        <StatCard label="Reçus cette semaine" value={week || 0} tone="success" />
+        <StatCard label="Reçus ce mois" value={month || 0} tone="amethyst" />
+        <StatCard label="Leads au total" value={total || 0} tone="warning" />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -132,11 +132,11 @@ export default async function TeleproDashboard() {
         </Panel>
 
         <Panel title="Taux de conversion" description="Documents reçus (y compris anciens) / total">
-          <p className="text-4xl font-bold tracking-tight tabular-nums text-emerald-700">
+          <p className="text-4xl font-bold tracking-tight tabular-nums text-emerald">
             {conversionRate.replace(".", ",")} %
           </p>
           <div className="mt-4 h-2 overflow-hidden rounded-full bg-line-soft">
-            <div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.min(100, rate)}%` }} />
+            <div className="h-full rounded-full bg-emerald" style={{ width: `${Math.min(100, rate)}%` }} />
           </div>
           <p className="mt-3 text-sm text-subtle">
             {documentsRecus} dossier{documentsRecus > 1 ? "s" : ""} sur {total || 0} lead{(total || 0) > 1 ? "s" : ""}
