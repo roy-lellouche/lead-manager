@@ -1,8 +1,8 @@
 import { useId } from "react";
 
 /**
- * Croix gothique ornée (croix « boutonnée », dessin original) en argent chromé,
- * avec un rubis au centre. Emblème de l'interface.
+ * Croix fleurdelisée (motif héraldique : quatre fleurs de lys en croix, dessin original)
+ * en argent chromé, avec un rubis serti au centre. Emblème de l'interface.
  */
 export function GothicCross({ className = "w-6 h-6", title, gem = true }: { className?: string; title?: string; gem?: boolean }) {
   const id = useId().replace(/:/g, "");
@@ -29,23 +29,13 @@ export function GothicCross({ className = "w-6 h-6", title, gem = true }: { clas
         </radialGradient>
       </defs>
       <g fill={`url(#silver-${id})`}>
-        <rect x="44.5" y="13" width="11" height="74" rx="2" />
-        <rect x="13" y="34.5" width="74" height="11" rx="2" />
-        <circle cx="50" cy="9" r="6.2" />
-        <circle cx="57.0" cy="15.0" r="4.6" />
-        <circle cx="43.0" cy="15.0" r="4.6" />
-        <circle cx="50" cy="91" r="6.2" />
-        <circle cx="43.0" cy="85.0" r="4.6" />
-        <circle cx="57.0" cy="85.0" r="4.6" />
-        <circle cx="9" cy="40" r="6.2" />
-        <circle cx="15.0" cy="33.0" r="4.6" />
-        <circle cx="15.0" cy="47.0" r="4.6" />
-        <circle cx="91" cy="40" r="6.2" />
-        <circle cx="85.0" cy="47.0" r="4.6" />
-        <circle cx="85.0" cy="33.0" r="4.6" />
-        <path d="M50 27 L63 40 L50 53 L37 40 Z" />
+        <path transform="translate(50 50) rotate(0) translate(0 -9) scale(0.6) translate(-50 -66)" d="M50 4C61 18 64 34 50 56C36 34 39 18 50 4ZM55 54C59 36 77 26 89 36C97 43 94 58 82 58C88 50 83 41 74 44C66 47 61 54 58 60ZM45 54C41 36 23 26 11 36C3 43 6 58 18 58C12 50 17 41 26 44C34 47 39 54 42 60ZM32 58H68V66H32Z" />
+        <path transform="translate(50 50) rotate(90) translate(0 -9) scale(0.6) translate(-50 -66)" d="M50 4C61 18 64 34 50 56C36 34 39 18 50 4ZM55 54C59 36 77 26 89 36C97 43 94 58 82 58C88 50 83 41 74 44C66 47 61 54 58 60ZM45 54C41 36 23 26 11 36C3 43 6 58 18 58C12 50 17 41 26 44C34 47 39 54 42 60ZM32 58H68V66H32Z" />
+        <path transform="translate(50 50) rotate(180) translate(0 -9) scale(0.6) translate(-50 -66)" d="M50 4C61 18 64 34 50 56C36 34 39 18 50 4ZM55 54C59 36 77 26 89 36C97 43 94 58 82 58C88 50 83 41 74 44C66 47 61 54 58 60ZM45 54C41 36 23 26 11 36C3 43 6 58 18 58C12 50 17 41 26 44C34 47 39 54 42 60ZM32 58H68V66H32Z" />
+        <path transform="translate(50 50) rotate(270) translate(0 -9) scale(0.6) translate(-50 -66)" d="M50 4C61 18 64 34 50 56C36 34 39 18 50 4ZM55 54C59 36 77 26 89 36C97 43 94 58 82 58C88 50 83 41 74 44C66 47 61 54 58 60ZM45 54C41 36 23 26 11 36C3 43 6 58 18 58C12 50 17 41 26 44C34 47 39 54 42 60ZM32 58H68V66H32Z" />
+        <circle cx="50" cy="50" r="11" />
       </g>
-      {gem ? <circle cx="50" cy="40" r="5.5" fill={`url(#ruby-${id})`} stroke="#e5e7eb" strokeWidth="1.2" /> : null}
+      {gem ? <circle cx="50" cy="50" r="6.5" fill={`url(#ruby-${id})`} stroke="#e5e7eb" strokeWidth="1.2" /> : null}
     </svg>
   );
 }

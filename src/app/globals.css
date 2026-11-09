@@ -214,13 +214,13 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
-/* ── Identité « croix gothique » argentée, version claire ──────────────── */
+/* ── Identité « croix fleurdelisée » argentée, version claire ──────────────── */
 .gothic-surface {
   background-color: #eceef1;
   background-image:
     url("/croix-pattern.svg"),
     linear-gradient(180deg, #f3f4f6 0%, #eceef1 60%, #e6e8ec 100%);
-  background-size: 72px 72px, 100% 100%;
+  background-size: 80px 80px, 100% 100%;
 }
 
 .font-gothic {

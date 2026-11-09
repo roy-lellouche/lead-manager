@@ -21,7 +21,7 @@ export function AuthShell({
           <span className="font-gothic chrome-text text-4xl leading-tight">RS Écologie</span>
           <div className="flex items-center gap-2 w-56" aria-hidden="true">
             <div className="chrome-rule flex-1" />
-            <GothicCross className="w-8 h-8 shrink-0" />
+            <GothicCross className="w-10 h-10 shrink-0" />
             <div className="chrome-rule flex-1" />
           </div>
         </div>
