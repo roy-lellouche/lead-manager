@@ -3,7 +3,7 @@ import { hasAuthEnv } from "./helpers";
 
 test.skip(!hasAuthEnv, "identifiants E2E absents (.env.test.local)");
 
-test("création d'un lead avec catégorie Clim 1 €, puis filtrable", async ({ page }) => {
+test("création d'un lead avec catégorie PAC image Atlantic 990 €, puis filtrable", async ({ page }) => {
   const stamp = Date.now().toString().slice(-6);
   const nom = `E2E${stamp}`;
 
