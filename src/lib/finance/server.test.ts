@@ -76,7 +76,7 @@ beforeEach(() => {
     lead_financials: [{ lead_id: "L1", method_id: "pac_atlantic_cee", cost_overrides: {}, other_costs: 0, reste_a_charge: 0, other_revenue: 0, real_cost: 3500, real_cost_validated: true, cee_received: null }],
     economic_methods: [{ id: "pac_atlantic_cee", name: "PAC Atlantic CEE", is_configured: true }],
     method_cost_items: COSTS.map((c) => ({ ...c })),
-    cee_scales: SCALES,
+    cee_scales: SCALES.map((s) => ({ ...s })),
     lead_financial_calculations: [],
   };
   db = fakeDb(tables);
@@ -158,5 +158,86 @@ describe("recalcul serveur d'un chantier", () => {
     await recalcIfRelevant(db, "L1", { postal_code: "75001" }, "U");
     expect(tables.lead_financials).toHaveLength(0);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("méthode 2 : sélection automatique par l'ETAS et TVA", () => {
+  const M2_COSTS = [
+    ["pac_materiel", "materiel", 3200, "HT"], ["petites_fournitures", "fournitures", 700, "TTC"],
+    ["main_oeuvre", "main_oeuvre", 700, "TTC"], ["frais_dossier_cee", "dossier", 70, "HT"], ["installation_employe", "autres", 200, "HT"],
+  ].map(([code, category, amount, basis], i) => ({
+    method_id: "methode_2", code, label: code, category, amount, amount_basis: basis, vat_rate: 20, vat_recovery_rate: 100,
+    display_order: i, active: true,
+  }));
+  const COND = "Éligibilité CEE du dossier vérifiée";
+  const pac = (etas: number | null, validated = true) => ({
+    lead_id: "L9", product_id: "P1",
+    products: { id: "P1", name: "Atlantic S9", is_pac_atlantic: true, etas, etas_validated: validated },
+  });
+
+  beforeEach(() => {
+    tables.leads.push({ id: "L9", postal_code: "05110", city: "La Saulce", devis_signed_at: "2026-05-01" });
+    tables.economic_methods = [
+      { id: "pac_atlantic_cee", name: "PAC Atlantic CEE", is_configured: true, active: true, auto_select: true,
+        etas_min_exclusive: null, etas_max_inclusive: 140, eligibility_conditions: [], cee_amount_basis: "HT", cee_vat_share: 50, cee_vat_rate: 20 },
+      { id: "methode_2", name: "PAC Atlantic ETAS > 140 %", is_configured: true, active: true, auto_select: true,
+        etas_min_exclusive: 140, etas_max_inclusive: null, eligibility_conditions: [COND], cee_amount_basis: "HT", cee_vat_share: 50, cee_vat_rate: 20 },
+    ];
+    tables.method_cost_items.push(...M2_COSTS);
+    tables.cee_scales.push(
+      ...[["H1", 9500], ["H2", 7917], ["H3", 5541]].map(([z, a]) => ({
+        id: `m2${z}`, method_id: "methode_2", scale_year: 2026, climate_zone: z, amount: a, valid_from: "2026-01-01", valid_to: "2026-12-31", validated: false,
+      }))
+    );
+    tables.lead_materials = [];
+    fetchMock.mockResolvedValue({ ok: true, json: async () => [{ nom: "La Saulce", code: "05162", codeDepartement: "05" }] });
+  });
+  const f9 = () => tables.lead_financials.find((r) => r.lead_id === "L9")!;
+
+  it("crée la fiche rentabilité dès qu'une PAC Atlantic est ajoutée, mais attend la confirmation des conditions", async () => {
+    tables.lead_materials.push(pac(146));
+    await recalculateLeadFinancials(db, "L9", { trigger: "matériel", userId: "U" });
+    expect(f9()).toMatchObject({
+      method_source: "auto", method_id: null, suggested_method_id: "methode_2", etas_value: 146, calc_status: "en_attente",
+    });
+    expect(f9().pending_reasons).toEqual([`Condition à confirmer : ${COND}`]);
+  });
+
+  it("applique la méthode 2 une fois la condition cochée, avec TVA (zone H1)", async () => {
+    tables.lead_materials.push(pac(146));
+    await recalculateLeadFinancials(db, "L9", { trigger: "matériel", userId: "U" });
+    f9().eligibility_checks = { methode_2: { [COND]: true } };
+    await recalculateLeadFinancials(db, "L9", { trigger: "condition", userId: "U" });
+    expect(f9()).toMatchObject({
+      method_id: "methode_2", calc_status: "calcule", climate_zone: "H1", scale_year: 2026,
+      raw_total_cost: 4870, total_cost_ht: 4636.66, total_cost_ttc: 5564, total_cost: 4636.66,
+      cee_forecast: 9500, cee_ttc: 10450, revenue: 9500, gross_margin: 4863.34, cash_in_ttc: 10450, cash_out_ttc: 5564,
+    });
+  });
+
+  it("demande l'ETAS s'il n'est pas validé au catalogue, sans rien inventer", async () => {
+    tables.lead_materials.push(pac(146, false));
+    await recalculateLeadFinancials(db, "L9", { trigger: "matériel", userId: "U" });
+    expect(f9()).toMatchObject({ method_id: null, calc_status: "en_attente", gross_margin: null });
+    expect(f9().selection_message).toMatch(/ETAS .* non renseigné ou non validé/);
+  });
+
+  it("respecte un choix manuel de méthode", async () => {
+    tables.lead_materials.push(pac(130));
+    tables.lead_financials.push({ lead_id: "L9", method_id: "methode_2", method_source: "manuel", cost_overrides: {}, other_costs: 0,
+      reste_a_charge: 0, other_revenue: 0, eligibility_checks: {} });
+    await recalculateLeadFinancials(db, "L9", { trigger: "x", userId: "U" });
+    expect(f9()).toMatchObject({ method_id: "methode_2", suggested_method_id: "pac_atlantic_cee" });
+    expect(f9().selection_message).toMatch(/choisie à la main/);
+  });
+
+  it("change de coûts standards quand la méthode change (pas de mélange)", async () => {
+    tables.lead_materials.push(pac(130)); // ETAS ≤ 140 → méthode 1
+    await recalculateLeadFinancials(db, "L9", { trigger: "matériel", userId: "U" });
+    expect(f9()).toMatchObject({ method_id: "pac_atlantic_cee", total_cost: 3670 });
+    (tables.lead_materials[0].products as Record<string, unknown>).etas = 150; // remplacement par une PAC ETAS > 140
+    f9().eligibility_checks = { methode_2: { [COND]: true } };
+    await recalculateLeadFinancials(db, "L9", { trigger: "matériel", userId: "U" });
+    expect(f9()).toMatchObject({ method_id: "methode_2", standard_costs_method_id: "methode_2", total_cost: 4636.66 });
   });
 });

@@ -59,6 +59,24 @@ describe("tableau de bord financier", () => {
     expect(s.byMonth.map((b) => b.key)).toEqual(["2025-11", "2026-02", "2026-03", "Sans date"]);
   });
 
+  it("compare les méthodes et les zones par méthode", () => {
+    const m = aggregateDashboard(
+      [
+        row({ method_id: "pac_atlantic_cee", method_name: "M1" }),
+        row({ method_id: "methode_2", method_name: "M2", cee_forecast: 9500, revenue: 9500, gross_margin: 4863.34, cee_received: 9500, real_cost: 4700, real_cost_validated: true }),
+        row({ method_id: "methode_2", method_name: "M2", climate_zone: "H3", cee_forecast: 5541, revenue: 5541, gross_margin: 904.34 }),
+      ],
+      DEFAULT_ALERT_THRESHOLDS
+    );
+    expect(m.byMethod.map((b) => [b.key, b.count, b.margin, b.ceeForecast, b.ceeReceived, b.realCost])).toEqual([
+      ["M1", 1, 4238, 7908, 0, 0],
+      ["M2", 2, 5767.68, 15041, 9500, 4700],
+    ]);
+    expect(m.byMethod[1].avgMargin).toBe(2883.84);
+    expect(m.byMethod[1].realizedMargin).toBe(4800);
+    expect(m.byMethodZone.map((b) => b.key)).toEqual(["M1 · H1", "M2 · H1", "M2 · H3"]);
+  });
+
   it("remonte les alertes et les CEE non confirmés", () => {
     expect(s.alerts).toEqual([expect.objectContaining({ level: "rouge", margin: 943 })]);
     expect(s.ceeNotConfirmed).toHaveLength(2);

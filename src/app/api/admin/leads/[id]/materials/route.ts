@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClientFromRequest } from "@/lib/supabase/route-handler";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getUserFromClient } from "@/lib/supabase/session";
+import { recalculateLeadFinancials } from "@/lib/finance/server";
 
 export async function GET(
   _request: NextRequest,
@@ -149,6 +150,15 @@ export async function PUT(
         .from("products")
         .update({ quantity: newQuantity, updated_at: new Date().toISOString() })
         .eq("id", productId);
+    }
+  }
+
+  // Rentabilité : la PAC Atlantic de la fiche (ETAS) détermine la méthode économique.
+  if (Object.keys(oldByProduct).sort().join() !== Object.keys(newByProduct).sort().join()) {
+    try {
+      await recalculateLeadFinancials(adminClient, leadId, { trigger: "matériel du chantier", userId: user.id });
+    } catch (e) {
+      console.error("[finance] recalcul après matériel", leadId, e);
     }
   }
 

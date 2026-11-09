@@ -52,7 +52,7 @@ const base = {
 describe("coûts standards PAC Atlantic", () => {
   it("totalisent 3 670 €", () => {
     const costs = sumCosts(buildCostLines(PAC_ATLANTIC_COSTS));
-    expect(costs).toEqual({
+    expect(costs).toMatchObject({
       materiel: 2000,
       fournitures: 700,
       main_oeuvre: 700,
@@ -78,7 +78,7 @@ describe("coûts standards PAC Atlantic", () => {
   });
 });
 
-describe("marges de référence (tests de validation du moteur)", () => {
+describe("marges de référence méthode 1 — chantiers historiques, montants sans traitement de TVA", () => {
   const cases: [number, ClimateZone, number, number][] = [
     [2025, "H1", 8400, 4730],
     [2025, "H2", 8400, 4730],
@@ -196,12 +196,12 @@ describe("« Calcul en attente » plutôt qu'une valeur inventée", () => {
 });
 
 describe("alertes de rentabilité", () => {
-  it("rouge < 1 000 €, orange 1 000–2 000 €, vert > 2 000 €", () => {
+  it("rouge < 1 000 €, orange de 1 000 € à moins de 2 000 €, vert à partir de 2 000 €", () => {
     expect(marginAlertLevel(943)).toBe("rouge");
     expect(marginAlertLevel(999.99)).toBe("rouge");
     expect(marginAlertLevel(1000)).toBe("orange");
-    expect(marginAlertLevel(2000)).toBe("orange");
-    expect(marginAlertLevel(2000.01)).toBe("vert");
+    expect(marginAlertLevel(1999.99)).toBe("orange");
+    expect(marginAlertLevel(2000)).toBe("vert"); // « à partir de 2 000 € : vert »
     expect(marginAlertLevel(4730)).toBe("vert");
   });
 

@@ -3,11 +3,22 @@
 import { useCallback, useEffect, useState } from "react";
 import { CheckCircle2, Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
-import { COST_CATEGORIES, COST_CATEGORY_LABELS, type CostCategory } from "@/lib/finance/engine";
+import { COST_CATEGORIES, COST_CATEGORY_LABELS, buildCostLines, sumCosts, type CostCategory } from "@/lib/finance/engine";
 import { formatEuro } from "@/lib/finance/format";
 
-interface Method { id: string; name: string; description: string | null; is_configured: boolean; active: boolean }
-interface Cost { id: string; method_id: string; code: string; label: string; category: CostCategory; amount: number; active: boolean }
+interface Method {
+  id: string; name: string; description: string | null; is_configured: boolean; active: boolean;
+  auto_select: boolean; etas_min_exclusive: number | null; etas_max_inclusive: number | null;
+  eligibility_conditions: string[]; cee_amount_basis: "HT" | "TTC"; cee_vat_share: number; cee_vat_rate: number;
+}
+interface Cost {
+  id: string; method_id: string; code: string; label: string; category: CostCategory; amount: number; active: boolean;
+  amount_basis: "HT" | "TTC"; vat_rate: number | null; vat_recovery_rate: number;
+}
+interface Product {
+  id: string; name: string; price: number; is_pac_atlantic: boolean; etas: number | null; etas_validated: boolean;
+  product_types: { name: string } | null;
+}
 interface Scale {
   id: string; method_id: string; scale_year: number; climate_zone: string; amount: number;
   valid_from: string; valid_to: string | null; conditions: string | null; validated: boolean; validated_at: string | null;
@@ -16,7 +27,10 @@ interface History {
   id: string; entity_label: string | null; field: string; old_value: unknown; new_value: unknown; changed_at: string;
   profile: { full_name: string | null; email: string | null } | null;
 }
-interface Payload { methods: Method[]; costs: Cost[]; scales: Scale[]; thresholds: { red_below: number; orange_below: number }; history: History[] }
+interface Payload {
+  methods: Method[]; costs: Cost[]; scales: Scale[]; thresholds: { red_below: number; orange_below: number };
+  history: History[]; products: Product[];
+}
 
 const CARD = "rounded-[12px] border border-[#e1e8f2] bg-white shadow-[0_1px_2px_rgba(13,38,76,.06)] p-4 sm:p-5";
 const TITLE = "text-xs font-semibold text-[#64748b] uppercase tracking-wide mb-3";
@@ -27,6 +41,10 @@ const FIELD_LABELS: Record<string, string> = {
   amount: "montant", label: "libellé", active: "actif", valid_from: "début de validité", valid_to: "fin de validité",
   conditions: "conditions", validated: "validé", validated_at: "date de validation", validated_by: "validé par",
   name: "nom", description: "description", is_configured: "configurée", value: "valeur", "création": "création",
+  amount_basis: "base HT/TTC", vat_rate: "taux de TVA", vat_recovery_rate: "TVA récupérable (%)",
+  auto_select: "sélection automatique", etas_min_exclusive: "ETAS minimum (exclu)", etas_max_inclusive: "ETAS maximum (inclus)",
+  eligibility_conditions: "conditions d'éligibilité", cee_amount_basis: "base de la prime CEE", cee_vat_share: "part de la prime soumise à TVA",
+  cee_vat_rate: "taux de TVA de la prime", is_pac_atlantic: "PAC Atlantic", etas: "ETAS", etas_validated: "ETAS validé",
 };
 
 function Field({ value, onCommit, type = "text", ariaLabel, className }: {
@@ -44,9 +62,27 @@ function Field({ value, onCommit, type = "text", ariaLabel, className }: {
   );
 }
 
+function ConditionsField({ value, onCommit }: { value: string[]; onCommit: (list: string[]) => void }) {
+  const [draft, setDraft] = useState(value.join("\n"));
+  useEffect(() => setDraft(value.join("\n")), [value]);
+  return (
+    <textarea
+      aria-label="Conditions d'éligibilité" rows={3}
+      className="w-full px-3 py-2 border border-[#e1e8f2] rounded-[9px] bg-white text-[#0b1f3a] text-sm focus:outline-none focus:ring-2 focus:ring-[#2563eb]/40"
+      value={draft}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={() => {
+        const list = draft.split("\n").map((l) => l.trim()).filter(Boolean);
+        if (list.join("\n") !== value.join("\n")) onCommit(list);
+      }}
+    />
+  );
+}
+
 function fmt(v: unknown): string {
   if (v === null || v === undefined) return "—";
   if (typeof v === "boolean") return v ? "oui" : "non";
+  if (Array.isArray(v)) return v.join(" ; ") || "—";
   if (typeof v === "object") return Object.entries(v as Record<string, unknown>).map(([k, x]) => `${k}: ${x}`).join(", ");
   return String(v);
 }
@@ -55,7 +91,9 @@ export function FinancialSettingsClient() {
   const [data, setData] = useState<Payload | null>(null);
   const [methodId, setMethodId] = useState("pac_atlantic_cee");
   const [busy, setBusy] = useState(false);
-  const [newCost, setNewCost] = useState({ label: "", category: "autres" as CostCategory, amount: "" });
+  const [newCost, setNewCost] = useState({ label: "", category: "autres" as CostCategory, amount: "", amount_basis: "HT", vat_rate: "20" });
+  const [pacOnly, setPacOnly] = useState(true);
+  const [productQuery, setProductQuery] = useState("");
   const [newScale, setNewScale] = useState({ scale_year: "", climate_zone: "H1", amount: "", valid_from: "", valid_to: "" });
   const [thr, setThr] = useState({ red_below: "", orange_below: "" });
 
@@ -86,7 +124,17 @@ export function FinancialSettingsClient() {
   const method = data.methods.find((m) => m.id === methodId);
   const costs = data.costs.filter((c) => c.method_id === methodId);
   const scales = data.scales.filter((s) => s.method_id === methodId);
-  const total = costs.filter((c) => c.active).reduce((s, c) => s + Math.round(Number(c.amount) * 100), 0) / 100;
+  const activeLines = buildCostLines(
+    costs.filter((c) => c.active).map((c) => ({
+      ...c, amount: Number(c.amount), vat_rate: c.vat_rate === null ? null : Number(c.vat_rate), vat_recovery_rate: Number(c.vat_recovery_rate),
+    }))
+  );
+  const totals = sumCosts(activeLines);
+  const lineOf = (code: string) => activeLines.find((l) => l.code === code);
+  const products = data.products.filter(
+    (p) => (!pacOnly || p.is_pac_atlantic || /atlantic/i.test(p.name)) &&
+      (!productQuery || p.name.toLowerCase().includes(productQuery.toLowerCase()))
+  );
 
   return (
     <div className="space-y-4">
@@ -131,6 +179,62 @@ export function FinancialSettingsClient() {
             </div>
           </div>
         )}
+        {method && (
+          <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="rounded-[9px] border border-[#e1e8f2] p-3">
+              <p className="text-xs font-semibold text-[#0b1f3a] mb-2">TVA de la prime CEE</p>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="block text-[11px] text-[#64748b] mb-1">Montant du barème en</label>
+                  <select className={INPUT} value={method.cee_amount_basis} disabled={busy}
+                    onChange={(e) => act({ action: "update_method", id: method.id, cee_amount_basis: e.target.value })}>
+                    <option value="HT">HT</option><option value="TTC">TTC</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] text-[#64748b] mb-1">Part soumise à TVA (%)</label>
+                  <Field ariaLabel="Part soumise à TVA" type="number" value={Number(method.cee_vat_share)}
+                    onCommit={(v) => act({ action: "update_method", id: method.id, cee_vat_share: v })} />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-[#64748b] mb-1">Taux de TVA (%)</label>
+                  <Field ariaLabel="Taux de TVA de la prime" type="number" value={Number(method.cee_vat_rate)}
+                    onCommit={(v) => act({ action: "update_method", id: method.id, cee_vat_rate: v })} />
+                </div>
+              </div>
+              <p className="mt-2 text-[11px] text-[#64748b]">
+                Le chiffre d&apos;affaires retient la prime HT ; l&apos;encaissement TTC (trésorerie) ajoute la TVA de la part taxable.
+              </p>
+            </div>
+            <div className="rounded-[9px] border border-[#e1e8f2] p-3">
+              <p className="text-xs font-semibold text-[#0b1f3a] mb-2">Sélection automatique selon la PAC du chantier</p>
+              <label className="flex items-center gap-2 text-sm text-[#0b1f3a] mb-2">
+                <input type="checkbox" checked={method.auto_select} disabled={busy}
+                  onChange={(e) => act({ action: "update_method", id: method.id, auto_select: e.target.checked })} />
+                Sélectionner cette méthode automatiquement
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] text-[#64748b] mb-1">ETAS strictement supérieur à (%)</label>
+                  <Field ariaLabel="ETAS minimum" type="number" value={method.etas_min_exclusive}
+                    onCommit={(v) => act({ action: "update_method", id: method.id, etas_min_exclusive: v || null })} />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-[#64748b] mb-1">ETAS inférieur ou égal à (%)</label>
+                  <Field ariaLabel="ETAS maximum" type="number" value={method.etas_max_inclusive}
+                    onCommit={(v) => act({ action: "update_method", id: method.id, etas_max_inclusive: v || null })} />
+                </div>
+              </div>
+              <label className="block text-[11px] text-[#64748b] mt-2 mb-1">
+                Conditions d&apos;éligibilité à cocher sur la fiche (une par ligne)
+              </label>
+              <ConditionsField
+                value={method.eligibility_conditions}
+                onCommit={(list) => act({ action: "update_method", id: method.id, eligibility_conditions: list })}
+              />
+            </div>
+          </div>
+        )}
         {method && !method.is_configured && (
           <p className="mt-3 text-xs text-amber-700">
             Méthode à définir : renseignez ses coûts et barèmes ci-dessous puis cochez « Prête pour le calcul ». Aucun montant n&apos;est inventé.
@@ -142,13 +246,19 @@ export function FinancialSettingsClient() {
       <div className={CARD}>
         <h2 className={TITLE}>Coûts standards par chantier</h2>
         <div className="overflow-x-auto -mx-4 sm:mx-0">
-          <table className="w-full min-w-[560px] text-sm">
+          <table className="w-full min-w-[980px] text-sm">
             <thead>
               <tr className="text-left text-xs text-[#64748b]">
                 <th className="px-4 sm:px-2 py-2 font-medium">Poste</th>
                 <th className="px-2 py-2 font-medium">Catégorie</th>
-                <th className="px-2 py-2 font-medium w-36">Montant TTC</th>
-                <th className="px-2 py-2 font-medium w-16">Actif</th>
+                <th className="px-2 py-2 font-medium w-28">Montant</th>
+                <th className="px-2 py-2 font-medium w-20">Base</th>
+                <th className="px-2 py-2 font-medium w-20">TVA %</th>
+                <th className="px-2 py-2 font-medium w-20">Récup. %</th>
+                <th className="px-2 py-2 font-medium text-right">HT</th>
+                <th className="px-2 py-2 font-medium text-right">TTC</th>
+                <th className="px-2 py-2 font-medium text-right">Revient</th>
+                <th className="px-2 py-2 font-medium w-12">Actif</th>
               </tr>
             </thead>
             <tbody>
@@ -162,6 +272,23 @@ export function FinancialSettingsClient() {
                     <Field ariaLabel={`Montant ${c.label}`} type="number" value={Number(c.amount)}
                       onCommit={(v) => act({ action: "update_cost", id: c.id, amount: v }, "Montant mis à jour pour les nouveaux chantiers")} />
                   </td>
+                  <td className="px-2 py-1.5">
+                    <select className={INPUT} value={c.amount_basis} disabled={busy} aria-label="Base"
+                      onChange={(e) => act({ action: "update_cost", id: c.id, amount_basis: e.target.value })}>
+                      <option value="HT">HT</option><option value="TTC">TTC</option>
+                    </select>
+                  </td>
+                  <td className="px-2 py-1.5">
+                    <Field ariaLabel="Taux de TVA" type="number" value={c.vat_rate === null ? null : Number(c.vat_rate)}
+                      onCommit={(v) => act({ action: "update_cost", id: c.id, vat_rate: v === "" ? null : v })} />
+                  </td>
+                  <td className="px-2 py-1.5">
+                    <Field ariaLabel="TVA récupérable" type="number" value={Number(c.vat_recovery_rate)}
+                      onCommit={(v) => act({ action: "update_cost", id: c.id, vat_recovery_rate: v })} />
+                  </td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{c.active ? formatEuro(lineOf(c.code)?.ht) : "—"}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{c.active ? formatEuro(lineOf(c.code)?.ttc) : "—"}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{c.active ? formatEuro(lineOf(c.code)?.cost_price) : "—"}</td>
                   <td className="px-2 py-1.5 text-center">
                     <input type="checkbox" aria-label="Actif" checked={c.active} disabled={busy}
                       onChange={(e) => act({ action: "update_cost", id: c.id, active: e.target.checked })} />
@@ -170,17 +297,22 @@ export function FinancialSettingsClient() {
               ))}
               <tr className="border-t border-[#e1e8f2] font-semibold text-[#0b1f3a]">
                 <td className="px-4 sm:px-2 py-2" colSpan={2}>Total</td>
-                <td className="px-2 py-2 tabular-nums">{formatEuro(total)}</td>
+                <td className="px-2 py-2 tabular-nums font-normal text-[#64748b]" colSpan={4} title="Somme des montants saisis (bases HT et TTC mélangées)">
+                  {formatEuro(totals.raw_total)} <span className="text-[11px]">(contrôle arithmétique)</span>
+                </td>
+                <td className="px-2 py-2 text-right tabular-nums">{formatEuro(totals.total_ht)}</td>
+                <td className="px-2 py-2 text-right tabular-nums">{formatEuro(totals.total_ttc)}</td>
+                <td className="px-2 py-2 text-right tabular-nums">{formatEuro(totals.total)}</td>
                 <td />
               </tr>
             </tbody>
           </table>
         </div>
         <form
-          className="mt-3 grid grid-cols-1 sm:grid-cols-[2fr_1fr_1fr_auto] gap-2"
+          className="mt-3 grid grid-cols-2 sm:grid-cols-[2fr_1fr_1fr_80px_80px_auto] gap-2"
           onSubmit={async (e) => {
             e.preventDefault();
-            if (await act({ action: "add_cost", method_id: methodId, ...newCost }, "Poste ajouté")) setNewCost({ label: "", category: "autres", amount: "" });
+            if (await act({ action: "add_cost", method_id: methodId, ...newCost }, "Poste ajouté")) setNewCost({ label: "", category: "autres", amount: "", amount_basis: "HT", vat_rate: "20" });
           }}
         >
           <input className={INPUT} placeholder="Nouveau poste de coût" value={newCost.label} onChange={(e) => setNewCost({ ...newCost, label: e.target.value })} required />
@@ -188,6 +320,10 @@ export function FinancialSettingsClient() {
             {COST_CATEGORIES.map((c) => <option key={c} value={c}>{COST_CATEGORY_LABELS[c]}</option>)}
           </select>
           <input className={INPUT} type="number" step="0.01" min="0" placeholder="Montant" value={newCost.amount} onChange={(e) => setNewCost({ ...newCost, amount: e.target.value })} required />
+          <select className={INPUT} aria-label="Base" value={newCost.amount_basis} onChange={(e) => setNewCost({ ...newCost, amount_basis: e.target.value })}>
+            <option value="HT">HT</option><option value="TTC">TTC</option>
+          </select>
+          <input className={INPUT} type="number" step="0.01" min="0" max="100" aria-label="TVA %" placeholder="TVA %" value={newCost.vat_rate} onChange={(e) => setNewCost({ ...newCost, vat_rate: e.target.value })} />
           <button className={BTN} disabled={busy}><Plus className="w-4 h-4" />Ajouter</button>
         </form>
       </div>
@@ -283,11 +419,64 @@ export function FinancialSettingsClient() {
             <input className={INPUT} type="number" step="0.01" min="0" value={thr.red_below} onChange={(e) => setThr({ ...thr, red_below: e.target.value })} />
           </div>
           <div>
-            <label className="block text-xs text-amber-700 mb-1">Vigilance orange jusqu&apos;à (€) — au-delà : vert</label>
+            <label className="block text-xs text-amber-700 mb-1">Vigilance orange en dessous de (€) — à partir de ce montant : vert</label>
             <input className={INPUT} type="number" step="0.01" min="0" value={thr.orange_below} onChange={(e) => setThr({ ...thr, orange_below: e.target.value })} />
           </div>
           <button className={BTN} disabled={busy}>Enregistrer</button>
         </form>
+      </div>
+
+      {/* Catalogue : ETAS des PAC Atlantic */}
+      <div className={CARD}>
+        <h2 className={TITLE}>Catalogue PAC Atlantic — ETAS</h2>
+        <p className="text-xs text-[#64748b] mb-3">
+          Cochez les produits qui sont des PAC Atlantic et renseignez leur ETAS d&apos;après la fiche technique, puis validez-le.
+          La méthode est choisie automatiquement sur la fiche chantier d&apos;après la PAC ajoutée dans « Matériaux ».
+          Un ETAS non validé n&apos;est jamais utilisé.
+        </p>
+        <div className="flex flex-wrap gap-3 items-center mb-2">
+          <input className={`${INPUT} max-w-xs`} placeholder="Rechercher un produit" value={productQuery} onChange={(e) => setProductQuery(e.target.value)} />
+          <label className="flex items-center gap-2 text-sm text-[#0b1f3a]">
+            <input type="checkbox" checked={pacOnly} onChange={(e) => setPacOnly(e.target.checked)} />
+            Seulement les PAC Atlantic (ou nom contenant « Atlantic »)
+          </label>
+        </div>
+        <div className="overflow-x-auto -mx-4 sm:mx-0">
+          <table className="w-full min-w-[640px] text-sm">
+            <thead>
+              <tr className="text-left text-xs text-[#64748b]">
+                <th className="px-4 sm:px-2 py-2 font-medium">Produit</th>
+                <th className="px-2 py-2 font-medium">Type</th>
+                <th className="px-2 py-2 font-medium">PAC Atlantic</th>
+                <th className="px-2 py-2 font-medium w-32">ETAS (%)</th>
+                <th className="px-2 py-2 font-medium">ETAS validé</th>
+              </tr>
+            </thead>
+            <tbody>
+              {products.map((p) => (
+                <tr key={p.id} className="border-t border-[#f1f5f9]">
+                  <td className="px-4 sm:px-2 py-1.5 text-[#0b1f3a]">{p.name}</td>
+                  <td className="px-2 py-1.5 text-[#64748b]">{p.product_types?.name ?? "—"}</td>
+                  <td className="px-2 py-1.5">
+                    <input type="checkbox" aria-label="PAC Atlantic" checked={p.is_pac_atlantic} disabled={busy}
+                      onChange={(e) => act({ action: "update_product", id: p.id, is_pac_atlantic: e.target.checked })} />
+                  </td>
+                  <td className="px-2 py-1.5">
+                    <Field ariaLabel="ETAS" type="number" value={p.etas === null ? null : Number(p.etas)}
+                      onCommit={(v) => act({ action: "update_product", id: p.id, etas: v === "" ? null : v })} />
+                  </td>
+                  <td className="px-2 py-1.5">
+                    <input type="checkbox" aria-label="ETAS validé" checked={p.etas_validated} disabled={busy || p.etas === null}
+                      onChange={(e) => act({ action: "update_product", id: p.id, etas_validated: e.target.checked }, e.target.checked ? "ETAS validé" : "Validation retirée")} />
+                  </td>
+                </tr>
+              ))}
+              {products.length === 0 && (
+                <tr><td colSpan={5} className="px-2 py-3 text-[#64748b]">Aucun produit. Décochez le filtre pour voir tout le catalogue.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Historique */}

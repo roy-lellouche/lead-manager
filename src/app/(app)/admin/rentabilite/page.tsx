@@ -97,8 +97,10 @@ export default async function RentabilitePage({ searchParams }: { searchParams: 
   ]);
 
   type Joined = Record<string, unknown> & { lead: { first_name: string; last_name: string; status: string; devis_signed_at: string | null } };
+  const methodNames = new Map((methods || []).map((m, i) => [m.id as string, `M${i + 1} — ${m.name}`]));
   const rows: DashboardRow[] = ((data || []) as Joined[]).map((r) => ({
     ...(r as unknown as DashboardRow),
+    method_name: methodNames.get(String(r.method_id)) ?? String(r.method_id),
     lead_name: `${r.lead.first_name ?? ""} ${r.lead.last_name ?? ""}`.trim() || "—",
     lead_status: r.lead.status,
     devis_signed_at: r.lead.devis_signed_at,
@@ -110,7 +112,7 @@ export default async function RentabilitePage({ searchParams }: { searchParams: 
     <div className="space-y-5">
       <PageHeader
         title="Rentabilité des chantiers"
-        subtitle="Prévisionnel calculé automatiquement ; réel = montants encaissés et coûts réels validés. Montants TTC."
+        subtitle="Prévisionnel calculé automatiquement (base HT, TVA récupérable déduite) ; réel = montants encaissés et coûts réels validés."
         actions={<Link href="/admin/parametres-financiers" className="text-sm text-[#2563eb] underline">Paramètres financiers</Link>}
       />
 
@@ -158,7 +160,7 @@ export default async function RentabilitePage({ searchParams }: { searchParams: 
         <Kpi label="CEE prévisionnel" value={formatEuro(s.ceeForecast)} />
         <Kpi label="CEE réellement encaissé" value={formatEuro(s.ceeReceived)} />
         <Kpi label="Marge moyenne / chantier" value={formatEuro(s.avgMargin)} sub="prévisionnelle" />
-        <Kpi label="Coût total prévisionnel" value={formatEuro(s.forecastCost)} />
+        <Kpi label="Coût de revient prévisionnel" value={formatEuro(s.forecastCost)} sub="coûts standards, après TVA récupérable" />
         <Kpi label="Coût réel des chantiers" value={formatEuro(s.realCost)} sub="coûts réels validés" />
         <Kpi label="Marge brute prévisionnelle" value={formatEuro(s.forecastMargin)} />
         <Kpi label="Marge brute réalisée" value={formatEuro(s.realizedMargin)} sub={`${s.realizedCount} chantier(s) soldé(s)`} />
@@ -168,6 +170,48 @@ export default async function RentabilitePage({ searchParams }: { searchParams: 
         <h2 className={TITLE}>Évolution mensuelle de la rentabilité (mois de signature du devis)</h2>
         <MonthlyChart data={s.byMonth.filter((b) => b.key !== "Sans date")} />
       </div>
+
+      <div className={CARD}>
+        <h2 className={TITLE}>Comparaison des méthodes</h2>
+        <div className="overflow-x-auto -mx-4 sm:mx-0">
+          <table className="w-full min-w-[860px] text-sm">
+            <thead>
+              <tr className="text-left text-xs text-[#64748b]">
+                <th className="px-4 sm:px-2 py-2 font-medium">Méthode</th>
+                <th className="px-2 py-2 font-medium text-right">Chantiers</th>
+                <th className="px-2 py-2 font-medium text-right">CEE prévu</th>
+                <th className="px-2 py-2 font-medium text-right">CEE encaissé</th>
+                <th className="px-2 py-2 font-medium text-right">Coût standard prév.</th>
+                <th className="px-2 py-2 font-medium text-right">Coût réel validé</th>
+                <th className="px-2 py-2 font-medium text-right">Marge prév.</th>
+                <th className="px-2 py-2 font-medium text-right">Marge réalisée</th>
+                <th className="px-2 py-2 font-medium text-right">Marge moy./installation</th>
+              </tr>
+            </thead>
+            <tbody>
+              {s.byMethod.map((b) => (
+                <tr key={b.key} className="border-t border-[#f1f5f9]">
+                  <td className="px-4 sm:px-2 py-1.5 font-medium text-[#0b1f3a]">{b.key}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{b.count}{b.computed !== b.count && <span className="text-[#94a3b8]"> ({b.computed} calc.)</span>}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{formatEuro(b.ceeForecast)}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{formatEuro(b.ceeReceived)}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{formatEuro(b.cost)}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{formatEuro(b.realCost)}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{formatEuro(b.margin)}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{b.realizedCount ? formatEuro(b.realizedMargin) : "—"}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums font-medium">{formatEuro(b.avgMargin)}</td>
+                </tr>
+              ))}
+              {s.byMethod.length === 0 && <tr><td colSpan={9} className="px-2 py-3 text-[#64748b]">Aucune donnée.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-2 text-[11px] text-[#94a3b8]">
+          Les chantiers calculés avant l&apos;introduction de la TVA conservent leurs montants d&apos;origine (sans retraitement).
+        </p>
+      </div>
+
+      <BucketTable title="Marges par méthode et zone climatique" buckets={s.byMethodZone} />
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <BucketTable title="Rentabilité par zone climatique" buckets={s.byZone} />

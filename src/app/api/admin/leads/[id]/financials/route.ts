@@ -12,7 +12,10 @@ async function buildPayload(admin: SupabaseClient, leadId: string) {
   const [{ data: lead }, { data: fin }, { data: methods }, thresholds, { data: history }] = await Promise.all([
     admin.from("leads").select("id, postal_code, city, devis_signed_at, installation_type").eq("id", leadId).maybeSingle(),
     admin.from("lead_financials").select("*").eq("lead_id", leadId).maybeSingle(),
-    admin.from("economic_methods").select("id, name, description, is_configured, active").order("display_order"),
+    admin
+      .from("economic_methods")
+      .select("id, name, description, is_configured, active, auto_select, eligibility_conditions, cee_amount_basis, cee_vat_share, cee_vat_rate")
+      .order("display_order"),
     loadAlertThresholds(admin),
     admin
       .from("lead_financial_calculations")
@@ -55,16 +58,42 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   const now = new Date().toISOString();
 
   try {
+    // Retour à la sélection automatique (d'après l'ETAS de la PAC Atlantic)
+    if (body.method_auto === true) {
+      changes.method_source = "auto";
+      changed.push("méthode : sélection automatique");
+    }
+
+    // Conditions d'éligibilité cochées sur la fiche
+    if (body.eligibility_check && typeof body.eligibility_check === "object") {
+      const ec = body.eligibility_check as { method_id?: unknown; condition?: unknown; value?: unknown };
+      const mid = String(ec.method_id || "");
+      const cond = String(ec.condition || "");
+      const { data: m } = await admin.from("economic_methods").select("eligibility_conditions").eq("id", mid).maybeSingle();
+      const list = (m?.eligibility_conditions || []) as string[];
+      if (!list.includes(cond)) throw new Error("Condition inconnue pour cette méthode");
+      const checks = { ...((fin?.eligibility_checks || {}) as Record<string, Record<string, boolean>>) };
+      checks[mid] = { ...(checks[mid] || {}), [cond]: ec.value === true };
+      changes.eligibility_checks = checks;
+      changed.push(`${ec.value === true ? "condition confirmée" : "condition retirée"} : ${cond}`);
+    }
+
+    if (body.recalculate === true) {
+      if (auth.role !== "admin") return NextResponse.json({ error: "Réservé aux administrateurs" }, { status: 403 });
+      changed.push("recalcul manuel (administrateur)");
+    }
+
     // Méthode économique (choix manuel)
-    if ("method_id" in body) {
+    if ("method_id" in body && body.method_auto !== true) {
       const methodId = body.method_id ? String(body.method_id) : null;
       if (methodId) {
         const { data: m } = await admin.from("economic_methods").select("id, active").eq("id", methodId).maybeSingle();
         if (!m || !m.active) throw new Error("Méthode économique inconnue ou inactive");
       }
-      if ((fin?.method_id ?? null) !== methodId) {
+      if ((fin?.method_id ?? null) !== methodId || fin?.method_source !== "manuel") {
         changes.method_id = methodId;
-        changed.push("méthode");
+        changes.method_source = "manuel";
+        changed.push("méthode (choix manuel)");
         // Changement de méthode : les coûts standards de la nouvelle méthode s'appliquent.
         if (fin?.method_id && methodId) {
           resetStandardCosts = true;
@@ -169,8 +198,13 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   }
 
   if (!fin) {
-    // Pas encore de fiche rentabilité : on n'en crée une que lorsqu'une méthode est choisie.
-    if (!changes.method_id) return NextResponse.json(await buildPayload(admin, id));
+    // Pas encore de fiche rentabilité : on n'en crée une que lorsqu'une méthode est choisie
+    // (ou que la sélection automatique est demandée).
+    if (!changes.method_id && changes.method_source !== "auto") {
+      // La date peut avoir changé : la sélection automatique (PAC sur la fiche) en dépend.
+      await recalculateLeadFinancials(admin, id, { trigger: changed.join(", ") || "fiche", userId: auth.userId });
+      return NextResponse.json(await buildPayload(admin, id));
+    }
     const { error } = await admin.from("lead_financials").insert({ lead_id: id, ...changes });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   } else if (Object.keys(changes).length > 0) {

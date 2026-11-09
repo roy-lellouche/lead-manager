@@ -6,6 +6,7 @@ export interface DashboardRow {
   lead_name: string;
   lead_status: string;
   method_id: string | null;
+  method_name?: string;
   calc_status: "calcule" | "en_attente";
   pending_reasons: string[];
   climate_zone: string | null;
@@ -33,6 +34,9 @@ export interface Bucket {
   avgMargin: number | null;
   realizedMargin: number;
   realizedCount: number;
+  ceeForecast: number;
+  ceeReceived: number;
+  realCost: number;
 }
 
 export interface DashboardSummary {
@@ -47,7 +51,10 @@ export interface DashboardSummary {
   realizedMargin: number;
   realizedCount: number;
   avgMargin: number | null;
+  byMethod: Bucket[];
   byZone: Bucket[];
+  /** Méthode × zone : clé « Méthode · H1 ». */
+  byMethodZone: Bucket[];
   byYear: Bucket[];
   byMonth: Bucket[];
   alerts: { lead_id: string; lead_name: string; level: MarginAlert; margin: number }[];
@@ -67,7 +74,7 @@ export function realizedMargin(r: Pick<DashboardRow, "real_cost" | "real_cost_va
 }
 
 function emptyBucket(key: string) {
-  return { key, count: 0, computed: 0, revenue: 0, cost: 0, margin: 0, realized: 0, realizedCount: 0 };
+  return { key, count: 0, computed: 0, revenue: 0, cost: 0, margin: 0, realized: 0, realizedCount: 0, cee: 0, ceeReceived: 0, realCost: 0 };
 }
 
 function finalize(map: Map<string, ReturnType<typeof emptyBucket>>, sort: (a: string, b: string) => number): Bucket[] {
@@ -83,12 +90,17 @@ function finalize(map: Map<string, ReturnType<typeof emptyBucket>>, sort: (a: st
       avgMargin: b.computed ? Math.round(b.margin / b.computed) / 100 : null,
       realizedMargin: fromCents(b.realized),
       realizedCount: b.realizedCount,
+      ceeForecast: fromCents(b.cee),
+      ceeReceived: fromCents(b.ceeReceived),
+      realCost: fromCents(b.realCost),
     }));
 }
 
 export function aggregateDashboard(rows: DashboardRow[], thresholds: AlertThresholds): DashboardSummary {
   let ceeForecast = 0, ceeReceived = 0, forecastCost = 0, realCost = 0, forecastMargin = 0, realized = 0;
   let computed = 0, realizedCount = 0, unvalidatedScale = 0;
+  const byMethod = new Map<string, ReturnType<typeof emptyBucket>>();
+  const byMethodZone = new Map<string, ReturnType<typeof emptyBucket>>();
   const byZone = new Map<string, ReturnType<typeof emptyBucket>>();
   const byYear = new Map<string, ReturnType<typeof emptyBucket>>();
   const byMonth = new Map<string, ReturnType<typeof emptyBucket>>();
@@ -104,7 +116,10 @@ export function aggregateDashboard(rows: DashboardRow[], thresholds: AlertThresh
     if (r.real_cost_validated && n(r.real_cost) !== null) realCost += toCents(n(r.real_cost)!);
     if (rm !== null) { realized += toCents(rm); realizedCount++; }
 
+    const methodKey = r.method_name || r.method_id || "Sans méthode";
     const keys: [Map<string, ReturnType<typeof emptyBucket>>, string][] = [
+      [byMethod, methodKey],
+      [byMethodZone, `${methodKey} · ${r.climate_zone ?? "zone ?"}`],
       [byZone, r.climate_zone ?? "Non déterminée"],
       [byYear, r.scale_year ? String(r.scale_year) : "Sans barème"],
       [byMonth, r.devis_signed_at ? r.devis_signed_at.slice(0, 7) : "Sans date"],
@@ -119,6 +134,9 @@ export function aggregateDashboard(rows: DashboardRow[], thresholds: AlertThresh
         b.margin += toCents(n(r.gross_margin)!);
       }
       if (rm !== null) { b.realized += toCents(rm); b.realizedCount++; }
+      if (n(r.cee_received) !== null) b.ceeReceived += toCents(n(r.cee_received)!);
+      if (r.real_cost_validated && n(r.real_cost) !== null) b.realCost += toCents(n(r.real_cost)!);
+      if (isComputed) b.cee += toCents(n(r.cee_forecast) ?? 0);
       map.set(key, b);
     }
 
@@ -152,7 +170,9 @@ export function aggregateDashboard(rows: DashboardRow[], thresholds: AlertThresh
     realizedMargin: fromCents(realized),
     realizedCount,
     avgMargin: computed ? Math.round(forecastMargin / computed) / 100 : null,
+    byMethod: finalize(byMethod, lastSpecial("Sans méthode")),
     byZone: finalize(byZone, lastSpecial("Non déterminée")),
+    byMethodZone: finalize(byMethodZone, (a, b) => a.localeCompare(b)),
     byYear: finalize(byYear, lastSpecial("Sans barème")),
     byMonth: finalize(byMonth, lastSpecial("Sans date")),
     alerts,

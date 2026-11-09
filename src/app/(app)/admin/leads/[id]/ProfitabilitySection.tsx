@@ -12,7 +12,11 @@ import {
 } from "@/lib/finance/engine";
 import { ALERT_STYLES, formatEuro, formatPercent } from "@/lib/finance/format";
 
-interface Method { id: string; name: string; description: string | null; is_configured: boolean; active: boolean }
+interface Method {
+  id: string; name: string; description: string | null; is_configured: boolean; active: boolean;
+  auto_select: boolean; eligibility_conditions: string[];
+  cee_amount_basis: "HT" | "TTC"; cee_vat_share: number; cee_vat_rate: number;
+}
 interface Candidate { insee_code: string; commune: string; department_code: string; zone: ClimateZone | null }
 interface Financials {
   method_id: string | null;
@@ -50,6 +54,22 @@ interface Financials {
   cee_received: number | null;
   rac_received: number | null;
   calculated_at: string | null;
+  method_source: "manuel" | "auto" | null;
+  suggested_method_id: string | null;
+  selection_message: string | null;
+  eligibility_checks: Record<string, Record<string, boolean>>;
+  etas_product_name: string | null;
+  etas_value: number | null;
+  raw_total_cost: number | null;
+  total_cost_ht: number | null;
+  total_cost_ttc: number | null;
+  total_vat: number | null;
+  recoverable_vat: number | null;
+  cee_ht: number | null;
+  cee_vat: number | null;
+  cee_ttc: number | null;
+  cash_out_ttc: number | null;
+  cash_in_ttc: number | null;
 }
 interface HistoryEntry {
   id: string;
@@ -103,6 +123,11 @@ function DateInput({
       onBlur={() => { if (draft !== (value ?? "")) onCommit(draft); }}
     />
   );
+}
+
+function suggestedNote(m: Method | null): string {
+  if (!m || !m.cee_vat_share) return "";
+  return ` (${m.cee_vat_share} % de la prime soumise à TVA ${m.cee_vat_rate} %, montant du barème en ${m.cee_amount_basis})`;
 }
 
 function Row({ label, value, strong, hint }: { label: string; value: React.ReactNode; strong?: boolean; hint?: string }) {
@@ -171,6 +196,8 @@ export function ProfitabilitySection({ leadId, isAdmin }: { leadId: string; isAd
 
   const f = data.financials;
   const method = data.methods.find((m) => m.id === f?.method_id) || null;
+  const suggested = data.methods.find((m) => m.id === f?.suggested_method_id) || null;
+  const hasVat = (f?.cost_lines || []).some((l) => l.vat_rate !== null && l.vat_rate !== undefined);
   const hasMethod = !!f?.method_id;
   const computed = f?.calc_status === "calcule" && f.gross_margin !== null;
   const alert = computed ? marginAlertLevel(Number(f!.gross_margin), data.thresholds) : null;
@@ -209,9 +236,13 @@ export function ProfitabilitySection({ leadId, isAdmin }: { leadId: string; isAd
         <div>
           <label className={LABEL} htmlFor="fin-method">Méthode économique</label>
           <select
-            id="fin-method" className={INPUT} value={f?.method_id ?? ""} disabled={saving}
-            onChange={(e) => save({ method_id: e.target.value || null })}
+            id="fin-method" className={INPUT} disabled={saving}
+            value={f?.method_source === "auto" ? "__auto__" : f?.method_id ?? ""}
+            onChange={(e) =>
+              e.target.value === "__auto__" ? save({ method_auto: true }) : save({ method_id: e.target.value || null })
+            }
           >
+            <option value="__auto__">Automatique (selon la PAC du chantier)</option>
             <option value="">— Aucune —</option>
             {data.methods.filter((m) => m.active || m.id === f?.method_id).map((m) => (
               <option key={m.id} value={m.id}>
@@ -219,6 +250,14 @@ export function ProfitabilitySection({ leadId, isAdmin }: { leadId: string; isAd
               </option>
             ))}
           </select>
+          {f?.method_source === "auto" && (
+            <p className="text-xs text-[#64748b] mt-1">
+              {f.method_id ? <>Appliquée : <span className="font-medium text-[#0b1f3a]">{method?.name}</span></> : "Aucune méthode applicable pour l'instant"}
+            </p>
+          )}
+          {f?.method_source === "manuel" && f.method_id && (
+            <p className="text-xs text-[#64748b] mt-1">Choix manuel</p>
+          )}
         </div>
         <div>
           <label className={LABEL} htmlFor="fin-devis">Date de signature du devis</label>
@@ -248,10 +287,46 @@ export function ProfitabilitySection({ leadId, isAdmin }: { leadId: string; isAd
         </div>
       </div>
 
-      {!hasMethod && (
+      {/* Sélection automatique : PAC du chantier, ETAS et conditions d'éligibilité */}
+      {f && (f.etas_product_name || f.selection_message) && (
+        <div className="mt-4 rounded-[9px] border border-[#dbe4f0] bg-[#f8fafc] p-3 text-sm">
+          {f.etas_product_name && (
+            <p className="text-[#0b1f3a]">
+              PAC du chantier : <span className="font-medium">{f.etas_product_name}</span>
+              {" · "}ETAS {f.etas_value !== null ? <span className="font-medium">{Number(f.etas_value)} %</span> : <span className="text-amber-700">non confirmé</span>}
+            </p>
+          )}
+          {f.selection_message && <p className="text-xs text-[#64748b] mt-0.5">{f.selection_message}</p>}
+          {f.method_source !== "manuel" && suggested && suggested.eligibility_conditions.length > 0 && (
+            <div className="mt-2 space-y-1">
+              <p className="text-xs font-medium text-[#0b1f3a]">Conditions à confirmer pour « {suggested.name} » :</p>
+              {suggested.eligibility_conditions.map((c) => (
+                <label key={c} className="flex items-start gap-2 text-xs text-[#0b1f3a]">
+                  <input
+                    type="checkbox" className="mt-0.5" disabled={saving}
+                    checked={!!f.eligibility_checks?.[suggested.id]?.[c]}
+                    onChange={(e) => save({ eligibility_check: { method_id: suggested.id, condition: c, value: e.target.checked } })}
+                  />
+                  {c}
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {!hasMethod && f && f.pending_reasons.length > 0 && (
+        <div className="mt-3 rounded-[9px] border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+          <p className="font-medium mb-1">Calcul en attente :</p>
+          <ul className="list-disc pl-5 space-y-0.5">{f.pending_reasons.map((r) => <li key={r}>{r}</li>)}</ul>
+        </div>
+      )}
+
+      {!hasMethod && !f?.etas_product_name && (
         <p className="mt-4 text-sm text-[#64748b] flex items-start gap-2">
           <Info className="w-4 h-4 mt-0.5 shrink-0" />
-          Choisissez une méthode économique : coûts, prime CEE et marge seront calculés automatiquement.
+          Ajoutez la PAC Atlantic dans « Matériaux » (sélection automatique selon son ETAS) ou choisissez une méthode :
+          coûts, prime CEE et marge seront calculés automatiquement.
         </p>
       )}
 
@@ -303,7 +378,7 @@ export function ProfitabilitySection({ leadId, isAdmin }: { leadId: string; isAd
           <div className="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-3">
             {[
               { label: "Prime CEE prév.", value: formatEuro(f.cee_forecast) },
-              { label: "Coût total prév.", value: formatEuro(f.total_cost) },
+              { label: hasVat ? "Coût de revient prév." : "Coût total prév.", value: formatEuro(f.total_cost) },
               { label: "CA prévisionnel", value: computed ? formatEuro(f.revenue) : "En attente" },
               {
                 label: "Marge brute prév.",
@@ -332,28 +407,98 @@ export function ProfitabilitySection({ leadId, isAdmin }: { leadId: string; isAd
               <Row label="Chiffre d'affaires prévisionnel" value={computed ? formatEuro(f.revenue) : "En attente"} strong />
             </div>
             <div>
-              <Row label="Coût matériel" value={formatEuro(f.cost_materiel)} />
-              <Row label="Coût fournitures" value={formatEuro(f.cost_fournitures)} />
-              <Row label="Coût main-d'œuvre" value={formatEuro(f.cost_main_oeuvre)} />
-              <Row label="Coût dossier" value={formatEuro(f.cost_dossier)} />
-              <Row label="Autres coûts" value={formatEuro(f.cost_autres)} />
-              <Row label="Coût total prévisionnel" value={formatEuro(f.total_cost)} strong />
-              <Row label="Marge brute prévisionnelle" value={computed ? formatEuro(f.gross_margin) : "En attente"} strong />
               <Row label="Taux de marge (sur CA)" value={computed ? formatPercent(f.margin_rate) : "—"} />
+              <Row label="Marge brute prévisionnelle" value={computed ? formatEuro(f.gross_margin) : "En attente"} strong />
+              {hasVat && f.cee_ttc !== null && (
+                <>
+                  <Row label="Encaissement TTC prévu" value={formatEuro(f.cash_in_ttc)} hint={`(dont TVA CEE ${formatEuro(f.cee_vat)})`} />
+                  <Row label="Décaissement TTC des coûts" value={formatEuro(f.cash_out_ttc)} />
+                </>
+              )}
             </div>
           </div>
+
+          {/* Coûts par poste : montant d'origine, HT, TTC, coût de revient */}
+          <div className="mt-4 overflow-x-auto -mx-4 sm:mx-0">
+            <table className="w-full min-w-[560px] text-sm">
+              <thead>
+                <tr className="text-left text-[11px] uppercase tracking-wide text-[#64748b]">
+                  <th className="px-4 sm:px-0 py-1.5 font-medium">Poste</th>
+                  <th className="px-2 py-1.5 font-medium text-right">Montant saisi</th>
+                  <th className="px-2 py-1.5 font-medium text-right">HT</th>
+                  <th className="px-2 py-1.5 font-medium text-right">TTC</th>
+                  <th className="px-2 py-1.5 font-medium text-right">Coût de revient</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(f.cost_lines || []).map((l) => (
+                  <tr key={l.code} className="border-t border-[#f1f5f9]">
+                    <td className="px-4 sm:px-0 py-1.5 text-[#0b1f3a]">
+                      {l.label}
+                      <span className="block text-[11px] text-[#94a3b8]">
+                        {COST_CATEGORY_LABELS[l.category]}
+                        {l.vat_rate != null ? ` · TVA ${Number(l.vat_rate)} % · récup. ${Number(l.vat_recovery_rate ?? 100)} %` : " · sans traitement de TVA"}
+                      </span>
+                    </td>
+                    <td className="px-2 py-1.5 text-right tabular-nums">
+                      {formatEuro(l.amount)}{l.vat_rate != null && <span className="text-[11px] text-[#94a3b8]"> {l.amount_basis}</span>}
+                    </td>
+                    <td className="px-2 py-1.5 text-right tabular-nums">{formatEuro(l.ht ?? l.amount)}</td>
+                    <td className="px-2 py-1.5 text-right tabular-nums">{formatEuro(l.ttc ?? l.amount)}</td>
+                    <td className="px-2 py-1.5 text-right tabular-nums">{formatEuro(l.cost_price ?? l.amount)}</td>
+                  </tr>
+                ))}
+                {Number(f.other_costs) > 0 && (
+                  <tr className="border-t border-[#f1f5f9]">
+                    <td className="px-4 sm:px-0 py-1.5 text-[#0b1f3a]">Autres coûts spécifiques</td>
+                    <td className="px-2 py-1.5 text-right tabular-nums">{formatEuro(f.other_costs)}</td>
+                    <td className="px-2 py-1.5 text-right tabular-nums">{formatEuro(f.other_costs)}</td>
+                    <td className="px-2 py-1.5 text-right tabular-nums">{formatEuro(f.other_costs)}</td>
+                    <td className="px-2 py-1.5 text-right tabular-nums">{formatEuro(f.other_costs)}</td>
+                  </tr>
+                )}
+                <tr className="border-t border-[#e1e8f2] font-semibold text-[#0b1f3a]">
+                  <td className="px-4 sm:px-0 py-1.5">Total</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums font-normal text-[#64748b]">{formatEuro(f.raw_total_cost ?? f.total_cost)}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{formatEuro(f.total_cost_ht ?? f.total_cost)}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{formatEuro(f.total_cost_ttc ?? f.total_cost)}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{formatEuro(f.total_cost)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
           <p className="mt-2 text-[11px] text-[#94a3b8]">
-            Montants TTC.{f.standard_costs_at && <> Coûts standards figés le {new Date(f.standard_costs_at).toLocaleDateString("fr-FR")}.</>}
+            {hasVat ? (
+              <>
+                Marge calculée sur une base HT : CA = prime CEE HT{suggestedNote(method)} + reste à charge + autres recettes ;
+                coût de revient = TTC − TVA récupérable ({formatEuro(f.recoverable_vat)}). Le « montant saisi » total
+                additionne des bases HT et TTC : contrôle arithmétique uniquement.
+              </>
+            ) : (
+              <>Chantier calculé avant le traitement de la TVA : montants pris tels quels.</>
+            )}
+            {f.standard_costs_at && <> Coûts standards figés le {new Date(f.standard_costs_at).toLocaleDateString("fr-FR")}.</>}
           </p>
 
           {/* Ajustements du chantier */}
-          <button
-            type="button" onClick={() => setShowAdjust((v) => !v)}
-            className="mt-4 flex items-center gap-1 text-sm font-medium text-[#2563eb]"
-          >
-            <ChevronDown className={`w-4 h-4 transition-transform ${showAdjust ? "rotate-180" : ""}`} />
-            Ajuster ce chantier & saisir le réel
-          </button>
+          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+            <button
+              type="button" onClick={() => setShowAdjust((v) => !v)}
+              className="flex items-center gap-1 text-sm font-medium text-[#2563eb]"
+            >
+              <ChevronDown className={`w-4 h-4 transition-transform ${showAdjust ? "rotate-180" : ""}`} />
+              Ajuster ce chantier & saisir le réel
+            </button>
+            {isAdmin && (
+              <button
+                type="button" disabled={saving} onClick={() => save({ recalculate: true })}
+                className="inline-flex items-center gap-1 text-xs text-[#64748b] hover:text-[#0b1f3a] underline"
+                title="Relance la zone, le barème et le calcul ; les coûts figés sont conservés"
+              >
+                <RotateCcw className="w-3 h-3" /> Recalculer
+              </button>
+            )}
+          </div>
 
           {showAdjust && (
             <div className="mt-3 space-y-5">
@@ -365,7 +510,7 @@ export function ProfitabilitySection({ leadId, isAdmin }: { leadId: string; isAd
                       <div className="text-sm text-[#0b1f3a]">
                         {l.label}
                         <span className="ml-1 text-xs text-[#94a3b8]">
-                          {COST_CATEGORY_LABELS[l.category]} · standard {formatEuro(l.standard_amount)}
+                          {COST_CATEGORY_LABELS[l.category]} · standard {formatEuro(l.standard_amount)}{l.vat_rate != null ? ` ${l.amount_basis}` : ""}
                         </span>
                         {l.overridden && (
                           <button
