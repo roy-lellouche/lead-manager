@@ -25,6 +25,35 @@ demande supplémentaire :
    - `ERROR` / `CANCELED` → lire les logs de build, corriger, re-commit,
      re-merger, re-pousser et suivre à nouveau jusqu'à `READY`.
 
+### Infos Vercel du projet
+
+- Équipe : `rscrm` (`team_wnYHeLRG54CP0iNGwFp10PST`)
+- Projet : `crm-rs-ecologie` (`prj_2ImY04ow87xQYOTArQyrmphElM1n`)
+- URL de prod : https://crm-rs-ecologie.vercel.app
+- Dépôt Git : `roy-lellouche/lead-manager`, branche de prod `main`
+
+### Si aucun déploiement n'apparaît après le push sur `main`
+
+Les commits écrits par `Claude <noreply@anthropic.com>` ne déclenchent pas
+toujours le webhook Git de Vercel. Si aucun déploiement pour le SHA poussé
+n'apparaît dans `list_deployments` après environ 1 minute, le lancer
+soi-même avec l'outil MCP `create_deployment` :
+
+```json
+{
+  "teamId": "team_wnYHeLRG54CP0iNGwFp10PST",
+  "requestBody": {
+    "name": "crm-rs-ecologie",
+    "project": "prj_2ImY04ow87xQYOTArQyrmphElM1n",
+    "target": "production",
+    "gitSource": { "type": "github", "org": "roy-lellouche",
+                   "repo": "lead-manager", "ref": "main", "sha": "<sha de main>" }
+  }
+}
+```
+
+Puis suivre ce déploiement avec `get_deployment` jusqu'à `READY`.
+
 Une tâche n'est **pas terminée** tant que le déploiement de production Vercel
 n'est pas `READY`.
 
