@@ -4,6 +4,9 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { AdminLeadForm } from "./AdminLeadForm";
 import { DocumentsSection } from "./DocumentsSection";
+import { ProfitabilitySection } from "./ProfitabilitySection";
+import { getSessionProfile, getSessionUser } from "@/lib/supabase/session";
+import { normalizeRole } from "@/lib/roles";
 import { RedistributionHistorySection, type DistributionEntry } from "./RedistributionHistorySection";
 import { LeadLogsSidebar } from "@/components/LeadLogsSidebar";
 import { PageHeader } from "@/components/ui-kit/PageHeader";
@@ -57,6 +60,10 @@ export default async function AdminLeadPage({
 
   if (!lead) notFound();
 
+  const sessionUser = await getSessionUser();
+  const sessionProfile = sessionUser ? await getSessionProfile(sessionUser.id) : null;
+  const role = normalizeRole(sessionProfile?.role);
+
   const logEntries = (logs || []).map((log) => ({
     id: log.id,
     action: log.action,
@@ -90,6 +97,9 @@ export default async function AdminLeadPage({
       <div className="flex gap-6 items-start">
         <div className="flex-1 min-w-0 space-y-4">
           <AdminLeadForm lead={lead} />
+          {(role === "admin" || role === "secretaire") && (
+            <ProfitabilitySection leadId={id} isAdmin={role === "admin"} />
+          )}
           <RedistributionHistorySection
             realAddedAt={lead.added_at ?? lead.created_at}
             distributions={(distributions || []) as unknown as DistributionEntry[]}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClientFromRequest } from "@/lib/supabase/route-handler";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getUserFromClient } from "@/lib/supabase/session";
+import { recalcIfRelevant } from "@/lib/finance/server";
 
 /** En-tête requis pour éviter les anciens clients en boucle (sans ce header = 403). */
 const CLIENT_VERSION_HEADER = "x-lead-form-version";
@@ -83,6 +84,9 @@ export async function PATCH(
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  // Rentabilité : recalcul automatique si la commune / l'installation a changé.
+  await recalcIfRelevant(adminClient, id, updates, user.id);
 
   if (logAction) {
     await adminClient.from("lead_logs").insert({

@@ -58,6 +58,8 @@ describe("canAccessAdminPath", () => {
     expect(canAccessAdminPath("secretaire", "/admin/documents-recus")).toBe(true);
     expect(canAccessAdminPath("secretaire", "/admin/leads")).toBe(true);
     expect(canAccessAdminPath("secretaire", "/admin/users")).toBe(false);
+    expect(canAccessAdminPath("secretaire", "/admin/rentabilite")).toBe(false);
+    expect(canAccessAdminPath("secretaire", "/admin/parametres-financiers")).toBe(false);
     expect(canAccessAdminPath("secretaire", "/admin/users/telepro/42")).toBe(false);
     expect(canAccessAdminPath("secretaire", "/admin/stats")).toBe(false);
     expect(canAccessAdminPath("secretaire", "/admin/stats/global")).toBe(false);

@@ -25,6 +25,8 @@ import {
   Mail,
   Wrench,
   ListTodo,
+  Euro,
+  SlidersHorizontal,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { GothicCross } from "@/components/brand/GothicCross";
@@ -53,6 +55,8 @@ const adminNav = [
   { href: "/admin/import", label: "Import CSV", icon: FileUp },
   { href: "/admin/users", label: "Utilisateurs", icon: UserPlus },
   { href: "/admin/stats", label: "Statistiques", icon: BarChart3 },
+  { href: "/admin/rentabilite", label: "Rentabilité", icon: Euro },
+  { href: "/admin/parametres-financiers", label: "Paramètres financiers", icon: SlidersHorizontal },
 ];
 
 const secretaireNav = [
