@@ -143,6 +143,7 @@ export function AdminLeadForm({ lead: initialLead }: AdminLeadFormProps) {
     });
     if (res.ok) {
       lastSavedRef.current = JSON.stringify(updates);
+      window.dispatchEvent(new Event("lead-saved"));
       const materials = materialsRef.current;
       if (materials.length > 0) {
         await fetch(`/api/admin/leads/${leadRef.current.id}/materials`, {
@@ -251,6 +252,7 @@ export function AdminLeadForm({ lead: initialLead }: AdminLeadFormProps) {
     setLoading(false);
     if (res.ok) {
       lastSavedRef.current = JSON.stringify(updates);
+      window.dispatchEvent(new Event("lead-saved"));
       router.refresh();
     }
   };

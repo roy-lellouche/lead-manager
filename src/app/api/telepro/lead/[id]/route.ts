@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClientFromRequest } from "@/lib/supabase/route-handler";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getUserFromClient } from "@/lib/supabase/session";
+import { recalcIfRelevant } from "@/lib/finance/server";
 
 export async function GET(
   request: NextRequest,
@@ -93,6 +94,9 @@ export async function PATCH(
   if (updateError) {
     return NextResponse.json({ error: updateError.message }, { status: 500 });
   }
+
+  // Rentabilité : recalcul automatique si la commune / l'installation a changé.
+  await recalcIfRelevant(adminClient, id, updates, user.id);
 
   if (logAction) {
     await adminClient.from("lead_logs").insert({
