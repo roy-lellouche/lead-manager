@@ -5,41 +5,67 @@ import { normalizePhoneToE164 } from "@/lib/phone";
 import { LEAD_CATEGORIES, type LeadCategory } from "@/lib/types";
 import { getUserFromClient } from "@/lib/supabase/session";
 
+// Les candidats sont comparés après normalisation (minuscules, sans accents,
+// "_" et "-" remplacés par des espaces). Les exports Meta peuvent contenir
+// plusieurs colonnes équivalentes (ex. "numéro_de_téléphone" remplie et
+// "phone_number" vide) : on garde toutes les colonnes correspondantes et on
+// prend, pour chaque ligne, la première valeur non vide.
 const PHONE_COLUMNS = [
-  "phone_number",
+  "phone number",
   "phone",
   "telephone",
-  "Phone Number",
-  "Téléphone",
+  "numero de telephone",
+  "numero telephone",
+  "numero",
+  "tel",
+  "mobile",
+  "portable",
 ];
-const EMAIL_COLUMNS = ["email", "Email"];
-const FIRST_NAME_COLUMNS = ["first_name", "First Name", "prenom", "Prénom"];
-const LAST_NAME_COLUMNS = ["last_name", "Last Name", "nom", "Nom"];
-const FULL_NAME_COLUMNS = [
-  "full name",
-  "Full Name",
-  "full_name",
-  "fullname",
-  "nom complet",
-  "Nom complet",
-  "nom_complet",
-];
+const EMAIL_COLUMNS = ["email", "e mail", "mail", "adresse email", "adresse e mail"];
+const FIRST_NAME_COLUMNS = ["first name", "prenom"];
+const LAST_NAME_COLUMNS = ["last name", "nom", "nom de famille"];
+const FULL_NAME_COLUMNS = ["full name", "fullname", "nom complet", "nom et prenom"];
+// Correspondance partielle (contient) autorisée seulement pour ces champs.
+const PHONE_PARTIAL = ["phone", "telephone"];
+const EMAIL_PARTIAL = ["email", "e mail"];
 
-function findColumn(row: Record<string, string>, candidates: string[]): string | null {
-  const keys = Object.keys(row).map((k) => k.trim().toLowerCase());
-  for (const c of candidates) {
-    const idx = keys.findIndex(
-      (k) => k === c.toLowerCase() || k.includes(c.toLowerCase())
-    );
-    if (idx >= 0) return Object.keys(row)[idx];
-  }
-  return null;
+function normalizeHeader(h: string): string {
+  return h
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[_\-]+/g, " ")
+    .replace(/[^a-z0-9 ]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
-function extractValue(row: Record<string, string>, col: string | null): string {
-  if (!col) return "";
-  const val = row[col];
-  return typeof val === "string" ? val.trim() : "";
+function findColumns(
+  keys: string[],
+  candidates: string[],
+  partial: string[] = []
+): string[] {
+  const norm = keys.map((k) => ({ key: k, n: normalizeHeader(k) }));
+  const found: string[] = [];
+  for (const c of candidates) {
+    for (const { key, n } of norm) {
+      if (n === c && !found.includes(key)) found.push(key);
+    }
+  }
+  for (const c of partial) {
+    for (const { key, n } of norm) {
+      if (n.includes(c) && !found.includes(key)) found.push(key);
+    }
+  }
+  return found;
+}
+
+function extractValue(row: Record<string, string>, cols: string[]): string {
+  for (const col of cols) {
+    const val = row[col];
+    if (typeof val === "string" && val.trim()) return val.trim();
+  }
+  return "";
 }
 
 export async function POST(request: NextRequest) {
@@ -111,14 +137,16 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const firstRow = rows[0] || {};
-  const phoneCol = findColumn(firstRow, PHONE_COLUMNS);
-  const emailCol = findColumn(firstRow, EMAIL_COLUMNS);
-  const firstNameCol = findColumn(firstRow, FIRST_NAME_COLUMNS);
-  const lastNameCol = findColumn(firstRow, LAST_NAME_COLUMNS);
-  const fullNameCol = findColumn(firstRow, FULL_NAME_COLUMNS);
+  const allKeys = Array.from(
+    new Set(rows.flatMap((r: Record<string, string>) => Object.keys(r ?? {})))
+  ) as string[];
+  const phoneCol = findColumns(allKeys, PHONE_COLUMNS, PHONE_PARTIAL);
+  const emailCol = findColumns(allKeys, EMAIL_COLUMNS, EMAIL_PARTIAL);
+  const firstNameCol = findColumns(allKeys, FIRST_NAME_COLUMNS);
+  const lastNameCol = findColumns(allKeys, LAST_NAME_COLUMNS);
+  const fullNameCol = findColumns(allKeys, FULL_NAME_COLUMNS);
 
-  if (!phoneCol && !firstNameCol && !lastNameCol && !fullNameCol) {
+  if (!phoneCol.length && !firstNameCol.length && !lastNameCol.length && !fullNameCol.length) {
     return NextResponse.json(
       { error: "Colonnes requises non trouvées (prénom, nom, nom complet ou téléphone)" },
       { status: 400 }
