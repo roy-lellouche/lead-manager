@@ -1,6 +1,7 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useProgressRouter } from "@/hooks/useProgressRouter";
+import { useSearchParams } from "next/navigation";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Search } from "lucide-react";
 import { LEAD_STATUS_LABELS, LEAD_STATUSES_ADMIN, CHANTIER_STATUS_FIELDS, DELEGATAIRE_GROUPS, LEAD_CATEGORIES, LEAD_CATEGORY_LABELS } from "@/lib/types";
@@ -22,7 +23,7 @@ interface AdminLeadsFiltersProps {
 }
 
 export function AdminLeadsFilters({ basePath = "/admin/leads", telepros = [] }: AdminLeadsFiltersProps) {
-  const router = useRouter();
+  const router = useProgressRouter();
   const searchParams = useSearchParams();
   const [search, setSearch] = useState(searchParams.get("q") || "");
 

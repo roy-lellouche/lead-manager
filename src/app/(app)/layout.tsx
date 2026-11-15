@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessionProfile, getSessionUser } from "@/lib/supabase/session";
 import { redirect } from "next/navigation";
 import { Drawer } from "@/components/Drawer";
+import { NavigationProgress } from "@/components/NavigationProgress";
 import { SaveOnLeaveProvider } from "@/contexts/SaveOnLeaveContext";
 import { buildStatusCounts } from "@/lib/status-counts";
 import { normalizeRole } from "@/lib/roles";
@@ -60,6 +61,9 @@ export default async function AppLayout({
 
   return (
     <SaveOnLeaveProvider>
+      <Suspense fallback={null}>
+        <NavigationProgress />
+      </Suspense>
       <div className="min-h-screen flex">
         <Suspense fallback={<div className="hidden lg:block w-64 shrink-0 gothic-surface" />}>
           <Drawer

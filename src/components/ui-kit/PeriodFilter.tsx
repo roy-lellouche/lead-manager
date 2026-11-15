@@ -1,7 +1,8 @@
 "use client";
 
+import { useProgressRouter } from "@/hooks/useProgressRouter";
 import type { ReactNode } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { endOfMonth, endOfWeek, endOfYear, format, startOfMonth, startOfWeek, startOfYear } from "date-fns";
 import { CalendarDays } from "lucide-react";
 
@@ -21,7 +22,7 @@ export function PeriodFilter({
   defaultTo: string;
   children?: ReactNode;
 }) {
-  const router = useRouter();
+  const router = useProgressRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const from = searchParams.get("from") || defaultFrom;
@@ -94,7 +95,7 @@ export function PeriodFilter({
 
 /** Puces de sélection multiple des mandataires (paramètre d'URL `delegataire`, répétable). */
 export function DelegataireChips({ options }: { options: { value: string; label: string }[] }) {
-  const router = useRouter();
+  const router = useProgressRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const selected = searchParams.getAll("delegataire");

@@ -28,7 +28,9 @@ import {
   Euro,
   SlidersHorizontal,
   Mountain,
+  Search,
 } from "lucide-react";
+import { CommandPalette, openCommandPalette } from "@/components/CommandPalette";
 import { createClient } from "@/lib/supabase/client";
 import { GothicCross } from "@/components/brand/GothicCross";
 import { useRouter } from "next/navigation";
@@ -174,6 +176,22 @@ export function Drawer({ role, userName, unreadNotifications = 0, statusCounts =
             <div className="chrome-rule flex-1" />
             <GothicCross className="w-10 h-10 shrink-0" />
             <div className="chrome-rule flex-1" />
+          </div>
+
+          <div className="px-3 pt-4">
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                openCommandPalette();
+              }}
+              className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm text-subtle bg-white/70 ring-1 ring-line hover:bg-white hover:text-ink transition-colors"
+              data-testid="open-command-palette"
+            >
+              <Search className="w-4 h-4 shrink-0" />
+              <span className="flex-1 text-left">Rechercher…</span>
+              <kbd className="hidden lg:inline text-[10px] font-sans border border-line rounded px-1.5 py-0.5 bg-white">Ctrl K</kbd>
+            </button>
           </div>
 
           <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
@@ -364,6 +382,12 @@ export function Drawer({ role, userName, unreadNotifications = 0, statusCounts =
           </div>
         </div>
       </aside>
+
+      <CommandPalette
+        nav={nav.map(({ href, label, icon }) => ({ href, label, icon }))}
+        leadBasePath={isAdminSpace ? "/admin/leads" : "/telepro/leads"}
+        canSearchLeads={isAdminSpace ? role === "admin" || role === "secretaire" : true}
+      />
     </>
   );
 }

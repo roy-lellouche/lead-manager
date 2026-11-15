@@ -1,7 +1,8 @@
 "use client";
 
+import { useProgressRouter } from "@/hooks/useProgressRouter";
 import { useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { PER_PAGE_COOKIE, PER_PAGE_OPTIONS, clampPage, pageCount, pageNumbers } from "@/lib/pagination";
 import { cn } from "@/lib/utils";
@@ -15,7 +16,7 @@ type LeadsPaginationProps = {
 };
 
 export function LeadsPagination({ page, per, total }: LeadsPaginationProps) {
-  const router = useRouter();
+  const router = useProgressRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [gotoValue, setGotoValue] = useState("");

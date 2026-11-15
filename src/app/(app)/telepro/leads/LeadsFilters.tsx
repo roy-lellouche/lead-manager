@@ -1,6 +1,7 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useProgressRouter } from "@/hooks/useProgressRouter";
+import { useSearchParams } from "next/navigation";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Search } from "lucide-react";
 import { LEAD_STATUS_LABELS, LEAD_STATUSES_ADMIN, LEAD_CATEGORIES, LEAD_CATEGORY_LABELS, type LeadStatus } from "@/lib/types";
@@ -10,7 +11,7 @@ import { SurfaceFilter } from "@/components/ui-kit/SurfaceFilter";
 import { SURFACE_MAX_PARAM, SURFACE_MIN_PARAM } from "@/lib/surface-filter";
 
 export function LeadsFilters() {
-  const router = useRouter();
+  const router = useProgressRouter();
   const searchParams = useSearchParams();
   const [search, setSearch] = useState(searchParams.get("q") || "");
   const currentStatus = searchParams.get("status") || "";
