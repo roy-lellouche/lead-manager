@@ -3,6 +3,7 @@ import { getUserFromClient } from "@/lib/supabase/session";
 import { createClientFromRequest } from "@/lib/supabase/route-handler";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizeRole } from "@/lib/roles";
+import { LEAD_CATEGORIES, type LeadCategory } from "@/lib/types";
 import {
   isExcludedFromRedistribution,
   parisEndOfDayIso,
@@ -14,7 +15,8 @@ import {
 /**
  * Redistribution des leads (admin uniquement).
  *
- * Corps : { limit, maxDate (YYYY-MM-DD), sourceTeleproIds?, targetTeleproIds?, dryRun? }
+ * Corps : { limit, maxDate (YYYY-MM-DD), sourceTeleproIds?, targetTeleproIds?, categories?, dryRun? }
+ * - categories : catégories de leads à redistribuer (absent = toutes).
  * - Pour chaque télépro source : ses `limit` derniers leads NRP reçus au plus tard le `maxDate`.
  * - Le lot est mélangé puis réparti entre les télépros cibles, jamais vers un télépro
  *   qui a déjà eu le lead.
@@ -44,6 +46,7 @@ export async function POST(request: NextRequest) {
     maxDate?: unknown;
     sourceTeleproIds?: unknown;
     targetTeleproIds?: unknown;
+    categories?: unknown;
     dryRun?: unknown;
   };
   try {
@@ -67,6 +70,15 @@ export async function POST(request: NextRequest) {
   }
 
   const dryRun = body.dryRun === true;
+
+  // Catégories : absent = toutes ; les valeurs inconnues sont ignorées.
+  const categories: LeadCategory[] = Array.isArray(body.categories)
+    ? LEAD_CATEGORIES.filter((c) => (body.categories as unknown[]).includes(c))
+    : [...LEAD_CATEGORIES];
+  if (categories.length === 0) {
+    return NextResponse.json({ error: "Sélectionnez au moins une catégorie" }, { status: 400 });
+  }
+  const allCategories = categories.length === LEAD_CATEGORIES.length;
 
   const { data: telepros, error: teleprosError } = await adminClient
     .from("profiles")
@@ -100,17 +112,20 @@ export async function POST(request: NextRequest) {
   // Les X derniers NRP de chaque télépro source. « Dernier » = date à laquelle le
   // télépro a reçu le lead (date d'ajout telle qu'il la voit).
   const perSource = await Promise.all(
-    sourceIds.map((teleproId) =>
-      adminClient
+    sourceIds.map((teleproId) => {
+      let q = adminClient
         .from("leads")
         .select("id, assigned_to")
         .eq("assigned_to", teleproId)
         .eq("status", "nrp")
-        .lte("telepro_added_at", maxDateIso)
+        .lte("telepro_added_at", maxDateIso);
+      // Toutes cochées : pas de filtre, pour garder aussi les leads sans catégorie.
+      if (!allCategories) q = q.in("category", categories);
+      return q
         .order("telepro_added_at", { ascending: false })
         .order("id", { ascending: false })
-        .limit(limit)
-    )
+        .limit(limit);
+    })
   );
 
   const failed = perSource.find((r) => r.error);
@@ -171,7 +186,7 @@ export async function POST(request: NextRequest) {
 
   const { data: result, error: rpcError } = await adminClient.rpc("apply_lead_redistribution", {
     p_created_by: user.id,
-    p_filters: { limit, maxDate, sourceTeleproIds: sourceIds, targetTeleproIds: targetIds },
+    p_filters: { limit, maxDate, sourceTeleproIds: sourceIds, targetTeleproIds: targetIds, categories },
     p_assignments: plan.assignments.map((a) => ({
       lead_id: a.leadId,
       from_telepro: a.from,

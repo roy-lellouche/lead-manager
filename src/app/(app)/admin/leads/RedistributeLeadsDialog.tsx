@@ -21,6 +21,7 @@ import {
   REDISTRIBUTION_MAX_LIMIT,
   parisDateString,
 } from "@/lib/redistribution";
+import { LEAD_CATEGORIES, LEAD_CATEGORY_LABELS, type LeadCategory } from "@/lib/types";
 
 interface Telepro {
   id: string;
@@ -86,6 +87,49 @@ function TeleproChecklist({
   );
 }
 
+function CategoryChecklist({
+  selected,
+  onChange,
+}: {
+  selected: Set<LeadCategory>;
+  onChange: (next: Set<LeadCategory>) => void;
+}) {
+  const allSelected = selected.size === LEAD_CATEGORIES.length;
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-ink">
+          Catégories à redistribuer{" "}
+          <span className="text-subtle font-normal">({selected.size}/{LEAD_CATEGORIES.length})</span>
+        </span>
+        <button
+          type="button"
+          className="text-xs text-brand hover:text-brand-hover font-medium"
+          onClick={() => onChange(allSelected ? new Set() : new Set(LEAD_CATEGORIES))}
+        >
+          {allSelected ? "Tout désélectionner" : "Tout sélectionner"}
+        </button>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 rounded-lg border border-line p-2">
+        {LEAD_CATEGORIES.map((cat) => (
+          <label key={cat} className="flex items-center gap-2 text-sm text-ink cursor-pointer">
+            <Checkbox
+              checked={selected.has(cat)}
+              onCheckedChange={(checked) => {
+                const next = new Set(selected);
+                if (checked) next.add(cat);
+                else next.delete(cat);
+                onChange(next);
+              }}
+            />
+            {LEAD_CATEGORY_LABELS[cat]}
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function RedistributeLeadsDialog({ telepros }: { telepros: Telepro[] }) {
   const router = useRouter();
   const allIds = () => new Set(telepros.map((t) => t.id));
@@ -95,6 +139,7 @@ export function RedistributeLeadsDialog({ telepros }: { telepros: Telepro[] }) {
   const [maxDate, setMaxDate] = useState(() => parisDateString(new Date(), -1));
   const [sources, setSources] = useState<Set<string>>(allIds);
   const [targets, setTargets] = useState<Set<string>>(allIds);
+  const [categories, setCategories] = useState<Set<LeadCategory>>(() => new Set(LEAD_CATEGORIES));
   const [preview, setPreview] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -105,6 +150,7 @@ export function RedistributeLeadsDialog({ telepros }: { telepros: Telepro[] }) {
     setMaxDate(parisDateString(new Date(), -1));
     setSources(allIds());
     setTargets(allIds());
+    setCategories(new Set(LEAD_CATEGORIES));
     setPreview(null);
     setError(null);
     setDoneCount(null);
@@ -129,6 +175,7 @@ export function RedistributeLeadsDialog({ telepros }: { telepros: Telepro[] }) {
           maxDate,
           sourceTeleproIds: [...sources],
           targetTeleproIds: [...targets],
+          categories: [...categories],
           dryRun,
         }),
       });
@@ -161,7 +208,7 @@ export function RedistributeLeadsDialog({ telepros }: { telepros: Telepro[] }) {
 
   const limitValue = Number(limit);
   const limitValid = Number.isInteger(limitValue) && limitValue >= 1 && limitValue <= REDISTRIBUTION_MAX_LIMIT;
-  const canPreview = limitValid && !!maxDate && sources.size > 0 && targets.size > 0 && !loading;
+  const canPreview = limitValid && !!maxDate && sources.size > 0 && targets.size > 0 && categories.size > 0 && !loading;
 
   return (
     <Dialog
@@ -220,6 +267,8 @@ export function RedistributeLeadsDialog({ telepros }: { telepros: Telepro[] }) {
           </div>
         </div>
 
+        <CategoryChecklist selected={categories} onChange={edit(setCategories)} />
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <TeleproChecklist
             title="Prendre les leads de"
@@ -248,7 +297,9 @@ export function RedistributeLeadsDialog({ telepros }: { telepros: Telepro[] }) {
         {preview && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2 text-sm">
             <p className="font-medium text-amber-900">
-              {preview.poolCount} lead(s) NRP trouvé(s) — {preview.assignableCount} seront redistribué(s)
+              {preview.poolCount} lead(s) NRP trouvé(s)
+              {categories.size < LEAD_CATEGORIES.length &&
+                ` en ${[...categories].map((c) => LEAD_CATEGORY_LABELS[c]).join(", ")}`} — {preview.assignableCount} seront redistribué(s)
               {preview.unassignedCount > 0 &&
                 ` (${preview.unassignedCount} déjà passé(s) chez tous les destinataires, ils ne bougeront pas)`}
             </p>
