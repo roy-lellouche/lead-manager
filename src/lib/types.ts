@@ -29,12 +29,17 @@ export const LEAD_STATUSES_TELEPRO_SELECTABLE: LeadStatus[] = LEAD_STATUSES_ADMI
 
 export type LeadCategory = 'fenetre' | 'clim_1euro' | 'video_pac_atlantic_990' | 'clim_3990euros';
 
-export const LEAD_CATEGORIES: LeadCategory[] = ['fenetre', 'clim_1euro', 'video_pac_atlantic_990', 'clim_3990euros'];
+/**
+ * Catégories proposées dans l'appli (menu, filtres, formulaires, import, redistribution).
+ * « Clim 3990 € » (clim_3990euros) a été retirée : elle reste dans le type et les libellés
+ * pour afficher correctement les anciens leads qui la portent encore.
+ */
+export const LEAD_CATEGORIES: LeadCategory[] = ['fenetre', 'clim_1euro', 'video_pac_atlantic_990'];
 
 export const LEAD_CATEGORY_LABELS: Record<LeadCategory, string> = {
   fenetre: 'Fenêtre',
-  clim_1euro: 'PAC image Atlantic 990 €',
-  video_pac_atlantic_990: 'Vidéo PAC Atlantic 990 €',
+  clim_1euro: 'Image Atlantic 990 €',
+  video_pac_atlantic_990: 'Vidéo Atlantic 990 €',
   clim_3990euros: 'Clim 3990 €',
 };
 

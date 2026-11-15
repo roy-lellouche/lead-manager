@@ -12,6 +12,7 @@ import {
   RADIATOR_TYPE_LABELS,
   RADIATOR_TYPE_OPTIONS,
   LEAD_CATEGORIES,
+  type LeadCategory,
   LEAD_CATEGORY_LABELS,
   type LeadStatus,
   type LeadColor,
@@ -419,6 +420,12 @@ export function TeleproLeadForm({
               onChange={(e) => handleFieldChange("category", e.target.value)}
               className={SELECT_CLS}
             >
+              {/* Ancienne catégorie retirée de la liste (ex. Clim 3990 €) : affichée telle quelle. */}
+              {!!lead.category && !LEAD_CATEGORIES.includes(lead.category as LeadCategory) && (
+                <option value={lead.category as string}>
+                  {LEAD_CATEGORY_LABELS[lead.category as LeadCategory] ?? String(lead.category)}
+                </option>
+              )}
               {LEAD_CATEGORIES.map((c) => (
                 <option key={c} value={c}>
                   {LEAD_CATEGORY_LABELS[c]}
