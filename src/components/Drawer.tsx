@@ -27,6 +27,7 @@ import {
   ListTodo,
   Euro,
   SlidersHorizontal,
+  Mountain,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { GothicCross } from "@/components/brand/GothicCross";
@@ -50,6 +51,7 @@ const adminNav = [
   { href: "/admin/leads", label: "Tous les leads", icon: List, hasStatusSubmenu: true },
   { href: "/admin/code-courrier", label: "Code courrier", icon: Mail },
   { href: "/admin/sav", label: "SAV", icon: Wrench },
+  { href: "/admin/altitude", label: "Altitude", icon: Mountain },
   { href: "/admin/taches", label: "Tâches", icon: ListTodo, tasksBadge: true },
   { href: "/admin/stockage", label: "Stockage", icon: Package },
   { href: "/admin/import", label: "Import CSV", icon: FileUp },
@@ -64,6 +66,7 @@ const secretaireNav = [
   { href: "/admin/leads", label: "Tous les leads", icon: List, hasStatusSubmenu: true },
   { href: "/admin/code-courrier", label: "Code courrier", icon: Mail },
   { href: "/admin/sav", label: "SAV", icon: Wrench },
+  { href: "/admin/altitude", label: "Altitude", icon: Mountain },
   { href: "/admin/agenda-courrier", label: "Agenda", icon: Calendar },
   { href: "/admin/taches", label: "Tâches", icon: ListTodo, tasksBadge: true },
   { href: "/admin/import", label: "Import CSV", icon: FileUp },
@@ -74,6 +77,7 @@ const secretaireNav = [
 const stockageNav = [
   { href: "/admin/stockage", label: "Stockage", icon: Package },
   { href: "/admin/sav", label: "SAV", icon: Wrench },
+  { href: "/admin/altitude", label: "Altitude", icon: Mountain },
   { href: "/admin/taches", label: "Tâches", icon: ListTodo, tasksBadge: true },
 ];
 
@@ -82,6 +86,7 @@ const teleproNav = [
   { href: "/telepro/leads", label: "Mes leads", icon: Users, hasStatusSubmenu: true },
   { href: "/telepro/teleprospection", label: "Téléprospection", icon: Phone },
   { href: "/telepro/agenda", label: "Agenda", icon: Calendar },
+  { href: "/telepro/altitude", label: "Altitude", icon: Mountain },
   { href: "/telepro/taches", label: "Tâches", icon: ListTodo, tasksBadge: true },
 ];
 
