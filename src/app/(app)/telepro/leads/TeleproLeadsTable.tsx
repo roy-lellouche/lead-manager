@@ -1,5 +1,6 @@
 "use client";
 
+import { statusClasses } from "@/lib/statusColors";
 import { useState, useCallback } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { LEAD_STATUS_LABELS, LEAD_STATUSES_TELEPRO_SELECTABLE, type LeadStatus } from "@/lib/types";
@@ -15,23 +16,7 @@ import {
 } from "@/components/ui/table";
 
 function getStatusSelectClass(status: string): string {
-  switch (status) {
-    case "nouveau": return "bg-blue-100 text-blue-800 border-blue-200";
-    case "nrp": return "bg-yellow-100 text-yellow-800 border-yellow-200";
-    case "a_rappeler": return "bg-blue-800 text-white border-blue-900";
-    case "en_attente_doc": return "bg-green-100 text-green-800 border-green-200";
-    case "documents_recus": return "bg-green-700 text-white border-green-800";
-    case "devis_a_envoyer": return "bg-[#f3e8ff] text-[#7e22ce] border-[#e9d5ff]";
-    case "devis_envoye": return "bg-[#fce7f3] text-[#be185d] border-[#f9a8d4]";
-    case "incomplet": return "bg-amber-100 text-amber-800 border-amber-200";
-    case "bloque_mpr": return "bg-red-800 text-white border-red-900";
-    case "valide": return "bg-emerald-700 text-white border-emerald-800";
-    case "installe": return "bg-teal-200 text-teal-900 border-teal-300";
-    case "ancien_documents_recus": return "bg-slate-500 text-white border-slate-600";
-    case "transfert": return "bg-sky-100 text-sky-800 border-sky-200";
-    case "annule": return "bg-red-100 text-red-800 border-red-200";
-    default: return "bg-slate-100 text-slate-700 border-slate-200";
-  }
+  return statusClasses(status);
 }
 
 export type StatusSortDirection = "none" | "desc" | "asc";

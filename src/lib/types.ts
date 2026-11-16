@@ -1,3 +1,4 @@
+import { STATUS_STYLES } from "@/lib/statusColors";
 export type UserRole = 'admin' | 'telepro' | 'secretaire' | 'stockage';
 
 export type LeadStatus =
@@ -97,24 +98,9 @@ export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
 };
 
 /** Couleurs des camemberts par statut (uniquement pour les graphiques) */
-export const STATUS_CHART_COLORS: Record<LeadStatus, string> = {
-  annule: '#ef4444',        // rouge
-  nouveau: '#d4b896',       // beige
-  nrp: '#eab308',           // jaune
-  a_rappeler: '#f97316',    // orange
-  en_attente_doc: '#8b5cf6', // violet
-  documents_recus: '#22c55e', // vert
-  devis_a_envoyer: '#a855f7', // violet/purple
-  devis_envoye: '#db2777',  // fuchsia
-  incomplet: '#f59e0b',     // amber
-  bloque_mpr: '#dc2626',    // red-600
-  avis_2025_bloque: '#9f1239', // rose-800 (avis 2025 bloqué)
-  pas_eligible: '#57534e',  // stone-600 (pas éligible)
-  valide: '#10b981',        // emerald-500
-  installe: '#0ABAB5',      // Bleu Tiffany
-  ancien_documents_recus: '#64748b', // slate (archivé)
-  transfert: '#0ea5e9',     // sky-500
-};
+export const STATUS_CHART_COLORS: Record<LeadStatus, string> = Object.fromEntries(
+  Object.entries(STATUS_STYLES).map(([k, v]) => [k, v.hex])
+) as Record<LeadStatus, string>;
 
 export const LEAD_COLOR_LABELS: Record<LeadColor, string> = {
   bleu: 'Bleu (5000€)',

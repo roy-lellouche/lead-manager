@@ -1,5 +1,6 @@
 "use client";
 
+import { statusClasses } from "@/lib/statusColors";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -610,23 +611,7 @@ function getDefaultCallbackDatetime(): string {
 
 function getStatusButtonClass(status: LeadStatus, isSelected: boolean): string {
   if (!isSelected) return "border border-line text-subtle hover:border-brand/40 hover:text-brand";
-  switch (status) {
-    case "nouveau": return "bg-slate-100 text-slate-700 border border-slate-200";
-    case "nrp": return "bg-[#fef9c3] text-[#a16207] border border-[#fde68a]";
-    case "a_rappeler": return "bg-[#ffedd5] text-[#c2410c] border border-[#fed7aa]";
-    case "en_attente_doc": return "bg-[#ede9fe] text-[#6d28d9] border border-[#ddd6fe]";
-    case "documents_recus": return "bg-[#e0e7ff] text-[#1a40ad] border border-[#c4d3fb]";
-    case "devis_a_envoyer": return "bg-[#f3e8ff] text-[#7e22ce] border border-[#e9d5ff]";
-    case "devis_envoye": return "bg-[#fce7f3] text-[#be185d] border border-[#f9a8d4]";
-    case "incomplet": return "bg-[#fef3c7] text-[#b45309] border border-[#fde68a]";
-    case "bloque_mpr": return "bg-[#fee2e2] text-[#b91c1c] border border-[#fecaca]";
-    case "valide": return "bg-[#dcfce7] text-[#15803d] border border-[#bbf7d0]";
-    case "installe": return "bg-[#ccfbf1] text-[#0f766e] border border-[#99f6e4]";
-    case "ancien_documents_recus": return "bg-slate-100 text-slate-500 border border-slate-200";
-    case "transfert": return "bg-[#e0f2fe] text-[#0369a1] border border-[#bae6fd]";
-    case "annule": return "bg-[#fee2e2] text-[#b91c1c] border border-[#fecaca]";
-    default: return "bg-slate-100 text-slate-700 border border-slate-200";
-  }
+  return `border ${statusClasses(status)}`;
 }
 
 function StatusButton({

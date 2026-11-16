@@ -1,5 +1,6 @@
 "use client";
 
+import { statusClasses } from "@/lib/statusColors";
 import { useState, useEffect } from "react";
 import { LEAD_STATUS_LABELS, LEAD_STATUSES_TELEPRO_SELECTABLE, type LeadStatus } from "@/lib/types";
 import {
@@ -24,23 +25,7 @@ function formatPhoneDisplay(phone: string): string {
 
 function getStatusButtonClass(status: LeadStatus, isSelected: boolean): string {
   if (!isSelected) return "bg-panel hover:bg-line-soft border border-line text-subtle";
-  switch (status) {
-    case "nouveau": return "bg-slate-100 text-slate-700 border border-slate-200";
-    case "nrp": return "bg-[#fef9c3] text-[#a16207] border border-[#fde68a]";
-    case "a_rappeler": return "bg-ink-soft text-white border border-ink-soft";
-    case "en_attente_doc": return "bg-[#d1fae5] text-[#065f46] border border-[#6ee7b7]";
-    case "documents_recus": return "bg-[#065f46] text-white border border-[#065f46]";
-    case "devis_a_envoyer": return "bg-[#f3e8ff] text-[#7e22ce] border border-[#e9d5ff]";
-    case "devis_envoye": return "bg-[#fce7f3] text-[#be185d] border border-[#f9a8d4]";
-    case "incomplet": return "bg-[#fef3c7] text-[#b45309] border border-[#fcd34d]";
-    case "bloque_mpr": return "bg-[#7f1d1d] text-white border border-[#7f1d1d]";
-    case "valide": return "bg-[#14532d] text-white border border-[#14532d]";
-    case "installe": return "bg-[#99f6e4] text-[#134e4a] border border-[#5eead4]";
-    case "ancien_documents_recus": return "bg-faint text-white border border-faint";
-    case "transfert": return "bg-[#e0f2fe] text-[#0369a1] border border-[#bae6fd]";
-    case "annule": return "bg-[#fee2e2] text-[#b91c1c] border border-[#fca5a5]";
-    default: return "bg-panel text-subtle border border-line";
-  }
+  return `border ${statusClasses(status)}`;
 }
 
 function getDefaultCallbackDatetime(): string {

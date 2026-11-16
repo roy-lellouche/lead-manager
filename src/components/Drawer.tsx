@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { statusHex } from "@/lib/statusColors";
 import Image from "next/image";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
@@ -315,7 +316,7 @@ export function Drawer({ role, userName, unreadNotifications = 0, statusCounts =
                                             : "text-subtle hover:bg-black/[0.04] hover:text-ink"
                                         }`}
                                       >
-                                        <span>{LEAD_STATUS_LABELS[s as LeadStatus]}</span>
+                                        <span className="flex items-center gap-2"><span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: statusHex(s) }} />{LEAD_STATUS_LABELS[s as LeadStatus]}</span>
                                         <span className="text-faint text-xs tabular-nums">
                                           {statusCounts[cat]?.[s] ?? 0}
                                         </span>
