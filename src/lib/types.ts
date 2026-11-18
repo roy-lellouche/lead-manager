@@ -17,11 +17,12 @@ export type LeadStatus =
   | 'installe'
   | 'ancien_documents_recus'
   | 'transfert'
-  | 'annule';
+  | 'annule'
+  | 'autre';
 
 /** Tous les statuts (accessibles par tous les rôles, partout) */
 export const LEAD_STATUSES_ADMIN: LeadStatus[] = [
-  'nouveau', 'nrp', 'a_rappeler', 'en_attente_doc', 'documents_recus', 'devis_a_envoyer', 'devis_envoye', 'incomplet', 'bloque_mpr', 'avis_2025_bloque', 'pas_eligible', 'valide', 'installe', 'ancien_documents_recus', 'transfert', 'annule',
+  'nouveau', 'nrp', 'a_rappeler', 'en_attente_doc', 'documents_recus', 'devis_a_envoyer', 'devis_envoye', 'incomplet', 'bloque_mpr', 'avis_2025_bloque', 'pas_eligible', 'valide', 'installe', 'ancien_documents_recus', 'transfert', 'annule', 'autre',
 ];
 
 /** Tous les statuts sont désormais accessibles par tous les rôles : ces alias pointent sur la liste complète. */
@@ -95,6 +96,7 @@ export const LEAD_STATUS_LABELS: Record<LeadStatus, string> = {
   ancien_documents_recus: 'Ancien documents reçus',
   transfert: 'Transfert',
   annule: 'Annulé',
+  autre: 'Autre',
 };
 
 /** Couleurs des camemberts par statut (uniquement pour les graphiques) */

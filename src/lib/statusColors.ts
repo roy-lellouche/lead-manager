@@ -33,6 +33,7 @@ export const STATUS_STYLES: Record<LeadStatus, StatusStyle> = {
   avis_2025_bloque: { hex: "#be123c", classes: "bg-rose-100 text-rose-800 border-rose-300" },
   annule: { hex: "#7f1d1d", classes: "bg-red-200 text-red-900 border-red-400" },
   pas_eligible: { hex: "#78716c", classes: "bg-stone-200 text-stone-700 border-stone-300" },
+  autre: { hex: "#64748b", classes: "bg-gray-100 text-gray-700 border-gray-300" },
   ancien_documents_recus: { hex: "#94a3b8", classes: "bg-slate-100 text-slate-500 border-slate-300" },
 };
 
