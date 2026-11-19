@@ -134,18 +134,21 @@ describe("toInvoiceFields", () => {
     client_name: "BAROUDI",
     client_department: "60",
     supplier_name: "Point P",
+    supplier_siret: null,
+    delivery_date: null,
+    payment_terms: null,
+    lines: [],
     invoice_number: "F-12",
     invoice_date: "2026-11-01",
     due_date: null,
     amount_ht: 1000,
     amount_tva: 200,
     amount_ttc: null,
-    amount_already_paid: null,
     description: "Isolant",
   };
   it("complète le TTC et l'échéance", () => {
     const f = toInvoiceFields(base);
-    expect(f).toMatchObject({ amount_ttc: 1200, due_date: "2026-11-01", amount_paid: 0, needs_review: false, client_department: "60" });
+    expect(f).toMatchObject({ amount_ttc: 1200, due_date: "2026-11-01", needs_review: false, client_department: "60" });
   });
   it("demande une vérification si incohérent ou incomplet", () => {
     expect(toInvoiceFields({ ...base, amount_ttc: 5000 }).needs_review).toBe(true);

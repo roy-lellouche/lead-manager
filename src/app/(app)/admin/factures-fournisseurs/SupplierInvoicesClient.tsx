@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import {
@@ -8,10 +8,13 @@ import {
   CalendarClock,
   Check,
   CheckCircle2,
+  ChevronDown,
+  ChevronRight,
   FileText,
   Link2,
   Loader2,
   Pencil,
+  RefreshCw,
   RotateCcw,
   Search,
   Trash2,
@@ -52,11 +55,11 @@ import {
   todayParis,
   type InvoiceStatus,
   type SupplierInvoice,
+  type SupplierInvoiceLine,
 } from "@/lib/supplier-invoices";
 
 type Supplier = { id: string; name: string };
 type StatusFilter = "ouvertes" | "en_retard" | "payee" | "a_verifier" | "a_associer" | "toutes";
-type View = "fournisseurs" | "clients";
 
 type QueueItem = {
   id: string;
@@ -236,7 +239,9 @@ export function SupplierInvoicesClient({
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ouvertes");
   const [supplierFilter, setSupplierFilter] = useState<string>("");
   const [clientFilter, setClientFilter] = useState<string>("");
-  const [view, setView] = useState<View>("clients");
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [linesCache, setLinesCache] = useState<Record<string, SupplierInvoiceLine[] | "loading" | "error">>({});
+  const [reprocessing, setReprocessing] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<SupplierInvoice | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -245,9 +250,13 @@ export function SupplierInvoicesClient({
 
   const today = todayParis();
   const supplierNames = useMemo(() => Object.fromEntries(suppliers.map((s) => [s.id, s.name])), [suppliers]);
-  const totals = useMemo(() => computeTotals(invoices, today), [invoices, today]);
+  const scoped = useMemo(
+    () => (supplierFilter ? invoices.filter((inv) => supplierKey(inv) === supplierFilter) : invoices),
+    [invoices, supplierFilter]
+  );
+  const totals = useMemo(() => computeTotals(scoped, today), [scoped, today]);
   const summaries = useMemo(() => summarizeBySupplier(invoices, supplierNames, today), [invoices, supplierNames, today]);
-  const clientSummaries = useMemo(() => summarizeByClient(invoices, supplierNames, today), [invoices, supplierNames, today]);
+  const clientSummaries = useMemo(() => summarizeByClient(scoped, supplierNames, today), [scoped, supplierNames, today]);
   const duplicates = useMemo(() => suspectedDuplicates(invoices), [invoices]);
 
   const filtered = useMemo(() => {
@@ -393,30 +402,51 @@ export function SupplierInvoicesClient({
     toast.success("Facture supprimée");
   };
 
+  const reprocess = async (inv: SupplierInvoice) => {
+    setReprocessing(inv.id);
+    try {
+      const res = await fetch(`/api/admin/supplier-invoices/${inv.id}/reprocess`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data.error || "Relecture impossible");
+        return;
+      }
+      const created = (data.invoices ?? []) as SupplierInvoice[];
+      setInvoices((list) => [...created, ...list.filter((i) => i.id !== inv.id)]);
+      setSuppliers((list) => {
+        const next = [...list];
+        for (const c of created) {
+          if (c.supplier_id && c.supplier_name && !next.some((s) => s.id === c.supplier_id)) next.push({ id: c.supplier_id, name: c.supplier_name });
+        }
+        return next.sort((a, b) => a.name.localeCompare(b.name, "fr"));
+      });
+      toast.success(`${created.length} facture(s) reconnue(s)${data.duplicates?.length ? `, ${data.duplicates.length} déjà présente(s)` : ""}`);
+    } finally {
+      setReprocessing(null);
+    }
+  };
+
+  const toggleExpand = async (inv: SupplierInvoice) => {
+    if (expanded === inv.id) {
+      setExpanded(null);
+      return;
+    }
+    setExpanded(inv.id);
+    if (linesCache[inv.id] && linesCache[inv.id] !== "error") return;
+    setLinesCache((c) => ({ ...c, [inv.id]: "loading" }));
+    try {
+      const res = await fetch(`/api/admin/supplier-invoices/${inv.id}`);
+      const data = await res.json();
+      setLinesCache((c) => ({ ...c, [inv.id]: res.ok ? (data.lines as SupplierInvoiceLine[]) : "error" }));
+    } catch {
+      setLinesCache((c) => ({ ...c, [inv.id]: "error" }));
+    }
+  };
+
   const busy = queue.some((q) => q.state === "attente" || q.state === "lecture");
   const selectedSupplierName = summaries.find((s) => s.key === supplierFilter)?.name;
   const selectedClientName = clientSummaries.find((c) => c.key === clientFilter)?.label;
-  const listTitle = [selectedSupplierName, selectedClientName].filter(Boolean).join(" · ");
-
-  const viewSwitch = (
-    <div className="inline-flex rounded-lg border border-line bg-white p-0.5 text-xs font-medium">
-      {(
-        [
-          ["clients", "Par client"],
-          ["fournisseurs", "Par fournisseur"],
-        ] as const
-      ).map(([v, label]) => (
-        <button
-          key={v}
-          type="button"
-          onClick={() => setView(v)}
-          className={`rounded-md px-3 py-1 transition-colors ${view === v ? "bg-brand text-white" : "text-body hover:bg-line-soft"}`}
-        >
-          {label}
-        </button>
-      ))}
-    </div>
-  );
+  const allRemaining = summaries.reduce((n, s) => n + s.remaining, 0);
 
   return (
     <div className="space-y-6">
@@ -444,16 +474,16 @@ export function SupplierInvoicesClient({
           setDragging(false);
           if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
         }}
-        className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-[14px] border-2 border-dashed px-6 py-8 text-center transition-colors ${
+        className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-[14px] border-2 border-dashed px-6 py-7 text-center transition-colors ${
           dragging ? "border-brand bg-brand-soft" : "border-line-strong bg-white hover:border-brand hover:bg-brand-soft/40"
         }`}
       >
         {busy ? <Loader2 className="h-8 w-8 animate-spin text-brand" /> : <UploadCloud className="h-8 w-8 text-brand" />}
         <p className="text-sm font-semibold text-ink">
-          {busy ? "Lecture des factures en cours… (jusqu'à 2 minutes pour un relevé de plusieurs factures)" : "Glissez vos factures ici, ou cliquez pour les choisir"}
+          {busy ? "Lecture des factures en cours…" : "Glissez vos factures ici, ou cliquez pour les choisir"}
         </p>
         <p className="text-xs text-subtle">
-          PDF ou photo · un PDF peut contenir plusieurs factures, elles sont séparées automatiquement · fournisseur, montants, échéance et client remplis tout seuls
+          PDF ou photo · un PDF peut contenir plusieurs factures : elles sont séparées automatiquement, avec chaque ligne, chaque montant et le client
         </p>
         <input
           ref={fileInput}
@@ -494,7 +524,7 @@ export function SupplierInvoicesClient({
                   <p className="truncate font-medium text-ink">{it.name}</p>
                   <p className="text-xs text-subtle">
                     {it.state === "attente" && "En attente…"}
-                    {it.state === "lecture" && "Lecture automatique de la facture…"}
+                    {it.state === "lecture" && "Lecture et découpage des factures…"}
                     {it.message}
                   </p>
                 </div>
@@ -504,9 +534,40 @@ export function SupplierInvoicesClient({
         </Panel>
       )}
 
-      {/* Indicateurs */}
+      {/* Onglets fournisseurs : ce que je dois à chacun */}
+      <div className="-mx-1 overflow-x-auto px-1 pb-1">
+        <div className="flex min-w-max gap-2">
+          <SupplierTab
+            active={supplierFilter === ""}
+            onClick={() => {
+              setSupplierFilter("");
+              setClientFilter("");
+            }}
+            name="Tous les fournisseurs"
+            remaining={allRemaining}
+            hint={`${invoices.length} facture(s)`}
+            overdue={totals.overdueAmount}
+          />
+          {summaries.map((s) => (
+            <SupplierTab
+              key={s.key}
+              active={supplierFilter === s.key}
+              onClick={() => {
+                setSupplierFilter(s.key);
+                setClientFilter("");
+              }}
+              name={s.name}
+              remaining={s.remaining}
+              hint={`${s.openCount} à payer / ${s.invoiceCount}`}
+              overdue={s.overdueAmount}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Indicateurs de l'onglet */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Reste à payer" value={formatEuro(totals.remaining)} icon={Wallet} tone="brand" hint={`${totals.openCount} facture(s) en cours`} />
+        <StatCard label={selectedSupplierName ? `Je dois à ${selectedSupplierName}` : "Reste à payer"} value={formatEuro(totals.remaining)} icon={Wallet} tone="brand" hint={`${totals.openCount} facture(s) en cours`} />
         <StatCard label="En retard" value={formatEuro(totals.overdueAmount)} icon={AlertTriangle} tone="danger" hint={`${totals.overdueCount} facture(s) échue(s)`} />
         <StatCard label="Échéance sous 7 jours" value={formatEuro(totals.dueSoonAmount)} icon={CalendarClock} tone="warning" hint={`${totals.dueSoonCount} facture(s)`} />
         <StatCard
@@ -518,124 +579,17 @@ export function SupplierInvoicesClient({
         />
       </div>
 
-      {view === "clients" && (
-        <Panel
-          title="Par client"
-          description="Le matériel facturé pour chaque chantier. Cliquez sur une ligne pour voir ses factures."
-          action={viewSwitch}
-          bodyClassName="px-0 pb-2 pt-3 overflow-x-auto"
-        >
-          <table className="w-full min-w-[720px] text-sm">
-            <thead>
-              <tr className="text-left text-xs text-subtle">
-                <th className="px-5 py-2 font-medium">Client / chantier</th>
-                <th className="px-2 py-2 font-medium">Fournisseur(s)</th>
-                <th className="px-2 py-2 font-medium text-right">Factures</th>
-                <th className="px-2 py-2 font-medium text-right">Matériel HT</th>
-                <th className="px-2 py-2 font-medium text-right">TTC</th>
-                <th className="px-5 py-2 font-medium text-right">Reste à payer</th>
-              </tr>
-            </thead>
-            <tbody>
-              {clientSummaries.map((c) => (
-                <tr
-                  key={c.key}
-                  onClick={() => setClientFilter((cur) => (cur === c.key ? "" : c.key))}
-                  className={`cursor-pointer border-t border-line transition-colors hover:bg-line-soft ${clientFilter === c.key ? "bg-brand-soft" : ""}`}
-                >
-                  <td className="px-5 py-2">
-                    <div className="flex items-center gap-2">
-                      {c.kind === "lead" && c.leadId ? (
-                        <Link href={`/admin/leads/${c.leadId}`} onClick={(e) => e.stopPropagation()} className="font-medium text-ink hover:text-brand hover:underline">
-                          {c.label}
-                        </Link>
-                      ) : (
-                        <span className={`font-medium ${c.kind === "stock" ? "text-subtle" : "text-ink"}`}>{c.label}</span>
-                      )}
-                      {c.kind === "a_associer" && (
-                        <span className="rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[11px] font-medium text-violet-700">à associer</span>
-                      )}
-                    </div>
-                    {c.sublabel && <div className="text-xs text-subtle">{c.sublabel}</div>}
-                  </td>
-                  <td className="px-2 py-2 text-xs text-subtle">{c.suppliers.join(", ")}</td>
-                  <td className="px-2 py-2 text-right tabular-nums">{c.invoiceCount}</td>
-                  <td className="px-2 py-2 text-right font-semibold tabular-nums text-ink">{formatEuro(c.totalHt)}</td>
-                  <td className="px-2 py-2 text-right tabular-nums">{formatEuro(c.totalTtc)}</td>
-                  <td className="px-5 py-2 text-right tabular-nums">{c.remaining > 0 ? formatEuro(c.remaining) : <span className="text-faint">—</span>}</td>
-                </tr>
-              ))}
-              {clientSummaries.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-5 py-4 text-subtle">
-                    Aucune facture pour l&apos;instant. Glissez votre première facture dans la zone ci-dessus.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </Panel>
-      )}
-
-      {/* Synthèse par fournisseur */}
-      {view === "fournisseurs" && (
-      <Panel title="Par fournisseur" description="Cliquez sur un fournisseur pour voir ses factures." action={viewSwitch} bodyClassName="px-0 pb-2 pt-3 overflow-x-auto">
-        <table className="w-full min-w-[720px] text-sm">
-          <thead>
-            <tr className="text-left text-xs text-subtle">
-              <th className="px-5 py-2 font-medium">Fournisseur</th>
-              <th className="px-2 py-2 font-medium text-right">Factures</th>
-              <th className="px-2 py-2 font-medium text-right">Total TTC</th>
-              <th className="px-2 py-2 font-medium text-right">Payé</th>
-              <th className="px-2 py-2 font-medium text-right">Reste à payer</th>
-              <th className="px-2 py-2 font-medium text-right">Dont en retard</th>
-              <th className="px-5 py-2 font-medium text-right">Prochaine échéance</th>
-            </tr>
-          </thead>
-          <tbody>
-            {summaries.map((s) => (
-              <tr
-                key={s.key}
-                onClick={() => setSupplierFilter((cur) => (cur === s.key ? "" : s.key))}
-                className={`cursor-pointer border-t border-line transition-colors hover:bg-line-soft ${supplierFilter === s.key ? "bg-brand-soft" : ""}`}
-              >
-                <td className="px-5 py-2 font-medium text-ink">{s.name}</td>
-                <td className="px-2 py-2 text-right tabular-nums">
-                  {s.invoiceCount}
-                  {s.openCount > 0 && <span className="text-subtle"> ({s.openCount} en cours)</span>}
-                </td>
-                <td className="px-2 py-2 text-right tabular-nums">{formatEuro(s.totalTtc)}</td>
-                <td className="px-2 py-2 text-right tabular-nums text-emerald-700">{formatEuro(s.totalPaid)}</td>
-                <td className="px-2 py-2 text-right font-semibold tabular-nums text-ink">{formatEuro(s.remaining)}</td>
-                <td className={`px-2 py-2 text-right tabular-nums ${s.overdueAmount > 0 ? "font-medium text-red-600" : "text-faint"}`}>
-                  {s.overdueAmount > 0 ? formatEuro(s.overdueAmount) : "—"}
-                </td>
-                <td className="px-5 py-2 text-right tabular-nums">{formatDate(s.nextDueDate)}</td>
-              </tr>
-            ))}
-            {summaries.length === 0 && (
-              <tr>
-                <td colSpan={7} className="px-5 py-4 text-subtle">
-                  Aucune facture pour l&apos;instant. Glissez votre première facture dans la zone ci-dessus.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </Panel>
-      )}
-
       {/* Liste des factures */}
       <Panel
-        title={listTitle ? `Factures — ${listTitle}` : "Factures"}
+        title={[selectedSupplierName ?? "Toutes les factures", selectedClientName].filter(Boolean).join(" · ")}
+        description={`${filtered.length} facture(s) · reste à payer ${formatEuro(filteredRemaining)} · cliquez sur une facture pour voir son détail ligne par ligne`}
         action={
-          supplierFilter || clientFilter ? (
-            <Button variant="ghost" size="sm" onClick={() => { setSupplierFilter(""); setClientFilter(""); }}>
-              <X className="h-4 w-4" /> Tout afficher
+          clientFilter ? (
+            <Button variant="ghost" size="sm" onClick={() => setClientFilter("")}>
+              <X className="h-4 w-4" /> Tous les clients
             </Button>
           ) : null
         }
-        description={`${filtered.length} facture(s) · reste à payer ${formatEuro(filteredRemaining)}`}
         bodyClassName="px-0 pb-2 pt-3"
       >
         <div className="flex flex-wrap items-center gap-2 px-5 pb-3">
@@ -653,116 +607,129 @@ export function SupplierInvoicesClient({
               </button>
             ))}
           </div>
-          <select
-            value={supplierFilter}
-            onChange={(e) => setSupplierFilter(e.target.value)}
-            className="h-8 rounded-lg border border-line bg-white px-2 text-sm"
-            aria-label="Filtrer par fournisseur"
-          >
-            <option value="">Tous les fournisseurs</option>
-            {summaries.map((s) => (
-              <option key={s.key} value={s.key}>
-                {s.name}
-              </option>
-            ))}
-          </select>
           <div className="relative">
             <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-faint" />
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="N°, fournisseur, objet…" className="h-8 w-56 pl-8" />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="N°, client, article…" className="h-8 w-56 pl-8" />
           </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1040px] text-sm">
+          <table className="w-full min-w-[980px] text-sm">
             <thead>
               <tr className="text-left text-xs text-subtle">
-                <th className="px-5 py-2 font-medium">Fournisseur</th>
+                <th className="w-8 px-3 py-2" />
+                <th className="px-2 py-2 font-medium">Facture</th>
+                {!supplierFilter && <th className="px-2 py-2 font-medium">Fournisseur</th>}
                 <th className="px-2 py-2 font-medium">Client</th>
-                <th className="px-2 py-2 font-medium">N° / objet</th>
-                <th className="px-2 py-2 font-medium">Date</th>
                 <th className="px-2 py-2 font-medium">Échéance</th>
+                <th className="px-2 py-2 font-medium text-right">HT</th>
                 <th className="px-2 py-2 font-medium text-right">TTC</th>
-                <th className="px-2 py-2 font-medium text-right">Reste</th>
+                <th className="px-2 py-2 font-medium text-right">Reste dû</th>
                 <th className="px-2 py-2 font-medium">Statut</th>
-                <th className="px-5 py-2 font-medium text-right">Actions</th>
+                <th className="px-4 py-2 font-medium text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((inv) => {
                 const status = invoiceStatus(inv, today);
                 const name = (inv.supplier_id && supplierNames[inv.supplier_id]) || inv.supplier_name || "Fournisseur inconnu";
+                const open = expanded === inv.id;
+                const unread = !inv.invoice_number && inv.amount_ttc === null;
+                const cols = supplierFilter ? 9 : 10;
                 return (
-                  <tr key={inv.id} className="border-t border-line align-top hover:bg-line-soft/60">
-                    <td className="px-5 py-2.5 font-medium text-ink">{name}</td>
-                    <td className="px-2 py-2.5">
-                      <ClientCell inv={inv} onLink={() => setEditing(inv)} />
-                    </td>
-                    <td className="px-2 py-2.5">
-                      <div className="text-ink">{inv.invoice_number ?? <span className="text-faint">—</span>}</div>
-                      {inv.description && <div className="max-w-[220px] truncate text-xs text-subtle">{inv.description}</div>}
-                    </td>
-                    <td className="px-2 py-2.5 tabular-nums">{formatDate(inv.invoice_date)}</td>
-                    <td className="px-2 py-2.5 tabular-nums">
-                      <div>{formatDate(inv.due_date)}</div>
-                      <DueHint inv={inv} today={today} />
-                    </td>
-                    <td className="px-2 py-2.5 text-right tabular-nums">{formatEuro(inv.amount_ttc)}</td>
-                    <td className="px-2 py-2.5 text-right font-semibold tabular-nums text-ink">
-                      {status === "payee" ? <span className="font-normal text-faint">—</span> : formatEuro(remainingAmount(inv))}
-                    </td>
-                    <td className="px-2 py-2.5">
-                      <div className="flex flex-col items-start gap-1">
-                        <StatusBadge status={status} />
-                        {duplicates.has(inv.id) && (
-                          <span
-                            title={`Même client et même montant que : ${duplicates.get(inv.id)!.join(", ")}`}
-                            className="inline-flex items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-xs font-medium text-orange-700"
+                  <Fragment key={inv.id}>
+                    <tr
+                      onClick={() => toggleExpand(inv)}
+                      className={`cursor-pointer border-t border-line align-top transition-colors ${open ? "bg-brand-soft/60" : "hover:bg-line-soft/60"}`}
+                    >
+                      <td className="px-3 py-2.5 text-subtle">{open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}</td>
+                      <td className="px-2 py-2.5">
+                        <div className="font-medium text-ink">{inv.invoice_number ?? inv.file_name ?? "—"}</div>
+                        <div className="max-w-[260px] truncate text-xs text-subtle">
+                          {formatDate(inv.invoice_date)}
+                          {inv.description ? ` · ${inv.description}` : ""}
+                        </div>
+                      </td>
+                      {!supplierFilter && <td className="px-2 py-2.5 font-medium text-ink">{name}</td>}
+                      <td className="px-2 py-2.5" onClick={(e) => e.stopPropagation()}>
+                        <ClientCell inv={inv} onLink={() => setEditing(inv)} />
+                      </td>
+                      <td className="px-2 py-2.5 tabular-nums">
+                        <div>{formatDate(inv.due_date)}</div>
+                        <DueHint inv={inv} today={today} />
+                      </td>
+                      <td className="px-2 py-2.5 text-right tabular-nums">{formatEuro(inv.amount_ht)}</td>
+                      <td className="px-2 py-2.5 text-right tabular-nums">{formatEuro(inv.amount_ttc)}</td>
+                      <td className="px-2 py-2.5 text-right font-semibold tabular-nums text-ink">
+                        {status === "payee" ? <span className="font-normal text-faint">—</span> : formatEuro(remainingAmount(inv))}
+                      </td>
+                      <td className="px-2 py-2.5">
+                        <div className="flex flex-col items-start gap-1">
+                          <StatusBadge status={status} />
+                          {duplicates.has(inv.id) && (
+                            <span
+                              title={`Même client et même montant que : ${duplicates.get(inv.id)!.join(", ")}`}
+                              className="inline-flex items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-xs font-medium text-orange-700"
+                            >
+                              Doublon possible ?
+                            </span>
+                          )}
+                          {inv.needs_review && (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700">
+                              À vérifier
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-end gap-1">
+                          {unread && inv.storage_path && (
+                            <Button size="sm" variant="outline" onClick={() => reprocess(inv)} disabled={reprocessing === inv.id}>
+                              {reprocessing === inv.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                              Relire
+                            </Button>
+                          )}
+                          {inv.storage_path && (
+                            <a
+                              href={`/api/admin/supplier-invoices/${inv.id}/file`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="Voir le PDF"
+                              className="rounded-md p-1.5 text-subtle hover:bg-line-soft hover:text-ink"
+                            >
+                              <FileText className="h-4 w-4" />
+                            </a>
+                          )}
+                          <button type="button" title="Modifier" onClick={() => setEditing(inv)} className="rounded-md p-1.5 text-subtle hover:bg-line-soft hover:text-ink">
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            title={status === "payee" ? "Remettre à payer" : "Marquer comme payée"}
+                            onClick={() => togglePaid(inv)}
+                            className={`rounded-md p-1.5 hover:bg-line-soft ${status === "payee" ? "text-subtle hover:text-ink" : "text-emerald-600 hover:text-emerald-700"}`}
                           >
-                            Doublon possible ?
-                          </span>
-                        )}
-                        {inv.needs_review && (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700">
-                            À vérifier
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-5 py-2.5">
-                      <div className="flex justify-end gap-1">
-                        {inv.storage_path && (
-                          <a
-                            href={`/api/admin/supplier-invoices/${inv.id}/file`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title="Voir la facture"
-                            className="rounded-md p-1.5 text-subtle hover:bg-line-soft hover:text-ink"
-                          >
-                            <FileText className="h-4 w-4" />
-                          </a>
-                        )}
-                        <button type="button" title="Modifier" onClick={() => setEditing(inv)} className="rounded-md p-1.5 text-subtle hover:bg-line-soft hover:text-ink">
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          title={status === "payee" ? "Remettre à payer" : "Marquer comme payée"}
-                          onClick={() => togglePaid(inv)}
-                          className={`rounded-md p-1.5 hover:bg-line-soft ${status === "payee" ? "text-subtle hover:text-ink" : "text-emerald-600 hover:text-emerald-700"}`}
-                        >
-                          {status === "payee" ? <RotateCcw className="h-4 w-4" /> : <Check className="h-4 w-4" />}
-                        </button>
-                        <button type="button" title="Supprimer" onClick={() => deleteInvoice(inv)} className="rounded-md p-1.5 text-subtle hover:bg-red-50 hover:text-red-600">
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                            {status === "payee" ? <RotateCcw className="h-4 w-4" /> : <Check className="h-4 w-4" />}
+                          </button>
+                          <button type="button" title="Supprimer" onClick={() => deleteInvoice(inv)} className="rounded-md p-1.5 text-subtle hover:bg-red-50 hover:text-red-600">
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    {open && (
+                      <tr className="border-t border-line bg-canvas/60">
+                        <td colSpan={cols} className="px-5 py-4">
+                          <InvoiceDetail inv={inv} lines={linesCache[inv.id]} />
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 );
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-5 py-4 text-subtle">
+                  <td colSpan={10} className="px-5 py-4 text-subtle">
                     Aucune facture ne correspond à ces filtres.
                   </td>
                 </tr>
@@ -770,6 +737,63 @@ export function SupplierInvoicesClient({
             </tbody>
           </table>
         </div>
+      </Panel>
+
+      {/* Synthèse par client */}
+      <Panel
+        title="Par client"
+        description={`Le matériel facturé pour chaque chantier${selectedSupplierName ? ` par ${selectedSupplierName}` : ""}. Cliquez sur une ligne pour filtrer les factures.`}
+        bodyClassName="px-0 pb-2 pt-3 overflow-x-auto"
+      >
+        <table className="w-full min-w-[720px] text-sm">
+          <thead>
+            <tr className="text-left text-xs text-subtle">
+              <th className="px-5 py-2 font-medium">Client / chantier</th>
+              <th className="px-2 py-2 font-medium">Fournisseur(s)</th>
+              <th className="px-2 py-2 font-medium text-right">Factures</th>
+              <th className="px-2 py-2 font-medium text-right">Matériel HT</th>
+              <th className="px-2 py-2 font-medium text-right">TTC</th>
+              <th className="px-5 py-2 font-medium text-right">Reste à payer</th>
+            </tr>
+          </thead>
+          <tbody>
+            {clientSummaries.map((c) => (
+              <tr
+                key={c.key}
+                onClick={() => setClientFilter((cur) => (cur === c.key ? "" : c.key))}
+                className={`cursor-pointer border-t border-line transition-colors hover:bg-line-soft ${clientFilter === c.key ? "bg-brand-soft" : ""}`}
+              >
+                <td className="px-5 py-2">
+                  <div className="flex items-center gap-2">
+                    {c.kind === "lead" && c.leadId ? (
+                      <Link href={`/admin/leads/${c.leadId}`} onClick={(e) => e.stopPropagation()} className="font-medium text-ink hover:text-brand hover:underline">
+                        {c.label}
+                      </Link>
+                    ) : (
+                      <span className={`font-medium ${c.kind === "stock" ? "text-subtle" : "text-ink"}`}>{c.label}</span>
+                    )}
+                    {c.kind === "a_associer" && (
+                      <span className="rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[11px] font-medium text-violet-700">à associer</span>
+                    )}
+                  </div>
+                  {c.sublabel && <div className="text-xs text-subtle">{c.sublabel}</div>}
+                </td>
+                <td className="px-2 py-2 text-xs text-subtle">{c.suppliers.join(", ")}</td>
+                <td className="px-2 py-2 text-right tabular-nums">{c.invoiceCount}</td>
+                <td className="px-2 py-2 text-right font-semibold tabular-nums text-ink">{formatEuro(c.totalHt)}</td>
+                <td className="px-2 py-2 text-right tabular-nums">{formatEuro(c.totalTtc)}</td>
+                <td className="px-5 py-2 text-right tabular-nums">{c.remaining > 0 ? formatEuro(c.remaining) : <span className="text-faint">—</span>}</td>
+              </tr>
+            ))}
+            {clientSummaries.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-5 py-4 text-subtle">
+                  Aucune facture pour l&apos;instant.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </Panel>
 
       <EditInvoiceDialog
@@ -785,6 +809,134 @@ export function SupplierInvoicesClient({
           }
         }}
       />
+    </div>
+  );
+}
+
+/* ── Onglet fournisseur ───────────────────────────────────────────── */
+
+function SupplierTab({
+  active,
+  onClick,
+  name,
+  remaining,
+  hint,
+  overdue,
+}: {
+  active: boolean;
+  onClick: () => void;
+  name: string;
+  remaining: number;
+  hint: string;
+  overdue: number;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`min-w-[170px] rounded-[12px] border px-4 py-2.5 text-left transition-colors ${
+        active ? "border-brand bg-brand text-white shadow-card" : "border-line bg-white text-ink hover:border-brand/60 hover:bg-brand-soft/40"
+      }`}
+    >
+      <div className={`truncate text-xs font-semibold uppercase tracking-wide ${active ? "text-white/85" : "text-subtle"}`}>{name}</div>
+      <div className="mt-0.5 text-lg font-bold tabular-nums">{formatEuro(remaining)}</div>
+      <div className={`text-xs ${active ? "text-white/80" : "text-subtle"}`}>
+        {hint}
+        {overdue > 0 && <span className={active ? "font-semibold text-white" : "font-semibold text-red-600"}> · {formatEuro(overdue)} en retard</span>}
+      </div>
+    </button>
+  );
+}
+
+/* ── Détail d'une facture : lignes ────────────────────────────────── */
+
+function formatQty(n: number | null): string {
+  if (n === null || n === undefined) return "";
+  return Number(n).toLocaleString("fr-FR", { maximumFractionDigits: 3 });
+}
+
+function InvoiceDetail({ inv, lines }: { inv: SupplierInvoice; lines: SupplierInvoiceLine[] | "loading" | "error" | undefined }) {
+  const facts: [string, string | null | undefined][] = [
+    ["Date de facture", formatDate(inv.invoice_date)],
+    ["Échéance", formatDate(inv.due_date)],
+    ["Livraison", inv.delivery_date ? formatDate(inv.delivery_date) : null],
+    ["Commande", inv.order_reference],
+    ["Paiement", inv.payment_terms],
+    ["Réf. client sur la facture", inv.client_reference],
+    ["Pages du PDF d'origine", inv.source_pages],
+  ];
+  return (
+    <div className="space-y-3">
+      <dl className="flex flex-wrap gap-x-6 gap-y-1 text-xs">
+        {facts
+          .filter(([, v]) => v && v !== "—")
+          .map(([k, v]) => (
+            <div key={k}>
+              <dt className="inline text-subtle">{k} : </dt>
+              <dd className="inline font-medium text-ink">{v}</dd>
+            </div>
+          ))}
+      </dl>
+
+      {lines === "loading" || lines === undefined ? (
+        <p className="flex items-center gap-2 text-sm text-subtle">
+          <Loader2 className="h-4 w-4 animate-spin" /> Chargement des lignes…
+        </p>
+      ) : lines === "error" ? (
+        <p className="text-sm text-red-600">Impossible de charger les lignes.</p>
+      ) : lines.length === 0 ? (
+        <p className="text-sm text-subtle">Pas de détail ligne par ligne pour cette facture.</p>
+      ) : (
+        <div className="overflow-x-auto rounded-lg border border-line bg-white">
+          <table className="w-full min-w-[640px] text-sm">
+            <thead>
+              <tr className="bg-line-soft/60 text-left text-xs text-subtle">
+                <th className="px-3 py-1.5 font-medium">#</th>
+                <th className="px-2 py-1.5 font-medium">Réf.</th>
+                <th className="px-2 py-1.5 font-medium">Désignation</th>
+                <th className="px-2 py-1.5 font-medium text-right">Qté</th>
+                <th className="px-2 py-1.5 font-medium text-right">Prix unit. HT</th>
+                <th className="px-3 py-1.5 font-medium text-right">Montant HT</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lines.map((l) =>
+                l.is_comment ? (
+                  <tr key={l.id} className="border-t border-line">
+                    <td className="px-3 py-1.5 text-faint">{l.position}</td>
+                    <td colSpan={5} className="px-2 py-1.5 text-xs font-medium italic text-violet-700">
+                      {l.description}
+                    </td>
+                  </tr>
+                ) : (
+                  <tr key={l.id} className="border-t border-line">
+                    <td className="px-3 py-1.5 text-faint">{l.position}</td>
+                    <td className="px-2 py-1.5 font-mono text-xs text-subtle">{l.reference}</td>
+                    <td className="px-2 py-1.5 text-ink">{l.description}</td>
+                    <td className="px-2 py-1.5 text-right tabular-nums">{formatQty(l.quantity)}</td>
+                    <td className="px-2 py-1.5 text-right tabular-nums">{formatEuro(l.unit_price)}</td>
+                    <td className={`px-3 py-1.5 text-right tabular-nums ${Number(l.amount) < 0 ? "text-emerald-700" : "text-ink"}`}>{formatEuro(l.amount)}</td>
+                  </tr>
+                )
+              )}
+            </tbody>
+            <tfoot className="border-t border-line-strong text-sm">
+              <tr>
+                <td colSpan={5} className="px-3 py-1 text-right text-subtle">Total HT</td>
+                <td className="px-3 py-1 text-right font-medium tabular-nums">{formatEuro(inv.amount_ht)}</td>
+              </tr>
+              <tr>
+                <td colSpan={5} className="px-3 py-1 text-right text-subtle">TVA</td>
+                <td className="px-3 py-1 text-right tabular-nums">{formatEuro(inv.amount_tva)}</td>
+              </tr>
+              <tr>
+                <td colSpan={5} className="px-3 py-1 text-right font-semibold text-ink">Total TTC</td>
+                <td className="px-3 py-1 text-right font-bold tabular-nums text-ink">{formatEuro(inv.amount_ttc)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

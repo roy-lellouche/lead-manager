@@ -9,6 +9,20 @@ import {
 
 type Params = { params: Promise<{ id: string }> };
 
+/** Détail d'une facture : lignes article par article. */
+export async function GET(request: NextRequest, { params }: Params) {
+  const { id } = await params;
+  const auth = await requireRole(request, ["admin"]);
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  const { data, error } = await auth.admin
+    .from("supplier_invoice_lines")
+    .select("id, position, reference, description, quantity, unit_price, amount, is_comment")
+    .eq("invoice_id", id)
+    .order("position", { ascending: true });
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ lines: data ?? [] }, { headers: { "Cache-Control": "private, no-store" } });
+}
+
 /** Modification d'une facture (correction des champs, paiement). */
 export async function PATCH(request: NextRequest, { params }: Params) {
   const { id } = await params;

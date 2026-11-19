@@ -28,6 +28,9 @@ export interface SupplierInvoice {
   lead_match: LeadMatch;
   order_reference: string | null;
   source_pages: string | null;
+  payment_terms?: string | null;
+  delivery_date?: string | null;
+  parse_source?: string | null;
   lead?: InvoiceLead | null;
 }
 
@@ -438,4 +441,15 @@ export function summarizeByClient(
   }
   const order = { a_associer: 0, lead: 1, stock: 2 };
   return [...map.values()].sort((a, b) => order[a.kind] - order[b.kind] || b.totalTtc - a.totalTtc);
+}
+
+export interface SupplierInvoiceLine {
+  id: string;
+  position: number;
+  reference: string | null;
+  description: string;
+  quantity: number | null;
+  unit_price: number | null;
+  amount: number | null;
+  is_comment: boolean;
 }

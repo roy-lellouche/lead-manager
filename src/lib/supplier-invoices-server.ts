@@ -4,7 +4,7 @@ import { matchSupplier, personTokens, type LeadCandidate } from "@/lib/supplier-
 export const SUPPLIER_INVOICES_BUCKET = "supplier-invoices";
 
 export const SUPPLIER_INVOICE_COLUMNS =
-  "id, supplier_id, supplier_name, invoice_number, invoice_date, due_date, amount_ht, amount_tva, amount_ttc, amount_paid, paid_at, description, notes, needs_review, file_name, storage_path, mime_type, created_at, lead_id, client_reference, client_name, client_department, lead_match, order_reference, source_pages, lead:leads(id, first_name, last_name, city, postal_code, status)";
+  "id, supplier_id, supplier_name, invoice_number, invoice_date, due_date, amount_ht, amount_tva, amount_ttc, amount_paid, paid_at, description, notes, needs_review, file_name, storage_path, mime_type, created_at, lead_id, client_reference, client_name, client_department, lead_match, order_reference, source_pages, payment_terms, delivery_date, parse_source, lead:leads(id, first_name, last_name, city, postal_code, status)";
 
 /** Cache des fournisseurs pour un dépôt : évite de relire la table à chaque facture d'un lot. */
 export function supplierResolver(admin: SupabaseClient) {
