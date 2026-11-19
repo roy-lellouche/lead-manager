@@ -30,6 +30,7 @@ import {
   SlidersHorizontal,
   Mountain,
   Search,
+  Receipt,
 } from "lucide-react";
 import { CommandPalette, openCommandPalette } from "@/components/CommandPalette";
 import { createClient } from "@/lib/supabase/client";
@@ -61,6 +62,7 @@ const adminNav = [
   { href: "/admin/users", label: "Utilisateurs", icon: UserPlus },
   { href: "/admin/stats", label: "Statistiques", icon: BarChart3 },
   { href: "/admin/rentabilite", label: "Rentabilité", icon: Euro },
+  { href: "/admin/factures-fournisseurs", label: "Factures fournisseurs", icon: Receipt },
   { href: "/admin/parametres-financiers", label: "Paramètres financiers", icon: SlidersHorizontal },
 ];
 
