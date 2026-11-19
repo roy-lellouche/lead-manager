@@ -102,3 +102,72 @@ describe("lecture texte des factures", () => {
     expect(frNumber("-110,00")).toBe(-110);
   });
 });
+
+describe("format « Numéro / Envoyée par » (Pennylane, Qonto, Tiime…)", () => {
+  const page = (num: string, client: string, address: string, rows: string, total: string) => `Facture
+Numéro ${num}
+Date d’émission 02 nov. 2026
+Date d’échéance 02 déc. 2026
+Envoyée par
+POSEURS SAS
+1 RUE DU TEST
+93000 VILLE - France
+À destination de
+RS ECOLOGIE
+921653069
+12 IMPASSE DES IFS
+95200 SARCELLES - France
+N° de TVA FR21921653069
+${client}
+${address}
+Produits Quantité Prix u. HT TVA (%) Total HT
+${rows}
+Détails TVA
+Taux Montant TVA Base HT
+Aucune 0,00 € ${total}
+Récapitulatif
+Total HT ${total}
+Total TVA 0,00 €
+Total TTC ${total}
+Référence PLXXXX
+POSEURS | SAS, société par actions simplifiée | N° SIREN 111.222.333 1 / 1`;
+
+  it("une facture par page, lignes, client et code postal du chantier", () => {
+    const inv = parseInvoicesFromText([
+      page("F-2026-1", "DURAND", "58 All. des Plantes, 54690 Eulmont, France", "INSTALLATION PAC 1 unité 2 600,00 € Aucune 2 600,00 €", "2 600,00 €"),
+      page(
+        "F-2026-2",
+        "MARTIN",
+        "20 Rue Haute, 59127 Élincourt, France",
+        "INSTALLATION PAC 1 unité 2 600,00 € Aucune 2 600,00 €\nPOSE POMPE A CHALEUR FOURNIE 1 unité 2 500,00 € Aucune 2 500,00 €\nAVEC ACCESSOIRES",
+        "5 100,00 €"
+      ),
+    ]);
+    expect(inv).toHaveLength(2);
+    expect(inv[0]).toMatchObject({
+      invoice_number: "F-2026-1",
+      supplier_name: "POSEURS SAS",
+      supplier_siret: "111222333",
+      invoice_date: "2026-11-02",
+      due_date: "2026-12-02",
+      amount_ht: 2600,
+      amount_tva: 0,
+      amount_ttc: 2600,
+      client_name: "DURAND",
+      client_department: "54",
+      client_postal_code: "54690",
+    });
+    expect(inv[1].lines.map((l) => [l.description, l.quantity, l.unit_price, l.amount])).toEqual([
+      ["INSTALLATION PAC", 1, 2600, 2600],
+      ["POSE POMPE A CHALEUR FOURNIE AVEC ACCESSOIRES", 1, 2500, 2500],
+    ]);
+    expect(isReliable(inv)).toBe(true);
+  });
+
+  it("dates en lettres", async () => {
+    const { frDate } = await import("./invoice-text-parser");
+    expect(frDate("02 déc. 2026")).toBe("2026-12-02");
+    expect(frDate("1er février 2027")).toBe("2027-02-01");
+    expect(frDate("5/3/2026")).toBe("2026-03-05");
+  });
+});

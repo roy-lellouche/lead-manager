@@ -99,7 +99,11 @@ export async function persistInvoices(
   const entries = analysis.invoices.map((raw, i) => ({ raw, fields: toInvoiceFields(raw), ...ranges[i] }));
 
   const resolveSupplier = supplierResolver(admin);
-  const leads = await findLeadCandidates(admin, entries.map((e) => e.fields.client_name ?? e.fields.client_reference));
+  const leads = await findLeadCandidates(
+    admin,
+    entries.map((e) => e.fields.client_name ?? e.fields.client_reference),
+    entries.map((e) => e.raw.client_postal_code)
+  );
 
   const batchId = randomUUID();
   const month = new Date().toISOString().slice(0, 7);
@@ -128,7 +132,7 @@ export async function persistInvoices(
     }
 
     const m = f.client_reference
-      ? matchLead(f.client_name ?? f.client_reference, f.client_department, leads)
+      ? matchLead(f.client_name ?? f.client_reference, f.client_department, leads, entry.raw.client_postal_code)
       : { leadId: null, match: "stock" as LeadMatch };
 
     let fileBytes: Uint8Array = bytes;

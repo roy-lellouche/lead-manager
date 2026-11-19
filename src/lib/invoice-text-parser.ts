@@ -37,6 +37,8 @@ export interface ParsedInvoice {
   client_reference: string | null;
   client_name: string | null;
   client_department: string | null;
+  /** Code postal du chantier quand la facture donne son adresse (aide au rapprochement). */
+  client_postal_code?: string | null;
   description: string | null;
   lines: ParsedLine[];
 }
@@ -55,13 +57,32 @@ export function frNumber(s: string | null | undefined): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-/** « 12/11/2026 » → « 2026-11-12 » */
+const MONTHS: [RegExp, string][] = [
+  [/^janv/, "01"], [/^f[ée]v/, "02"], [/^mars/, "03"], [/^avr/, "04"], [/^mai/, "05"], [/^juin/, "06"],
+  [/^juil/, "07"], [/^ao[uû]/, "08"], [/^sept/, "09"], [/^oct/, "10"], [/^nov/, "11"], [/^d[ée]c/, "12"],
+];
+
+/** « 12/11/2026 » ou « 02 nov. 2026 » → « 2026-11-12 » */
 export function frDate(s: string | null | undefined): string | null {
-  const m = s?.match(/(\d{2})[/.-](\d{2})[/.-](\d{4})/);
-  return m ? parseIsoDate(`${m[3]}-${m[2]}-${m[1]}`) : null;
+  if (!s) return null;
+  const m = s.match(/(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})/);
+  if (m) return parseIsoDate(`${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`);
+  const t = s.match(/(\d{1,2})(?:er)?\s+([A-Za-zÀ-ÿ]+)\.?\s+(\d{4})/);
+  if (!t) return null;
+  const month = MONTHS.find(([re]) => re.test(t[2].toLowerCase()))?.[1];
+  return month ? parseIsoDate(`${t[3]}-${month}-${t[1].padStart(2, "0")}`) : null;
 }
 
-const HEADER = /^\s*(Facture|Avoir|FACTURE|AVOIR)\s+(?:n[°o]\s*:?\s*)?([A-Z0-9][A-Z0-9/_.-]{2,})\s*$/m;
+/** En-tête « Facture FC26-7212 » (une ligne). */
+const HEADER = /^\s*(Facture|Avoir|FACTURE|AVOIR)\s+(?:n[°o]\.?\s*:?\s*)?([A-Z0-9][A-Z0-9/_.-]{2,})\s*$/m;
+/** Numéro sur sa propre ligne : « Numéro F-2026-1447 », « N° de facture : 123 », « Facture n° 45 ». */
+const NUMBER_LINE = /^\s*(?:Num[ée]ro(?:\s+de\s+facture)?|N[°o]\.?\s*de\s*facture|Facture\s*n[°o]\.?|R[ée]f[ée]rence\s+facture)\s*:?\s*([A-Z0-9][A-Z0-9/_.-]{2,})\s*$/im;
+
+/** Numéro de facture d'une page, quelle que soit sa présentation. */
+export function detectInvoiceNumber(text: string): string | null {
+  const candidates = [text.match(HEADER)?.[2], text.match(NUMBER_LINE)?.[1]];
+  return candidates.find((c): c is string => !!c && /\d/.test(c)) ?? null;
+}
 
 function valueAfter(text: string, label: RegExp): string | null {
   const m = text.match(new RegExp(String.raw`${label.source}\s*:?\s*\n?\s*([^\n]+)`, "im"));
@@ -79,6 +100,12 @@ function amountAfter(text: string, label: RegExp): number | null {
  * sinon domaine de l'adresse e-mail.
  */
 function detectSupplier(text: string): string | null {
+  // « Envoyée par / Émis par / Vendeur » suivi du nom.
+  const sender = text.match(/^\s*(?:Envoy[ée]e?\s+par|[ÉE]mise?\s+par|[ÉE]metteur|Vendeur|Fournisseur)\s*:?\s*\n?\s*([^\n]{2,60})$/im);
+  if (sender && !OWN_NAME.test(sender[1]) && /[A-Za-z]/.test(sender[1])) return sender[1].trim();
+  // Pied de page « ECO KLIM | SAS, société… »
+  const footer = text.match(/^\s*([A-Z0-9][^\n|]{1,60}?)\s*\|\s*(?:SAS|SASU|SARL|EURL|SA|SNC|SCOP)\b/m);
+  if (footer && !OWN_NAME.test(footer[1])) return footer[1].trim();
   for (const m of text.matchAll(/^\s*(?:SAS|SASU|SARL|EURL|SA|SNC|SCOP)\s+([A-Z0-9][^\n]{1,60})$/gm)) {
     const name = m[1].trim();
     if (/capital|au\s+capital/i.test(name) || OWN_NAME.test(name)) continue;
@@ -93,8 +120,8 @@ function detectSupplier(text: string): string | null {
 }
 
 function detectSiret(text: string): string | null {
-  for (const m of text.matchAll(/SIRE[TN]\s*:?\s*([\d ]{9,17})/gi)) {
-    const v = m[1].replace(/\s/g, "");
+  for (const m of text.matchAll(/SIRE[TN]\s*:?\s*(\d{3}[ .]?\d{3}[ .]?\d{3}(?:[ .]?\d{5})?)(?!\d)/gi)) {
+    const v = m[1].replace(/[\s.]/g, "");
     if (!OWN_SIRETS.some((o) => v.startsWith(o.slice(0, 9)))) return v;
   }
   return null;
@@ -197,6 +224,88 @@ export function parseLines(text: string): ParsedLine[] {
   return lines.sort((a, b) => a.position - b.position);
 }
 
+const TABLE_HEADER = /^\s*(?:Produits?|D[ée]signation|Description|Libell[ée]|Articles?|Prestations?)\b.*\b(?:Quantit[ée]|Qt[ée]|Qté)/i;
+const TABLE_END = /^\s*(?:D[ée]tails?\s+TVA|R[ée]capitulatif|Total\s+HT|Sous[- ]total|Montant\s+hors\s+taxes|Conditions|Paiement|Taux\s+Montant)/i;
+const TABLE_ROW = new RegExp(
+  String.raw`^(.+?)\s+(${NUM})\s*(?:[A-Za-zÀ-ÿ.]{1,10}\s+)?(${NUM})\s*€?\s+(?:(?:Aucune|Exon[ée]r[ée]e?|N\/A|\d+(?:,\d+)?\s*%)\s+)?(${NUM})\s*€?\s*$`
+);
+
+/**
+ * Lignes d'un tableau classique sans numéro de ligne :
+ * « INSTALLATION PAC 1 unité 2 600,00 € Aucune 2 600,00 € ».
+ */
+export function parseTableLines(text: string): ParsedLine[] {
+  const rows = text.split("\n").map((r) => r.trim());
+  const out: ParsedLine[] = [];
+  let inTable = false;
+  for (const row of rows) {
+    if (TABLE_HEADER.test(row)) {
+      inTable = true;
+      continue;
+    }
+    if (!inTable || !row) continue;
+    if (TABLE_END.test(row)) {
+      inTable = false;
+      continue;
+    }
+    const m = row.match(TABLE_ROW);
+    const qty = m ? frNumber(m[2]) : null;
+    const pu = m ? frNumber(m[3]) : null;
+    const amount = m ? frNumber(m[4]) : null;
+    const coherent = m && qty !== null && pu !== null && amount !== null && Math.abs(qty * pu - amount) <= Math.max(0.05, Math.abs(amount) * 0.02);
+    if (m && (coherent || /€/.test(row))) {
+      const ref = m[1].match(/^\[([^\]]+)\]\s*/);
+      out.push({
+        position: out.length + 1,
+        reference: ref ? ref[1].trim() : null,
+        description: (ref ? m[1].slice(ref[0].length) : m[1]).trim(),
+        quantity: qty,
+        unit_price: pu,
+        amount,
+        is_comment: false,
+      });
+    } else if (out.length > 0 && !out[out.length - 1].is_comment) {
+      // Suite de la désignation précédente (« AVEC ACCESSOIRES »).
+      out[out.length - 1].description = `${out[out.length - 1].description} ${row}`.trim();
+    } else {
+      out.push({ position: out.length + 1, reference: null, description: row, quantity: null, unit_price: null, amount: null, is_comment: true });
+    }
+  }
+  return out;
+}
+
+const OWN_IDENTITY = /FR\s*21\s*921\s*653\s*069|921\s*653\s*069|rsecologie|RS\s*ECOLOGIE|IMPASSE\s+DES\s+IFS|95200\s+SARCELLES/i;
+const NOT_A_CLIENT = /facture|date|source|r[ée]f[ée]rence|num[ée]ro|[ée]ch[ée]ance|commande|page|tva|siret|siren|t[ée]l|e-?mail|@|produits|d[ée]signation|quantit/i;
+
+/**
+ * Client final quand la facture donne nom + adresse du chantier juste après
+ * le bloc destinataire RS Ecologie (« LAMI / 58 All. des Plantes, 54690 Eulmont »),
+ * ou après un libellé « Adresse du chantier / d'intervention ».
+ */
+export function detectSiteClient(text: string): { reference: string; name: string; department: string | null; postal: string | null } | null {
+  const make = (name: string, address: string) => {
+    const postal = address.match(/\b(\d{5})\b/)?.[1] ?? null;
+    const dep = postal ? (postal.startsWith("97") ? postal.slice(0, 3) : postal.slice(0, 2)) : null;
+    return { reference: address ? `${name} — ${address}` : name, name, department: dep === "20" ? null : normalizeDepartment(dep), postal };
+  };
+  const labelled = text.match(/^\s*(?:Adresse\s+(?:du\s+chantier|d['’]intervention|des\s+travaux|de\s+livraison)|Chantier|Client\s+final|Lieu\s+d['’]intervention)\s*:?\s*\n?\s*([^\n]+)(?:\n\s*([^\n]*\d{5}[^\n]*))?/im);
+  if (labelled) {
+    const first = labelled[1].trim();
+    if (/\d{5}/.test(first) && !labelled[2]) return make(first.split(",")[0].trim(), first);
+    return make(first, (labelled[2] ?? "").trim());
+  }
+  const rows = text.split("\n").map((r) => r.trim());
+  const headerIdx = rows.findIndex((r) => TABLE_HEADER.test(r));
+  if (headerIdx < 0) return null;
+  let lastOwn = -1;
+  for (let i = 0; i < headerIdx; i++) if (OWN_IDENTITY.test(rows[i])) lastOwn = i;
+  if (lastOwn < 0) return null;
+  const block = rows.slice(lastOwn + 1, headerIdx).filter(Boolean);
+  if (block.length === 0 || block.length > 4 || block.some((r) => NOT_A_CLIENT.test(r))) return null;
+  if (!/[A-Za-zÀ-ÿ]{2,}/.test(block[0]) || /\d{5}/.test(block[0])) return null;
+  return make(block[0], block.slice(1).join(", "));
+}
+
 function summarize(lines: ParsedLine[]): string | null {
   const items = lines
     .filter((l) => !l.is_comment && (l.amount ?? 0) > 0)
@@ -208,12 +317,16 @@ function summarize(lines: ParsedLine[]): string | null {
 
 function parseOne(text: string, start: number, end: number): ParsedInvoice {
   const header = text.match(HEADER);
-  const lines = parseLines(text);
+  const numbered = parseLines(text);
+  const lines = numbered.some((l) => !l.is_comment) ? numbered : parseTableLines(text);
   const ht = amountAfter(text, /(?:Montant|Total)\s+(?:hors\s+taxes|HT)/);
   let tva: number | null = null;
-  for (const m of text.matchAll(new RegExp(String.raw`^\s*(?:Montant\s+)?TVA[^\n]*?(${NUM})\s*€\s*$`, "gim"))) {
-    tva = round2((tva ?? 0) + (frNumber(m[1]) ?? 0));
-  }
+  const totalTva = amountAfter(text, /(?:Total|Montant)\s+(?:de\s+(?:la\s+)?)?TVA/);
+  if (totalTva !== null) tva = totalTva;
+  else
+    for (const m of text.matchAll(new RegExp(String.raw`^\s*TVA[^\n]*?(${NUM})\s*€\s*$`, "gim"))) {
+      tva = round2((tva ?? 0) + (frNumber(m[1]) ?? 0));
+    }
   let ttc =
     amountAfter(text, /Total\s+TTC/) ?? amountAfter(text, /Net\s+[àa]\s+payer/) ?? amountAfter(text, /Total(?!\s*(?:HT|hors|TVA))/);
   if (ttc === null && ht !== null) ttc = round2(ht + (tva ?? 0));
@@ -229,19 +342,30 @@ function parseOne(text: string, start: number, end: number): ParsedInvoice {
       break;
     }
   }
+  let clientPostal: string | null = null;
+  if (!client) {
+    const site = detectSiteClient(text);
+    if (site) {
+      client = { name: site.name, department: site.department };
+      clientRef = site.reference;
+      clientPostal = site.postal;
+    }
+  }
 
   const supplier = detectSupplier(text);
   return {
     start_page: start,
     end_page: end,
-    is_credit_note: /^avoir$/i.test(header?.[1] ?? ""),
+    is_credit_note: /^avoir$/i.test(header?.[1] ?? "") || /^\s*Avoir\s*$/im.test(text),
     supplier_name: supplier,
     supplier_siret: detectSiret(text),
-    invoice_number: header?.[2] ?? null,
-    invoice_date: frDate(valueAfter(text, /Date\s+de\s+(?:la\s+)?facture/)),
+    invoice_number: detectInvoiceNumber(text),
+    invoice_date: frDate(
+      valueAfter(text, /Date\s+de\s+(?:la\s+)?facture/) ?? valueAfter(text, /Date\s+d['’]\s*[ée]mission/) ?? valueAfter(text, /^\s*Date/m)
+    ),
     due_date: frDate(valueAfter(text, /Date\s+d['’]\s*[ée]ch[ée]ance/)),
     delivery_date: frDate(valueAfter(text, /Date\s+de\s+livraison/)),
-    order_reference: valueAfter(text, /^\s*Source/m) ?? valueAfter(text, /^\s*R[ée]f[ée]rence/m),
+    order_reference: valueAfter(text, /^\s*Source/m) ?? valueAfter(text, /^\s*R[ée]f[ée]rence(?:\s+commande)?(?=\s|:)/m),
     payment_terms: valueAfter(text, /Conditions\s+de\s+paiement/),
     amount_ht: ht,
     amount_tva: tva,
@@ -249,6 +373,7 @@ function parseOne(text: string, start: number, end: number): ParsedInvoice {
     client_reference: clientRef,
     client_name: client?.name ?? null,
     client_department: client?.department ?? null,
+    client_postal_code: clientPostal,
     description: summarize(lines),
     lines,
   };
@@ -259,12 +384,15 @@ function parseOne(text: string, start: number, end: number): ParsedInvoice {
  * Retourne [] si le texte ne ressemble pas à des factures lisibles.
  */
 export function parseInvoicesFromText(pages: string[]): ParsedInvoice[] {
-  const groups: { start: number; end: number; text: string[] }[] = [];
+  const groups: { start: number; end: number; number: string | null; text: string[] }[] = [];
   pages.forEach((page, i) => {
     const pageNo = i + 1;
-    const pageOf = page.match(/Page\s*:?\s*(\d+)\s*\/\s*(\d+)/i);
-    const startsNew = HEADER.test(page) || (pageOf ? pageOf[1] === "1" : false) || groups.length === 0;
-    if (startsNew) groups.push({ start: pageNo, end: pageNo, text: [page] });
+    const number = detectInvoiceNumber(page);
+    const current = groups[groups.length - 1];
+    // Une nouvelle facture commence quand un numéro apparaît et diffère de celui en cours
+    // (une facture de plusieurs pages répète souvent son numéro).
+    const startsNew = !current || (number !== null && number !== current.number) || (number === null && current.number === null && /\bPage\s*:?\s*1\s*\/\s*\d+/i.test(page));
+    if (startsNew) groups.push({ start: pageNo, end: pageNo, number, text: [page] });
     else {
       const g = groups[groups.length - 1];
       g.end = pageNo;

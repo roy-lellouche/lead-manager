@@ -841,7 +841,7 @@ export function SupplierInvoicesClient({
       {/* Synthèse par client */}
       <Panel
         title="Par client"
-        description={`Le matériel facturé pour chaque chantier${selectedSupplierName ? ` par ${selectedSupplierName}` : ""}. Cliquez sur une ligne pour filtrer les factures.`}
+        description={`Ce que chaque chantier vous a été facturé (matériel et pose)${selectedSupplierName ? ` par ${selectedSupplierName}` : ""}. Cliquez sur une ligne pour filtrer les factures.`}
         bodyClassName="px-0 pb-2 pt-3 overflow-x-auto"
       >
         <table className="w-full min-w-[720px] text-sm">
@@ -850,7 +850,7 @@ export function SupplierInvoicesClient({
               <th className="px-5 py-2 font-medium">Client / chantier</th>
               <th className="px-2 py-2 font-medium">Fournisseur(s)</th>
               <th className="px-2 py-2 font-medium text-right">Factures</th>
-              <th className="px-2 py-2 font-medium text-right">Matériel HT</th>
+              <th className="px-2 py-2 font-medium text-right">Montant HT</th>
               <th className="px-2 py-2 font-medium text-right">TTC</th>
               <th className="px-5 py-2 font-medium text-right">Reste à payer</th>
             </tr>

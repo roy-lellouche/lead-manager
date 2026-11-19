@@ -38,7 +38,7 @@ export async function SupplierInvoicesSection({ leadId }: { leadId: string }) {
 
   return (
     <Panel
-      title="Factures fournisseurs (matériel)"
+      title="Factures fournisseurs (matériel et pose)"
       description={`${invoices.length} facture(s) · ${formatEuro(totalHt)} HT · ${formatEuro(totalTtc)} TTC`}
       action={
         <Link href="/admin/factures-fournisseurs" className="text-xs font-medium text-brand hover:underline">

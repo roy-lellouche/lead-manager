@@ -234,3 +234,20 @@ describe("virements", () => {
     expect(paymentUnallocated({ amount: 2000, allocations: [{ invoice_id: "x", amount: 1000, invoice_number: "A" }] })).toBe(1000);
   });
 });
+
+describe("rapprochement par code postal et nom mal orthographié", () => {
+  const leads = [
+    { id: "lamy", first_name: "corinne", last_name: "lamy", postal_code: "54690", status: "valide" },
+    { id: "leite-59300", first_name: "Sabine", last_name: "Putéanus LEITE", postal_code: "59300", status: "valide" },
+    { id: "leite-x", first_name: "Paula", last_name: "leite", postal_code: null, status: "nrp" },
+    { id: "gromfeld", first_name: "BERNADETTE", last_name: "GROMFELD", postal_code: "57560", status: "valide" },
+    { id: "gromfeld-x", first_name: "Gromfeld", last_name: "Inconnu", postal_code: null, status: "nrp" },
+  ];
+  it("tolère une faute quand le code postal est identique", () => {
+    expect(matchLead("LAMI", "54", leads, "54690")).toMatchObject({ leadId: "lamy", match: "auto" });
+    expect(matchLead("GROMFLED", "57", leads, "57560")).toMatchObject({ leadId: "gromfeld", match: "auto" });
+  });
+  it("même département mais autre code postal : on demande confirmation", () => {
+    expect(matchLead("LEITE", "59", leads, "59200").match).toBe("a_associer");
+  });
+});

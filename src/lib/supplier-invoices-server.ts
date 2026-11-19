@@ -31,10 +31,24 @@ export async function resolveSupplierId(admin: SupabaseClient, name: string | nu
 }
 
 /** Leads dont le nom ou le prénom contient l'un des mots donnés (candidats au rapprochement). */
-export async function findLeadCandidates(admin: SupabaseClient, names: (string | null | undefined)[]): Promise<LeadCandidate[]> {
+export async function findLeadCandidates(
+  admin: SupabaseClient,
+  names: (string | null | undefined)[],
+  postalCodes: (string | null | undefined)[] = []
+): Promise<LeadCandidate[]> {
   const tokens = [...new Set(names.flatMap((n) => personTokens(n)).filter((t) => t.length >= 3))];
-  if (tokens.length === 0) return [];
+  const postals = [...new Set(postalCodes.filter((p): p is string => !!p && /^\d{5}$/.test(p)))];
   const out = new Map<string, LeadCandidate>();
+  // Leads du même code postal : retrouve aussi les noms mal orthographiés (LAMI / LAMY).
+  if (postals.length > 0) {
+    const { data } = await admin
+      .from("leads")
+      .select("id, first_name, last_name, postal_code, city, status")
+      .in("postal_code", postals)
+      .limit(2000);
+    for (const l of data ?? []) out.set(l.id, l);
+  }
+  if (tokens.length === 0) return [...out.values()];
   for (let i = 0; i < tokens.length; i += 15) {
     const chunk = tokens.slice(i, i + 15);
     const { data } = await admin

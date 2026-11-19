@@ -321,10 +321,25 @@ export interface LeadMatchResult {
  * (« CLIENT BAROUDI 60 » → nom BAROUDI, département 60).
  * Rattachement automatique seulement s'il n'y a qu'un candidat crédible.
  */
+/** Deux mots identiques à une faute de frappe près (LAMI / LAMY, GROMFLED / GROMFELD). */
+function nearlySame(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (a.length < 4 || b.length < 4 || Math.abs(a.length - b.length) > 1) return false;
+  if (a.length === b.length) {
+    const diff = [...a].reduce<number[]>((d, c, i) => (c !== b[i] ? [...d, i] : d), []);
+    // une lettre changée, ou deux lettres voisines inversées
+    return diff.length === 1 || (diff.length === 2 && diff[1] === diff[0] + 1 && a[diff[0]] === b[diff[1]] && a[diff[1]] === b[diff[0]]);
+  }
+  const [s, l] = a.length < b.length ? [a, b] : [b, a];
+  for (let i = 0; i < l.length; i++) if (l.slice(0, i) + l.slice(i + 1) === s) return true;
+  return false;
+}
+
 export function matchLead(
   clientName: string | null | undefined,
   department: string | null | undefined,
-  leads: LeadCandidate[]
+  leads: LeadCandidate[],
+  postalCode?: string | null
 ): LeadMatchResult {
   const tokens = personTokens(clientName);
   if (tokens.length === 0) return { leadId: null, match: clientName?.trim() ? "a_associer" : "stock", candidates: [] };
@@ -338,13 +353,17 @@ export function matchLead(
       const firstJoined = personTokens(lead.first_name).join("");
       let name = 0;
       if (tokens.every((t) => leadTokens.includes(t)) || joined === lastJoined || joined === firstJoined) name = 2;
-      else if (tokens.some((t) => t.length >= 3 && leadTokens.includes(t))) name = 1;
+      else if (tokens.some((t) => t.length >= 3 && leadTokens.some((lt) => nearlySame(t, lt)))) name = 1;
       if (name === 0) return null;
       let score = name * 2;
-      if (dep) {
+      const leadPostal = (lead.postal_code ?? "").replace(/\s/g, "");
+      if (postalCode && /^\d{5}$/.test(leadPostal) && leadPostal === postalCode) {
+        score += 5;
+      } else if (dep) {
         const same = postalMatchesDepartment(lead.postal_code, dep);
         if (same === false) return null;
-        if (same === true) score += 3;
+        // Même département mais autre code postal connu : indice faible (autre personne possible).
+        if (same === true) score += postalCode && /^\d{5}$/.test(leadPostal) ? 1 : 3;
       }
       if (lead.status === "annule" || lead.status === "pas_eligible") score -= 2;
       return { lead, score, name };
@@ -422,7 +441,7 @@ export function summarizeByClient(
         key,
         leadId: inv.lead_id,
         label: lead ? leadDisplayName(lead) : ck ? (inv.client_name || inv.client_reference || "Client").toUpperCase() : "Stock / sans client",
-        sublabel: lead ? [lead.postal_code, lead.city].filter(Boolean).join(" ") || null : ck ? inv.client_reference : "Matériel non affecté à un chantier",
+        sublabel: lead ? [lead.postal_code, lead.city].filter(Boolean).join(" ") || null : ck ? inv.client_reference : "Non affecté à un chantier",
         kind: inv.lead_id ? "lead" : ck ? "a_associer" : "stock",
         invoiceCount: 0,
         totalHt: 0,

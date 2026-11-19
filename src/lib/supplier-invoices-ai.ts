@@ -43,6 +43,7 @@ const invoiceSchema = z.object({
     .describe("Texte EXACT désignant le client final de RS Ecologie (ligne de commentaire du type « CLIENT BAROUDI 60 »), sinon null"),
   client_name: z.string().nullable().describe("Nom du client final, sans « CLIENT » ni département"),
   client_department: z.string().nullable().describe("Département du client s'il est écrit (« 60 », « 08 »)"),
+  client_postal_code: z.string().nullable().describe("Code postal du chantier / client final s'il est écrit, sinon null"),
   description: z.string().nullable().describe("Résumé très court du matériel facturé"),
   lines: z.array(lineSchema).describe("Toutes les lignes de la facture, dans l'ordre"),
 });
