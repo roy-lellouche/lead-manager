@@ -57,3 +57,39 @@ export async function extractPdfPages(src: Uint8Array, start: number, end: numbe
   pages.forEach((p) => out.addPage(p));
   return out.save();
 }
+
+export const SUPPLIER_PAYMENT_COLUMNS =
+  "id, supplier_id, amount, paid_on, label, created_at, allocations:supplier_payment_allocations(invoice_id, amount, invoice:supplier_invoices(invoice_number))";
+
+type RawPayment = {
+  id: string;
+  supplier_id: string;
+  amount: number;
+  paid_on: string;
+  label: string | null;
+  created_at: string;
+  allocations: { invoice_id: string; amount: number; invoice: { invoice_number: string | null } | { invoice_number: string | null }[] | null }[];
+};
+
+/** Aplatit la jointure Supabase en SupplierPayment. */
+export function toSupplierPayment(p: RawPayment) {
+  return {
+    id: p.id,
+    supplier_id: p.supplier_id,
+    amount: Number(p.amount),
+    paid_on: p.paid_on,
+    label: p.label,
+    created_at: p.created_at,
+    allocations: (p.allocations ?? []).map((a) => {
+      const inv = Array.isArray(a.invoice) ? a.invoice[0] : a.invoice;
+      return { invoice_id: a.invoice_id, amount: Number(a.amount), invoice_number: inv?.invoice_number ?? null };
+    }),
+  };
+}
+
+export async function loadSupplierPayments(admin: SupabaseClient, supplierId?: string) {
+  let q = admin.from("supplier_payments").select(SUPPLIER_PAYMENT_COLUMNS).order("paid_on", { ascending: false }).order("created_at", { ascending: false });
+  if (supplierId) q = q.eq("supplier_id", supplierId);
+  const { data, error } = await q;
+  return { data: ((data ?? []) as unknown as RawPayment[]).map(toSupplierPayment), error: error?.message ?? null };
+}

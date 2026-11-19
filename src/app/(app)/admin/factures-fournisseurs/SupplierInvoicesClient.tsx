@@ -13,6 +13,7 @@ import {
   FileText,
   Link2,
   Loader2,
+  Banknote,
   Pencil,
   RefreshCw,
   RotateCcw,
@@ -38,7 +39,9 @@ import { Panel } from "@/components/ui-kit/Panel";
 import { StatCard } from "@/components/ui-kit/StatCard";
 import { formatEuro } from "@/lib/finance/format";
 import {
+  allocationOrder,
   clientKey,
+  parseAmount,
   computeTotals,
   daysUntil,
   INVOICE_MAX_SIZE,
@@ -56,6 +59,9 @@ import {
   type InvoiceStatus,
   type SupplierInvoice,
   type SupplierInvoiceLine,
+  type SupplierPayment,
+  paymentUnallocated,
+  simulateAllocation,
 } from "@/lib/supplier-invoices";
 
 type Supplier = { id: string; name: string };
@@ -226,14 +232,18 @@ function LeadPicker({
 export function SupplierInvoicesClient({
   initialInvoices,
   initialSuppliers,
+  initialPayments,
   loadError,
 }: {
   initialInvoices: SupplierInvoice[];
   initialSuppliers: Supplier[];
+  initialPayments: SupplierPayment[];
   loadError: string | null;
 }) {
   const [invoices, setInvoices] = useState(initialInvoices);
   const [suppliers, setSuppliers] = useState(initialSuppliers);
+  const [payments, setPayments] = useState(initialPayments);
+  const [paymentOpen, setPaymentOpen] = useState(false);
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [dragging, setDragging] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ouvertes");
@@ -446,7 +456,30 @@ export function SupplierInvoicesClient({
   const busy = queue.some((q) => q.state === "attente" || q.state === "lecture");
   const selectedSupplierName = summaries.find((s) => s.key === supplierFilter)?.name;
   const selectedClientName = clientSummaries.find((c) => c.key === clientFilter)?.label;
-  const allRemaining = summaries.reduce((n, s) => n + s.remaining, 0);
+  const allTotals = computeTotals(invoices, today);
+  const creditBySupplier = payments.reduce<Record<string, number>>((m, p) => {
+    m[p.supplier_id] = (m[p.supplier_id] ?? 0) + paymentUnallocated(p);
+    return m;
+  }, {});
+  const allCredit = Object.values(creditBySupplier).reduce((n, v) => n + v, 0);
+  const scopedPayments = supplierFilter ? payments.filter((p) => p.supplier_id === supplierFilter) : payments;
+
+  /** Remplace les factures d'un fournisseur par leur état à jour (après un virement). */
+  const replaceSupplierInvoices = (supplierId: string, updated: SupplierInvoice[]) =>
+    setInvoices((list) => [...list.filter((i) => i.supplier_id !== supplierId), ...updated]);
+
+  const deletePayment = async (p: SupplierPayment) => {
+    if (!confirm(`Annuler le virement de ${formatEuro(p.amount)} du ${formatDate(p.paid_on)} ? Les factures qu'il réglait redeviendront à payer.`)) return;
+    const res = await fetch(`/api/admin/supplier-payments/${p.id}`, { method: "DELETE" });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      toast.error(data.error || "Annulation impossible");
+      return;
+    }
+    setPayments((list) => list.filter((x) => x.id !== p.id));
+    replaceSupplierInvoices(p.supplier_id, data.invoices ?? []);
+    toast.success("Virement annulé");
+  };
 
   return (
     <div className="space-y-6">
@@ -535,6 +568,13 @@ export function SupplierInvoicesClient({
       )}
 
       {/* Onglets fournisseurs : ce que je dois à chacun */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-xs font-semibold uppercase tracking-[0.08em] text-subtle">Ce que je dois, par fournisseur</h2>
+        <Button onClick={() => setPaymentOpen(true)} disabled={suppliers.length === 0} className="gap-2">
+          <Banknote className="h-4 w-4" />
+          Enregistrer un virement
+        </Button>
+      </div>
       <div className="-mx-1 overflow-x-auto px-1 pb-1">
         <div className="flex min-w-max gap-2">
           <SupplierTab
@@ -544,9 +584,10 @@ export function SupplierInvoicesClient({
               setClientFilter("");
             }}
             name="Tous les fournisseurs"
-            remaining={allRemaining}
+            remaining={allTotals.remaining}
             hint={`${invoices.length} facture(s)`}
-            overdue={totals.overdueAmount}
+            overdue={allTotals.overdueAmount}
+            credit={allCredit}
           />
           {summaries.map((s) => (
             <SupplierTab
@@ -560,6 +601,7 @@ export function SupplierInvoicesClient({
               remaining={s.remaining}
               hint={`${s.openCount} à payer / ${s.invoiceCount}`}
               overdue={s.overdueAmount}
+              credit={s.supplierId ? creditBySupplier[s.supplierId] ?? 0 : 0}
             />
           ))}
         </div>
@@ -739,6 +781,63 @@ export function SupplierInvoicesClient({
         </div>
       </Panel>
 
+      {/* Virements */}
+      <Panel
+        title={`Virements${selectedSupplierName ? ` à ${selectedSupplierName}` : ""}`}
+        description="Chaque virement est déduit des factures, en commençant par les échéances les plus anciennes."
+        action={
+          <Button variant="outline" size="sm" onClick={() => setPaymentOpen(true)} disabled={suppliers.length === 0} className="gap-1.5">
+            <Banknote className="h-4 w-4" /> Nouveau virement
+          </Button>
+        }
+        bodyClassName="px-0 pb-2 pt-3 overflow-x-auto"
+      >
+        <table className="w-full min-w-[720px] text-sm">
+          <thead>
+            <tr className="text-left text-xs text-subtle">
+              <th className="px-5 py-2 font-medium">Date</th>
+              {!supplierFilter && <th className="px-2 py-2 font-medium">Fournisseur</th>}
+              <th className="px-2 py-2 font-medium">Libellé</th>
+              <th className="px-2 py-2 font-medium text-right">Montant</th>
+              <th className="px-2 py-2 font-medium">Factures réglées</th>
+              <th className="px-2 py-2 font-medium text-right">Avance restante</th>
+              <th className="px-5 py-2" />
+            </tr>
+          </thead>
+          <tbody>
+            {scopedPayments.map((p) => {
+              const credit = paymentUnallocated(p);
+              return (
+                <tr key={p.id} className="border-t border-line align-top">
+                  <td className="px-5 py-2 tabular-nums">{formatDate(p.paid_on)}</td>
+                  {!supplierFilter && <td className="px-2 py-2 font-medium text-ink">{supplierNames[p.supplier_id] ?? "—"}</td>}
+                  <td className="px-2 py-2 text-subtle">{p.label ?? "—"}</td>
+                  <td className="px-2 py-2 text-right font-semibold tabular-nums text-emerald-700">{formatEuro(p.amount)}</td>
+                  <td className="px-2 py-2 text-xs text-subtle">
+                    {p.allocations.length === 0
+                      ? "—"
+                      : p.allocations.map((a) => `${a.invoice_number ?? "?"} (${formatEuro(a.amount)})`).join(", ")}
+                  </td>
+                  <td className="px-2 py-2 text-right tabular-nums">{credit > 0 ? <span className="font-medium text-amber-700">{formatEuro(credit)}</span> : <span className="text-faint">—</span>}</td>
+                  <td className="px-5 py-2 text-right">
+                    <button type="button" title="Annuler ce virement" onClick={() => deletePayment(p)} className="rounded-md p-1.5 text-subtle hover:bg-red-50 hover:text-red-600">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+            {scopedPayments.length === 0 && (
+              <tr>
+                <td colSpan={7} className="px-5 py-4 text-subtle">
+                  Aucun virement enregistré.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </Panel>
+
       {/* Synthèse par client */}
       <Panel
         title="Par client"
@@ -796,6 +895,21 @@ export function SupplierInvoicesClient({
         </table>
       </Panel>
 
+      <PaymentDialog
+        open={paymentOpen}
+        onClose={() => setPaymentOpen(false)}
+        suppliers={suppliers}
+        defaultSupplierId={supplierFilter && supplierNames[supplierFilter] ? supplierFilter : summaries.find((s) => s.supplierId)?.supplierId ?? ""}
+        invoices={invoices}
+        today={today}
+        onSaved={(payment, updated) => {
+          setPayments((list) => [payment, ...list]);
+          replaceSupplierInvoices(payment.supplier_id, updated);
+          setSupplierFilter(payment.supplier_id);
+          setPaymentOpen(false);
+        }}
+      />
+
       <EditInvoiceDialog
         invoice={editing}
         supplierName={editing ? (editing.supplier_id && supplierNames[editing.supplier_id]) || editing.supplier_name || "" : ""}
@@ -822,6 +936,7 @@ function SupplierTab({
   remaining,
   hint,
   overdue,
+  credit = 0,
 }: {
   active: boolean;
   onClick: () => void;
@@ -829,6 +944,7 @@ function SupplierTab({
   remaining: number;
   hint: string;
   overdue: number;
+  credit?: number;
 }) {
   return (
     <button
@@ -844,7 +960,277 @@ function SupplierTab({
         {hint}
         {overdue > 0 && <span className={active ? "font-semibold text-white" : "font-semibold text-red-600"}> · {formatEuro(overdue)} en retard</span>}
       </div>
+      {credit > 0.005 && (
+        <div className={`text-xs font-medium ${active ? "text-white" : "text-amber-700"}`}>{formatEuro(credit)} d&apos;avance non imputée</div>
+      )}
     </button>
+  );
+}
+
+/* ── Virement à un fournisseur ─────────────────────────────────────── */
+
+function PaymentDialog({
+  open,
+  onClose,
+  suppliers,
+  defaultSupplierId,
+  invoices,
+  today,
+  onSaved,
+}: {
+  open: boolean;
+  onClose: () => void;
+  suppliers: Supplier[];
+  defaultSupplierId: string;
+  invoices: SupplierInvoice[];
+  today: string;
+  onSaved: (payment: SupplierPayment, invoices: SupplierInvoice[]) => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        {open && (
+          <PaymentForm
+            suppliers={suppliers}
+            defaultSupplierId={defaultSupplierId}
+            invoices={invoices}
+            today={today}
+            onClose={onClose}
+            onSaved={onSaved}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function PaymentForm({
+  suppliers,
+  defaultSupplierId,
+  invoices,
+  today,
+  onClose,
+  onSaved,
+}: {
+  suppliers: Supplier[];
+  defaultSupplierId: string;
+  invoices: SupplierInvoice[];
+  today: string;
+  onClose: () => void;
+  onSaved: (payment: SupplierPayment, invoices: SupplierInvoice[]) => void;
+}) {
+  const [supplierId, setSupplierId] = useState(defaultSupplierId || suppliers[0]?.id || "");
+  const [amountText, setAmountText] = useState("");
+  const [paidOn, setPaidOn] = useState(today);
+  const [label, setLabel] = useState("");
+  const [mode, setMode] = useState<"auto" | "choix">("auto");
+  const [chosen, setChosen] = useState<Set<string>>(new Set());
+  const [saving, setSaving] = useState(false);
+
+  const openInvoices = useMemo(
+    () =>
+      invoices
+        .filter((i) => i.supplier_id === supplierId && Number(i.amount_ttc ?? 0) > 0 && remainingAmount(i) > 0)
+        .sort(allocationOrder),
+    [invoices, supplierId]
+  );
+  const due = openInvoices.reduce((n, i) => n + remainingAmount(i), 0);
+  const overdue = openInvoices.filter((i) => invoiceStatus(i, today) === "en_retard").reduce((n, i) => n + remainingAmount(i), 0);
+  const amount = parseAmount(amountText);
+  const preview = simulateAllocation(openInvoices, amount ?? 0, mode === "choix" ? chosen : null);
+  const allocated = new Map(preview.allocations.map((a) => [a.invoice.id, a]));
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supplierId) return toast.error("Choisissez le fournisseur.");
+    if (!amount || amount <= 0) return toast.error("Indiquez le montant du virement.");
+    if (mode === "choix" && chosen.size === 0) return toast.error("Cochez au moins une facture, ou passez en imputation automatique.");
+    setSaving(true);
+    try {
+      const res = await fetch("/api/admin/supplier-payments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          supplier_id: supplierId,
+          amount,
+          paid_on: paidOn,
+          label,
+          invoice_ids: mode === "choix" ? [...chosen] : null,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.payment) {
+        toast.error(data.error || "Enregistrement impossible");
+        return;
+      }
+      const settled = preview.allocations.filter((a) => a.settles).length;
+      toast.success(
+        `Virement de ${formatEuro(amount)} enregistré${settled ? ` · ${settled} facture(s) soldée(s)` : ""}${preview.left > 0 ? ` · ${formatEuro(preview.left)} d'avance` : ""}`
+      );
+      onSaved(data.payment as SupplierPayment, (data.invoices ?? []) as SupplierInvoice[]);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const field = "space-y-1";
+  const lbl = "text-xs font-medium text-subtle";
+
+  return (
+    <form onSubmit={submit} className="space-y-4">
+      <DialogHeader>
+        <DialogTitle>Enregistrer un virement</DialogTitle>
+        <DialogDescription>
+          Le montant est déduit de ce que vous devez au fournisseur, en soldant d&apos;abord les factures les plus anciennes (les retards en premier).
+        </DialogDescription>
+      </DialogHeader>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className={`${field} sm:col-span-2`}>
+          <label className={lbl} htmlFor="pay-supplier">Fournisseur</label>
+          <select
+            id="pay-supplier"
+            value={supplierId}
+            onChange={(e) => {
+              setSupplierId(e.target.value);
+              setChosen(new Set());
+            }}
+            className="h-9 w-full rounded-lg border border-input bg-white px-2.5 text-sm"
+          >
+            {suppliers.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-subtle">
+            Je dois <span className="font-semibold text-ink">{formatEuro(due)}</span>
+            {overdue > 0 && (
+              <>
+                {" "}dont <span className="font-semibold text-red-600">{formatEuro(overdue)} en retard</span>
+              </>
+            )}
+            {" "}· {openInvoices.length} facture(s) à payer
+          </p>
+        </div>
+        <div className={field}>
+          <label className={lbl} htmlFor="pay-amount">Montant du virement (€)</label>
+          <Input id="pay-amount" inputMode="decimal" autoFocus value={amountText} onChange={(e) => setAmountText(e.target.value)} placeholder="ex. 15 000" />
+          {overdue > 0 && (
+            <button type="button" onClick={() => setAmountText(String(overdue).replace(".", ","))} className="text-xs font-medium text-brand hover:underline">
+              Mettre le montant en retard ({formatEuro(overdue)})
+            </button>
+          )}
+        </div>
+        <div className={field}>
+          <label className={lbl} htmlFor="pay-date">Date du virement</label>
+          <Input id="pay-date" type="date" value={paidOn} onChange={(e) => setPaidOn(e.target.value)} />
+        </div>
+        <div className={`${field} sm:col-span-2`}>
+          <label className={lbl} htmlFor="pay-label">Libellé / référence (facultatif)</label>
+          <Input id="pay-label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="ex. Virement CIC du 19/11" />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-sm font-semibold text-ink">Factures réglées par ce virement</span>
+          <div className="inline-flex rounded-lg border border-line bg-white p-0.5 text-xs font-medium">
+            {(
+              [
+                ["auto", "Automatique (plus anciennes d'abord)"],
+                ["choix", "Je choisis les factures"],
+              ] as const
+            ).map(([v, l]) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setMode(v)}
+                className={`rounded-md px-2.5 py-1 transition-colors ${mode === v ? "bg-brand text-white" : "text-body hover:bg-line-soft"}`}
+              >
+                {l}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="max-h-72 overflow-y-auto rounded-lg border border-line">
+          <table className="w-full text-sm">
+            <tbody>
+              {openInvoices.map((inv) => {
+                const a = allocated.get(inv.id);
+                const st = invoiceStatus(inv, today);
+                return (
+                  <tr key={inv.id} className={`border-t border-line first:border-t-0 ${a ? "bg-emerald-50/60" : ""}`}>
+                    {mode === "choix" && (
+                      <td className="w-8 pl-3">
+                        <input
+                          type="checkbox"
+                          checked={chosen.has(inv.id)}
+                          onChange={(e) =>
+                            setChosen((c) => {
+                              const n = new Set(c);
+                              if (e.target.checked) n.add(inv.id);
+                              else n.delete(inv.id);
+                              return n;
+                            })
+                          }
+                          aria-label={`Régler ${inv.invoice_number ?? "la facture"}`}
+                        />
+                      </td>
+                    )}
+                    <td className="px-3 py-1.5">
+                      <div className="font-medium text-ink">{inv.invoice_number ?? "—"}</div>
+                      <div className="text-xs text-subtle">
+                        échéance {formatDate(inv.due_date)}
+                        {st === "en_retard" && <span className="font-medium text-red-600"> · en retard</span>}
+                      </div>
+                    </td>
+                    <td className="px-2 py-1.5 text-right tabular-nums text-subtle">{formatEuro(remainingAmount(inv))}</td>
+                    <td className="w-40 px-3 py-1.5 text-right text-xs">
+                      {a ? (
+                        <span className="font-medium text-emerald-700">
+                          {a.settles ? "✓ soldée" : `${formatEuro(a.amount)} payés`}
+                        </span>
+                      ) : (
+                        <span className="text-faint">—</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+              {openInvoices.length === 0 && (
+                <tr>
+                  <td className="px-3 py-3 text-subtle">Aucune facture à payer chez ce fournisseur : le virement sera gardé en avance.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {amount !== null && amount > 0 && (
+          <p className="rounded-lg bg-line-soft px-3 py-2 text-sm">
+            {preview.allocations.filter((a) => a.settles).length} facture(s) soldée(s)
+            {preview.allocations.some((a) => !a.settles) && ", 1 réglée en partie"}
+            {" "}· il restera <span className="font-semibold">{formatEuro(Math.max(0, due - (amount - preview.left)))}</span> à payer
+            {preview.left > 0 && (
+              <>
+                {" "}· <span className="font-semibold text-amber-700">{formatEuro(preview.left)} gardés en avance</span>
+              </>
+            )}
+          </p>
+        )}
+      </div>
+
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
+          Annuler
+        </Button>
+        <Button type="submit" disabled={saving || !amount}>
+          {saving ? "Enregistrement…" : `Enregistrer ${amount ? formatEuro(amount) : "le virement"}`}
+        </Button>
+      </DialogFooter>
+    </form>
   );
 }
 

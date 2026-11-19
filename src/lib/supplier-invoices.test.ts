@@ -213,3 +213,24 @@ describe("doublons et clients", () => {
     ]);
   });
 });
+
+describe("virements", () => {
+  it("impute sur les échéances les plus anciennes, puis garde le reste en avance", async () => {
+    const { simulateAllocation, paymentUnallocated } = await import("./supplier-invoices");
+    const a = inv({ invoice_number: "A", due_date: "2026-12-30", amount_ttc: 1000 });
+    const b = inv({ invoice_number: "B", due_date: "2026-10-30", amount_ttc: 500, amount_paid: 200 });
+    const c = inv({ invoice_number: "C", due_date: "2026-11-12", amount_ttc: 800 });
+    const paid = inv({ invoice_number: "D", due_date: "2026-01-01", amount_ttc: 100, amount_paid: 100 });
+    const r = simulateAllocation([a, b, c, paid], 1500);
+    expect(r.allocations.map((x) => [x.invoice.invoice_number, x.amount, x.settles])).toEqual([
+      ["B", 300, true],
+      ["C", 800, true],
+      ["A", 400, false],
+    ]);
+    expect(r.left).toBe(0);
+    const only = simulateAllocation([a, b, c], 2000, new Set([a.id]));
+    expect(only.allocations.map((x) => x.amount)).toEqual([1000]);
+    expect(only.left).toBe(1000);
+    expect(paymentUnallocated({ amount: 2000, allocations: [{ invoice_id: "x", amount: 1000, invoice_number: "A" }] })).toBe(1000);
+  });
+});

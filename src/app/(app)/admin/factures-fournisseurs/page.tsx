@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessionUser } from "@/lib/supabase/session";
 import { normalizeRole, roleLandingPath } from "@/lib/roles";
 import { PageHeader } from "@/components/ui-kit/PageHeader";
-import { SUPPLIER_INVOICE_COLUMNS } from "@/lib/supplier-invoices-server";
+import { loadSupplierPayments, SUPPLIER_INVOICE_COLUMNS } from "@/lib/supplier-invoices-server";
 import type { SupplierInvoice } from "@/lib/supplier-invoices";
 import { SupplierInvoicesClient } from "./SupplierInvoicesClient";
 
@@ -16,13 +16,14 @@ export default async function SupplierInvoicesPage() {
   const role = normalizeRole(profile?.role);
   if (role !== "admin") redirect(roleLandingPath(role));
 
-  const [invoicesRes, suppliersRes] = await Promise.all([
+  const [invoicesRes, suppliersRes, paymentsRes] = await Promise.all([
     admin
       .from("supplier_invoices")
       .select(SUPPLIER_INVOICE_COLUMNS)
       .order("due_date", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: false }),
     admin.from("suppliers").select("id, name").order("name", { ascending: true }),
+    loadSupplierPayments(admin),
   ]);
 
   return (
@@ -34,6 +35,7 @@ export default async function SupplierInvoicesPage() {
       <SupplierInvoicesClient
         initialInvoices={(invoicesRes.data ?? []) as unknown as SupplierInvoice[]}
         initialSuppliers={suppliersRes.data ?? []}
+        initialPayments={paymentsRes.data}
         loadError={invoicesRes.error?.message ?? null}
       />
     </div>

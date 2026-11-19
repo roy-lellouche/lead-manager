@@ -453,3 +453,54 @@ export interface SupplierInvoiceLine {
   amount: number | null;
   is_comment: boolean;
 }
+
+/* ── Virements fournisseurs ─────────────────────────────────────────── */
+
+export interface SupplierPayment {
+  id: string;
+  supplier_id: string;
+  amount: number;
+  paid_on: string;
+  label: string | null;
+  created_at: string;
+  allocations: { invoice_id: string; amount: number; invoice_number: string | null }[];
+}
+
+export function paymentUnallocated(p: Pick<SupplierPayment, "amount" | "allocations">): number {
+  return Math.max(0, round2(Number(p.amount) - p.allocations.reduce((n, a) => n + Number(a.amount), 0)));
+}
+
+/** Ordre d'imputation d'un virement : échéance la plus ancienne d'abord (même règle que la base). */
+export function allocationOrder(a: SupplierInvoice, b: SupplierInvoice): number {
+  const k = (v: string | null) => v ?? "9999-12-31";
+  return (
+    k(a.due_date).localeCompare(k(b.due_date)) ||
+    k(a.invoice_date).localeCompare(k(b.invoice_date)) ||
+    (a.invoice_number ?? "").localeCompare(b.invoice_number ?? "")
+  );
+}
+
+/**
+ * Aperçu de l'imputation d'un virement sur les factures ouvertes choisies.
+ * Retourne le montant imputé par facture et ce qui reste en avance.
+ */
+export function simulateAllocation(
+  invoices: SupplierInvoice[],
+  amount: number,
+  selectedIds?: Set<string> | null
+): { allocations: { invoice: SupplierInvoice; amount: number; settles: boolean }[]; left: number } {
+  let left = round2(Math.max(0, amount));
+  const allocations: { invoice: SupplierInvoice; amount: number; settles: boolean }[] = [];
+  const open = invoices
+    .filter((inv) => Number(inv.amount_ttc ?? 0) > 0 && remainingAmount(inv) > 0)
+    .filter((inv) => !selectedIds || selectedIds.has(inv.id))
+    .sort(allocationOrder);
+  for (const inv of open) {
+    if (left <= 0) break;
+    const due = remainingAmount(inv);
+    const a = round2(Math.min(left, due));
+    allocations.push({ invoice: inv, amount: a, settles: a >= due - 0.005 });
+    left = round2(left - a);
+  }
+  return { allocations, left };
+}
