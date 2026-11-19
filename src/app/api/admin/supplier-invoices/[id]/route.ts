@@ -44,6 +44,20 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   }
   if ("needs_review" in body) update.needs_review = body.needs_review === true;
 
+  // Client / chantier : un lead choisi à la main, ou « stock » (aucun client).
+  if ("lead_id" in body) {
+    const leadId = typeof body.lead_id === "string" && body.lead_id ? body.lead_id : null;
+    if (leadId) {
+      const { data: lead } = await admin.from("leads").select("id").eq("id", leadId).single();
+      if (!lead) return NextResponse.json({ error: "Client introuvable" }, { status: 400 });
+      update.lead_id = leadId;
+      update.lead_match = "manuel";
+    } else {
+      update.lead_id = null;
+      update.lead_match = "stock";
+    }
+  }
+
   const ttc = "amount_ttc" in update ? (update.amount_ttc as number | null) : current.amount_ttc;
 
   // « Marquer comme payée » : solde l'intégralité du TTC.

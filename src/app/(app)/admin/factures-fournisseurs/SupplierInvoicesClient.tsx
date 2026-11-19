@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import {
   AlertTriangle,
@@ -8,12 +9,14 @@ import {
   Check,
   CheckCircle2,
   FileText,
+  Link2,
   Loader2,
   Pencil,
   RotateCcw,
   Search,
   Trash2,
   UploadCloud,
+  UserRound,
   Wallet,
   X,
   XCircle,
@@ -32,6 +35,7 @@ import { Panel } from "@/components/ui-kit/Panel";
 import { StatCard } from "@/components/ui-kit/StatCard";
 import { formatEuro } from "@/lib/finance/format";
 import {
+  clientKey,
   computeTotals,
   daysUntil,
   INVOICE_MAX_SIZE,
@@ -39,8 +43,11 @@ import {
   INVOICE_STATUS_STYLES,
   invoiceMimeType,
   invoiceStatus,
+  leadDisplayName,
   remainingAmount,
+  summarizeByClient,
   summarizeBySupplier,
+  suspectedDuplicates,
   supplierKey,
   todayParis,
   type InvoiceStatus,
@@ -48,7 +55,8 @@ import {
 } from "@/lib/supplier-invoices";
 
 type Supplier = { id: string; name: string };
-type StatusFilter = "ouvertes" | "en_retard" | "payee" | "a_verifier" | "toutes";
+type StatusFilter = "ouvertes" | "en_retard" | "payee" | "a_verifier" | "a_associer" | "toutes";
+type View = "fournisseurs" | "clients";
 
 type QueueItem = {
   id: string;
@@ -60,6 +68,7 @@ type QueueItem = {
 const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
   { value: "ouvertes", label: "À payer" },
   { value: "en_retard", label: "En retard" },
+  { value: "a_associer", label: "Client à associer" },
   { value: "a_verifier", label: "À vérifier" },
   { value: "payee", label: "Payées" },
   { value: "toutes", label: "Toutes" },
@@ -90,6 +99,127 @@ function DueHint({ inv, today }: { inv: SupplierInvoice; today: string }) {
   return <span className="text-xs text-subtle">dans {d} j</span>;
 }
 
+function ClientCell({ inv, onLink }: { inv: SupplierInvoice; onLink: () => void }) {
+  if (inv.lead_id && inv.lead) {
+    return (
+      <div>
+        <Link href={`/admin/leads/${inv.lead_id}`} className="font-medium text-ink hover:text-brand hover:underline">
+          {leadDisplayName(inv.lead)}
+        </Link>
+        <div className="text-xs text-subtle">
+          {[inv.lead.postal_code, inv.lead.city].filter(Boolean).join(" ")}
+          {inv.lead_match === "auto" && <span title={`Reconnu d'après « ${inv.client_reference ?? ""} »`}> · auto</span>}
+        </div>
+      </div>
+    );
+  }
+  if (inv.lead_match === "a_associer") {
+    return (
+      <button
+        type="button"
+        onClick={onLink}
+        className="inline-flex max-w-[200px] items-center gap-1 rounded-md border border-violet-200 bg-violet-50 px-2 py-1 text-left text-xs font-medium text-violet-700 hover:bg-violet-100"
+        title="Choisir le lead correspondant"
+      >
+        <Link2 className="h-3.5 w-3.5 shrink-0" />
+        <span className="truncate">{inv.client_reference || inv.client_name} · associer</span>
+      </button>
+    );
+  }
+  return <span className="text-xs text-faint">Stock</span>;
+}
+
+type LeadResult = { id: string; first_name: string | null; last_name: string | null; city: string | null; postal_code: string | null; status: string | null };
+
+/** Choix du client (lead) d'une facture : recherche par nom, ou « stock ». */
+function LeadPicker({
+  invoice,
+  value,
+  onChange,
+}: {
+  invoice: SupplierInvoice;
+  value: { id: string | null; label: string | null };
+  onChange: (v: { id: string | null; label: string | null }) => void;
+}) {
+  const [q, setQ] = useState(invoice.lead_id ? "" : invoice.client_name ?? "");
+  const [results, setResults] = useState<LeadResult[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const term = q.trim();
+    if (term.length < 2) {
+      setResults([]);
+      return;
+    }
+    const ctrl = new AbortController();
+    const t = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(term)}`, { signal: ctrl.signal });
+        const data = await res.json();
+        setResults(data.leads ?? []);
+      } catch {
+        /* recherche annulée */
+      } finally {
+        setLoading(false);
+      }
+    }, 250);
+    return () => {
+      clearTimeout(t);
+      ctrl.abort();
+    };
+  }, [q]);
+
+  return (
+    <div className="space-y-2 rounded-lg border border-line p-3">
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0 text-sm">
+          {value.id ? (
+            <span className="font-medium text-ink">{value.label}</span>
+          ) : (
+            <span className="text-subtle">Aucun client (stock)</span>
+          )}
+          {invoice.client_reference && (
+            <div className="truncate text-xs text-subtle">Sur la facture : « {invoice.client_reference} »</div>
+          )}
+        </div>
+        {(value.id || invoice.lead_match === "a_associer") && (
+          <Button type="button" variant="ghost" size="sm" onClick={() => onChange({ id: null, label: null })}>
+            {value.id ? "Retirer" : "Pas de client (stock)"}
+          </Button>
+        )}
+      </div>
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-faint" />
+        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher un lead (nom, ville, téléphone)…" className="pl-8" />
+      </div>
+      {(loading || results.length > 0) && (
+        <ul className="max-h-48 divide-y divide-line overflow-y-auto rounded-md border border-line">
+          {loading && results.length === 0 && <li className="px-3 py-2 text-xs text-subtle">Recherche…</li>}
+          {results.map((l) => {
+            const label = leadDisplayName(l);
+            return (
+              <li key={l.id}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange({ id: l.id, label });
+                    setQ("");
+                  }}
+                  className={`flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm hover:bg-line-soft ${value.id === l.id ? "bg-brand-soft" : ""}`}
+                >
+                  <span className="font-medium text-ink">{label}</span>
+                  <span className="text-xs text-subtle">{[l.postal_code, l.city].filter(Boolean).join(" ")}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export function SupplierInvoicesClient({
   initialInvoices,
   initialSuppliers,
@@ -105,6 +235,8 @@ export function SupplierInvoicesClient({
   const [dragging, setDragging] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ouvertes");
   const [supplierFilter, setSupplierFilter] = useState<string>("");
+  const [clientFilter, setClientFilter] = useState<string>("");
+  const [view, setView] = useState<View>("clients");
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<SupplierInvoice | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -115,6 +247,8 @@ export function SupplierInvoicesClient({
   const supplierNames = useMemo(() => Object.fromEntries(suppliers.map((s) => [s.id, s.name])), [suppliers]);
   const totals = useMemo(() => computeTotals(invoices, today), [invoices, today]);
   const summaries = useMemo(() => summarizeBySupplier(invoices, supplierNames, today), [invoices, supplierNames, today]);
+  const clientSummaries = useMemo(() => summarizeByClient(invoices, supplierNames, today), [invoices, supplierNames, today]);
+  const duplicates = useMemo(() => suspectedDuplicates(invoices), [invoices]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -124,15 +258,18 @@ export function SupplierInvoicesClient({
       if (statusFilter === "en_retard" && status !== "en_retard") return false;
       if (statusFilter === "payee" && status !== "payee") return false;
       if (statusFilter === "a_verifier" && !inv.needs_review) return false;
+      if (statusFilter === "a_associer" && inv.lead_match !== "a_associer") return false;
       if (supplierFilter && supplierKey(inv) !== supplierFilter) return false;
+      if (clientFilter && (clientKey(inv) ?? "stock") !== clientFilter) return false;
       if (q) {
         const name = (inv.supplier_id && supplierNames[inv.supplier_id]) || inv.supplier_name || "";
-        const hay = `${name} ${inv.invoice_number ?? ""} ${inv.description ?? ""} ${inv.file_name ?? ""}`.toLowerCase();
+        const client = inv.lead ? leadDisplayName(inv.lead) : inv.client_reference ?? "";
+        const hay = `${name} ${client} ${inv.invoice_number ?? ""} ${inv.order_reference ?? ""} ${inv.description ?? ""} ${inv.file_name ?? ""}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
     });
-  }, [invoices, statusFilter, supplierFilter, search, today, supplierNames]);
+  }, [invoices, statusFilter, supplierFilter, clientFilter, search, today, supplierNames]);
 
   const filteredRemaining = filtered.reduce((sum, inv) => sum + remainingAmount(inv), 0);
 
@@ -160,18 +297,33 @@ export function SupplierInvoicesClient({
           updateQueue(id, { state: "erreur", message: data.error || "Erreur lors de l'envoi" });
           continue;
         }
-        const inv = data.invoice as SupplierInvoice;
-        setInvoices((list) => [inv, ...list]);
-        if (data.supplier && !suppliers.some((s) => s.id === data.supplier.id)) {
-          setSuppliers((list) =>
-            list.some((s) => s.id === data.supplier.id) ? list : [...list, data.supplier].sort((a, b) => a.name.localeCompare(b.name, "fr"))
-          );
-        }
-        const summary = `${inv.supplier_name ?? "Fournisseur ?"} · ${formatEuro(inv.amount_ttc)}${inv.due_date ? ` · échéance ${formatDate(inv.due_date)}` : ""}`;
-        updateQueue(id, {
-          state: data.warning ? "attention" : "ok",
-          message: data.warning ? `${summary} — ${data.warning}` : summary,
+        const created = (data.invoices ?? []) as SupplierInvoice[];
+        setInvoices((list) => [...created, ...list]);
+        setSuppliers((list) => {
+          const next = [...list];
+          for (const inv of created) {
+            if (inv.supplier_id && inv.supplier_name && !next.some((s) => s.id === inv.supplier_id)) {
+              next.push({ id: inv.supplier_id, name: inv.supplier_name });
+            }
+          }
+          return next.sort((a, b) => a.name.localeCompare(b.name, "fr"));
         });
+        const total = created.reduce((n, inv) => n + Number(inv.amount_ttc ?? 0), 0);
+        const c = data.counts ?? { auto: 0, a_associer: 0, stock: 0, review: 0 };
+        const parts = [
+          created.length > 1
+            ? `${created.length} factures ${created[0]?.supplier_name ?? ""} · ${formatEuro(total)}`
+            : `${created[0]?.supplier_name ?? "Fournisseur ?"} · ${formatEuro(created[0]?.amount_ttc)}${created[0]?.due_date ? ` · échéance ${formatDate(created[0].due_date)}` : ""}`,
+          c.auto ? `${c.auto} rattachée(s) à un client` : null,
+          c.a_associer ? `${c.a_associer} client(s) à associer` : null,
+          c.stock ? `${c.stock} sans client (stock)` : null,
+          data.duplicates?.length ? `${data.duplicates.length} déjà enregistrée(s), ignorée(s)` : null,
+          data.errors?.length ? `${data.errors.length} en erreur` : null,
+          data.warning,
+        ].filter(Boolean);
+        const attention = !!data.warning || c.a_associer > 0 || c.review > 0 || data.errors?.length > 0;
+        updateQueue(id, { state: attention ? "attention" : "ok", message: parts.join(" · ") });
+        if (c.a_associer > 0) setStatusFilter("a_associer");
       } catch {
         updateQueue(id, { state: "erreur", message: "Connexion impossible" });
       }
@@ -243,6 +395,28 @@ export function SupplierInvoicesClient({
 
   const busy = queue.some((q) => q.state === "attente" || q.state === "lecture");
   const selectedSupplierName = summaries.find((s) => s.key === supplierFilter)?.name;
+  const selectedClientName = clientSummaries.find((c) => c.key === clientFilter)?.label;
+  const listTitle = [selectedSupplierName, selectedClientName].filter(Boolean).join(" · ");
+
+  const viewSwitch = (
+    <div className="inline-flex rounded-lg border border-line bg-white p-0.5 text-xs font-medium">
+      {(
+        [
+          ["clients", "Par client"],
+          ["fournisseurs", "Par fournisseur"],
+        ] as const
+      ).map(([v, label]) => (
+        <button
+          key={v}
+          type="button"
+          onClick={() => setView(v)}
+          className={`rounded-md px-3 py-1 transition-colors ${view === v ? "bg-brand text-white" : "text-body hover:bg-line-soft"}`}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -276,10 +450,10 @@ export function SupplierInvoicesClient({
       >
         {busy ? <Loader2 className="h-8 w-8 animate-spin text-brand" /> : <UploadCloud className="h-8 w-8 text-brand" />}
         <p className="text-sm font-semibold text-ink">
-          {busy ? "Lecture des factures en cours…" : "Glissez vos factures ici, ou cliquez pour les choisir"}
+          {busy ? "Lecture des factures en cours… (jusqu'à 2 minutes pour un relevé de plusieurs factures)" : "Glissez vos factures ici, ou cliquez pour les choisir"}
         </p>
         <p className="text-xs text-subtle">
-          PDF ou photo (JPG, PNG, WebP) · plusieurs fichiers à la fois · fournisseur, n°, montants et échéance remplis automatiquement
+          PDF ou photo · un PDF peut contenir plusieurs factures, elles sont séparées automatiquement · fournisseur, montants, échéance et client remplis tout seuls
         </p>
         <input
           ref={fileInput}
@@ -335,11 +509,77 @@ export function SupplierInvoicesClient({
         <StatCard label="Reste à payer" value={formatEuro(totals.remaining)} icon={Wallet} tone="brand" hint={`${totals.openCount} facture(s) en cours`} />
         <StatCard label="En retard" value={formatEuro(totals.overdueAmount)} icon={AlertTriangle} tone="danger" hint={`${totals.overdueCount} facture(s) échue(s)`} />
         <StatCard label="Échéance sous 7 jours" value={formatEuro(totals.dueSoonAmount)} icon={CalendarClock} tone="warning" hint={`${totals.dueSoonCount} facture(s)`} />
-        <StatCard label="À vérifier" value={totals.toReviewCount} icon={FileText} tone="amethyst" hint="Lecture incomplète : à contrôler" />
+        <StatCard
+          label="Client à associer"
+          value={totals.toLinkCount}
+          icon={UserRound}
+          tone="amethyst"
+          hint={totals.toReviewCount ? `${totals.toReviewCount} facture(s) à vérifier aussi` : "Référence client trouvée, lead à confirmer"}
+        />
       </div>
 
+      {view === "clients" && (
+        <Panel
+          title="Par client"
+          description="Le matériel facturé pour chaque chantier. Cliquez sur une ligne pour voir ses factures."
+          action={viewSwitch}
+          bodyClassName="px-0 pb-2 pt-3 overflow-x-auto"
+        >
+          <table className="w-full min-w-[720px] text-sm">
+            <thead>
+              <tr className="text-left text-xs text-subtle">
+                <th className="px-5 py-2 font-medium">Client / chantier</th>
+                <th className="px-2 py-2 font-medium">Fournisseur(s)</th>
+                <th className="px-2 py-2 font-medium text-right">Factures</th>
+                <th className="px-2 py-2 font-medium text-right">Matériel HT</th>
+                <th className="px-2 py-2 font-medium text-right">TTC</th>
+                <th className="px-5 py-2 font-medium text-right">Reste à payer</th>
+              </tr>
+            </thead>
+            <tbody>
+              {clientSummaries.map((c) => (
+                <tr
+                  key={c.key}
+                  onClick={() => setClientFilter((cur) => (cur === c.key ? "" : c.key))}
+                  className={`cursor-pointer border-t border-line transition-colors hover:bg-line-soft ${clientFilter === c.key ? "bg-brand-soft" : ""}`}
+                >
+                  <td className="px-5 py-2">
+                    <div className="flex items-center gap-2">
+                      {c.kind === "lead" && c.leadId ? (
+                        <Link href={`/admin/leads/${c.leadId}`} onClick={(e) => e.stopPropagation()} className="font-medium text-ink hover:text-brand hover:underline">
+                          {c.label}
+                        </Link>
+                      ) : (
+                        <span className={`font-medium ${c.kind === "stock" ? "text-subtle" : "text-ink"}`}>{c.label}</span>
+                      )}
+                      {c.kind === "a_associer" && (
+                        <span className="rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[11px] font-medium text-violet-700">à associer</span>
+                      )}
+                    </div>
+                    {c.sublabel && <div className="text-xs text-subtle">{c.sublabel}</div>}
+                  </td>
+                  <td className="px-2 py-2 text-xs text-subtle">{c.suppliers.join(", ")}</td>
+                  <td className="px-2 py-2 text-right tabular-nums">{c.invoiceCount}</td>
+                  <td className="px-2 py-2 text-right font-semibold tabular-nums text-ink">{formatEuro(c.totalHt)}</td>
+                  <td className="px-2 py-2 text-right tabular-nums">{formatEuro(c.totalTtc)}</td>
+                  <td className="px-5 py-2 text-right tabular-nums">{c.remaining > 0 ? formatEuro(c.remaining) : <span className="text-faint">—</span>}</td>
+                </tr>
+              ))}
+              {clientSummaries.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-5 py-4 text-subtle">
+                    Aucune facture pour l&apos;instant. Glissez votre première facture dans la zone ci-dessus.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </Panel>
+      )}
+
       {/* Synthèse par fournisseur */}
-      <Panel title="Par fournisseur" description="Cliquez sur un fournisseur pour voir ses factures." bodyClassName="px-0 pb-2 pt-3 overflow-x-auto">
+      {view === "fournisseurs" && (
+      <Panel title="Par fournisseur" description="Cliquez sur un fournisseur pour voir ses factures." action={viewSwitch} bodyClassName="px-0 pb-2 pt-3 overflow-x-auto">
         <table className="w-full min-w-[720px] text-sm">
           <thead>
             <tr className="text-left text-xs text-subtle">
@@ -383,10 +623,18 @@ export function SupplierInvoicesClient({
           </tbody>
         </table>
       </Panel>
+      )}
 
       {/* Liste des factures */}
       <Panel
-        title={selectedSupplierName ? `Factures — ${selectedSupplierName}` : "Factures"}
+        title={listTitle ? `Factures — ${listTitle}` : "Factures"}
+        action={
+          supplierFilter || clientFilter ? (
+            <Button variant="ghost" size="sm" onClick={() => { setSupplierFilter(""); setClientFilter(""); }}>
+              <X className="h-4 w-4" /> Tout afficher
+            </Button>
+          ) : null
+        }
         description={`${filtered.length} facture(s) · reste à payer ${formatEuro(filteredRemaining)}`}
         bodyClassName="px-0 pb-2 pt-3"
       >
@@ -425,10 +673,11 @@ export function SupplierInvoicesClient({
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] text-sm">
+          <table className="w-full min-w-[1040px] text-sm">
             <thead>
               <tr className="text-left text-xs text-subtle">
                 <th className="px-5 py-2 font-medium">Fournisseur</th>
+                <th className="px-2 py-2 font-medium">Client</th>
                 <th className="px-2 py-2 font-medium">N° / objet</th>
                 <th className="px-2 py-2 font-medium">Date</th>
                 <th className="px-2 py-2 font-medium">Échéance</th>
@@ -446,6 +695,9 @@ export function SupplierInvoicesClient({
                   <tr key={inv.id} className="border-t border-line align-top hover:bg-line-soft/60">
                     <td className="px-5 py-2.5 font-medium text-ink">{name}</td>
                     <td className="px-2 py-2.5">
+                      <ClientCell inv={inv} onLink={() => setEditing(inv)} />
+                    </td>
+                    <td className="px-2 py-2.5">
                       <div className="text-ink">{inv.invoice_number ?? <span className="text-faint">—</span>}</div>
                       {inv.description && <div className="max-w-[220px] truncate text-xs text-subtle">{inv.description}</div>}
                     </td>
@@ -461,6 +713,14 @@ export function SupplierInvoicesClient({
                     <td className="px-2 py-2.5">
                       <div className="flex flex-col items-start gap-1">
                         <StatusBadge status={status} />
+                        {duplicates.has(inv.id) && (
+                          <span
+                            title={`Même client et même montant que : ${duplicates.get(inv.id)!.join(", ")}`}
+                            className="inline-flex items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-2 py-0.5 text-xs font-medium text-orange-700"
+                          >
+                            Doublon possible ?
+                          </span>
+                        )}
                         {inv.needs_review && (
                           <span className="inline-flex items-center gap-1 rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700">
                             À vérifier
@@ -502,7 +762,7 @@ export function SupplierInvoicesClient({
               })}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-5 py-4 text-subtle">
+                  <td colSpan={9} className="px-5 py-4 text-subtle">
                     Aucune facture ne correspond à ces filtres.
                   </td>
                 </tr>
@@ -582,6 +842,11 @@ function EditInvoiceForm({
     description: invoice.description ?? "",
     notes: invoice.notes ?? "",
   });
+  const [lead, setLead] = useState<{ id: string | null; label: string | null }>({
+    id: invoice.lead_id,
+    label: invoice.lead ? leadDisplayName(invoice.lead) : null,
+  });
+  const [leadTouched, setLeadTouched] = useState(false);
   const [saving, setSaving] = useState(false);
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -593,7 +858,8 @@ function EditInvoiceForm({
       return;
     }
     setSaving(true);
-    await onSave({ ...form, needs_review: false });
+    const leadChanged = leadTouched && (lead.id !== invoice.lead_id || (!lead.id && invoice.lead_match === "a_associer"));
+    await onSave({ ...form, needs_review: false, ...(leadChanged ? { lead_id: lead.id } : {}) });
     setSaving(false);
   };
 
@@ -618,6 +884,17 @@ function EditInvoiceForm({
       </DialogHeader>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className={`${field} sm:col-span-2`}>
+          <span className={label}>Client / chantier</span>
+          <LeadPicker
+            invoice={invoice}
+            value={lead}
+            onChange={(v) => {
+              setLead(v);
+              setLeadTouched(true);
+            }}
+          />
+        </div>
         <div className={`${field} sm:col-span-2`}>
           <label className={label} htmlFor="inv-supplier">Fournisseur</label>
           <Input id="inv-supplier" list="inv-suppliers" value={form.supplier_name} onChange={set("supplier_name")} />

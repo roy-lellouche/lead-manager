@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { AdminLeadForm } from "./AdminLeadForm";
 import { DocumentsSection } from "./DocumentsSection";
 import { ProfitabilitySection } from "./ProfitabilitySection";
+import { SupplierInvoicesSection } from "./SupplierInvoicesSection";
 import { getSessionProfile, getSessionUser } from "@/lib/supabase/session";
 import { normalizeRole } from "@/lib/roles";
 import { RedistributionHistorySection, type DistributionEntry } from "./RedistributionHistorySection";
@@ -100,6 +101,7 @@ export default async function AdminLeadPage({
           {(role === "admin" || role === "secretaire") && (
             <ProfitabilitySection leadId={id} isAdmin={role === "admin"} />
           )}
+          {role === "admin" && <SupplierInvoicesSection leadId={id} />}
           <RedistributionHistorySection
             realAddedAt={lead.added_at ?? lead.created_at}
             distributions={(distributions || []) as unknown as DistributionEntry[]}

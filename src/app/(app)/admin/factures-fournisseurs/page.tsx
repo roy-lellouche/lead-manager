@@ -32,7 +32,7 @@ export default async function SupplierInvoicesPage() {
         subtitle="Glissez vos factures : fournisseur, montants et échéance sont lus automatiquement. Suivez ce qui reste à payer, fournisseur par fournisseur."
       />
       <SupplierInvoicesClient
-        initialInvoices={(invoicesRes.data ?? []) as SupplierInvoice[]}
+        initialInvoices={(invoicesRes.data ?? []) as unknown as SupplierInvoice[]}
         initialSuppliers={suppliersRes.data ?? []}
         loadError={invoicesRes.error?.message ?? null}
       />

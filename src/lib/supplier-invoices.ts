@@ -21,6 +21,29 @@ export interface SupplierInvoice {
   storage_path: string | null;
   mime_type: string | null;
   created_at: string;
+  lead_id: string | null;
+  client_reference: string | null;
+  client_name: string | null;
+  client_department: string | null;
+  lead_match: LeadMatch;
+  order_reference: string | null;
+  source_pages: string | null;
+  lead?: InvoiceLead | null;
+}
+
+export type LeadMatch = "auto" | "manuel" | "a_associer" | "stock";
+
+export interface InvoiceLead {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  city: string | null;
+  postal_code: string | null;
+  status?: string | null;
+}
+
+export function leadDisplayName(lead: Pick<InvoiceLead, "first_name" | "last_name">): string {
+  return [lead.last_name?.trim().toUpperCase(), lead.first_name?.trim()].filter(Boolean).join(" ") || "Client";
 }
 
 export type InvoiceStatus = "payee" | "en_retard" | "partielle" | "a_payer";
@@ -174,6 +197,7 @@ export interface InvoiceTotals {
   dueSoonAmount: number;
   dueSoonCount: number;
   toReviewCount: number;
+  toLinkCount: number;
 }
 
 /** Indicateurs globaux. « Bientôt » = échéance dans les `soonDays` prochains jours. */
@@ -186,9 +210,11 @@ export function computeTotals(invoices: SupplierInvoice[], today: string, soonDa
     dueSoonAmount: 0,
     dueSoonCount: 0,
     toReviewCount: 0,
+    toLinkCount: 0,
   };
   for (const inv of invoices) {
     if (inv.needs_review) t.toReviewCount++;
+    if (inv.lead_match === "a_associer") t.toLinkCount++;
     const status = invoiceStatus(inv, today);
     if (status === "payee") continue;
     const rest = remainingAmount(inv);
@@ -241,4 +267,175 @@ export function invoiceMimeType(fileName: string, mime: string | undefined): str
   if (Object.values(INVOICE_ACCEPTED_TYPES).includes(m)) return m;
   const ext = fileName.split(".").pop()?.toLowerCase() ?? "";
   return INVOICE_ACCEPTED_TYPES[ext] ?? null;
+}
+
+/* ── Rapprochement facture → client (lead) ─────────────────────────── */
+
+/** Mots d'un nom de personne : sans accents ni casse, sans « client », « chez »… */
+export function personTokens(name: string | null | undefined): string[] {
+  if (!name) return [];
+  return name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z\s'-]+/g, " ")
+    .split(/[\s'-]+/)
+    .filter((w) => w.length >= 2 && !["client", "cliente", "clients", "chez", "mr", "mme", "m", "monsieur", "madame"].includes(w));
+}
+
+export interface LeadCandidate {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  postal_code: string | null;
+  city?: string | null;
+  status?: string | null;
+}
+
+/** Département sur 2 caractères (« 8 » → « 08 »), ou null. */
+export function normalizeDepartment(v: string | null | undefined): string | null {
+  const s = (v ?? "").trim().toUpperCase();
+  if (/^\d{1}$/.test(s)) return `0${s}`;
+  if (/^(\d{2}|2A|2B|97\d)$/.test(s)) return s;
+  return null;
+}
+
+function postalMatchesDepartment(postal: string | null | undefined, dep: string): boolean | null {
+  const p = (postal ?? "").replace(/\s/g, "");
+  if (!/^\d{5}$/.test(p)) return null;
+  if (dep === "2A" || dep === "2B") return p.startsWith("20");
+  return p.startsWith(dep);
+}
+
+export interface LeadMatchResult {
+  leadId: string | null;
+  match: LeadMatch;
+  candidates: LeadCandidate[];
+}
+
+/**
+ * Retrouve le lead désigné par la référence client d'une facture
+ * (« CLIENT BAROUDI 60 » → nom BAROUDI, département 60).
+ * Rattachement automatique seulement s'il n'y a qu'un candidat crédible.
+ */
+export function matchLead(
+  clientName: string | null | undefined,
+  department: string | null | undefined,
+  leads: LeadCandidate[]
+): LeadMatchResult {
+  const tokens = personTokens(clientName);
+  if (tokens.length === 0) return { leadId: null, match: clientName?.trim() ? "a_associer" : "stock", candidates: [] };
+  const dep = normalizeDepartment(department);
+  const joined = tokens.join("");
+
+  const scored = leads
+    .map((lead) => {
+      const leadTokens = [...personTokens(lead.last_name), ...personTokens(lead.first_name)];
+      const lastJoined = personTokens(lead.last_name).join("");
+      const firstJoined = personTokens(lead.first_name).join("");
+      let name = 0;
+      if (tokens.every((t) => leadTokens.includes(t)) || joined === lastJoined || joined === firstJoined) name = 2;
+      else if (tokens.some((t) => t.length >= 3 && leadTokens.includes(t))) name = 1;
+      if (name === 0) return null;
+      let score = name * 2;
+      if (dep) {
+        const same = postalMatchesDepartment(lead.postal_code, dep);
+        if (same === false) return null;
+        if (same === true) score += 3;
+      }
+      if (lead.status === "annule" || lead.status === "pas_eligible") score -= 2;
+      return { lead, score, name };
+    })
+    .filter((x): x is { lead: LeadCandidate; score: number; name: number } => x !== null)
+    .sort((a, b) => b.score - a.score);
+
+  const candidates = scored.slice(0, 5).map((x) => x.lead);
+  if (scored.length === 0) return { leadId: null, match: "a_associer", candidates };
+  const [best, second] = scored;
+  const clearWinner = !second || best.score - second.score >= 2;
+  // Sans département sur la facture, on exige un nom complet et un seul candidat.
+  const confident = dep ? best.score >= 5 : best.name === 2 && scored.length === 1;
+  if (clearWinner && confident) return { leadId: best.lead.id, match: "auto", candidates };
+  return { leadId: null, match: "a_associer", candidates };
+}
+
+/* ── Doublons possibles et synthèse par client ──────────────────────── */
+
+export function clientKey(inv: Pick<SupplierInvoice, "lead_id" | "client_name" | "client_reference">): string | null {
+  if (inv.lead_id) return `lead:${inv.lead_id}`;
+  const t = personTokens(inv.client_name || inv.client_reference).join(" ");
+  return t ? `ref:${t}` : null;
+}
+
+/**
+ * Factures suspectes : même fournisseur, même client et même montant TTC
+ * sous deux numéros différents (double facturation possible).
+ */
+export function suspectedDuplicates(invoices: SupplierInvoice[]): Map<string, string[]> {
+  const groups = new Map<string, SupplierInvoice[]>();
+  for (const inv of invoices) {
+    const client = clientKey(inv);
+    if (!client || inv.amount_ttc === null || Number(inv.amount_ttc) === 0) continue;
+    const k = `${supplierKey(inv)}|${client}|${Number(inv.amount_ttc).toFixed(2)}`;
+    groups.set(k, [...(groups.get(k) ?? []), inv]);
+  }
+  const out = new Map<string, string[]>();
+  for (const list of groups.values()) {
+    if (list.length < 2) continue;
+    for (const inv of list) {
+      out.set(inv.id, list.filter((o) => o.id !== inv.id).map((o) => o.invoice_number ?? "sans n°"));
+    }
+  }
+  return out;
+}
+
+export interface ClientSummary {
+  key: string;
+  leadId: string | null;
+  label: string;
+  sublabel: string | null;
+  kind: "lead" | "a_associer" | "stock";
+  invoiceCount: number;
+  totalHt: number;
+  totalTtc: number;
+  remaining: number;
+  suppliers: string[];
+}
+
+/** Synthèse par client (chantier) : ce que chaque chantier a coûté en matériel. */
+export function summarizeByClient(
+  invoices: SupplierInvoice[],
+  supplierNames: Record<string, string>,
+  today: string
+): ClientSummary[] {
+  const map = new Map<string, ClientSummary>();
+  for (const inv of invoices) {
+    const ck = clientKey(inv);
+    const key = ck ?? "stock";
+    let s = map.get(key);
+    if (!s) {
+      const lead = inv.lead;
+      s = {
+        key,
+        leadId: inv.lead_id,
+        label: lead ? leadDisplayName(lead) : ck ? (inv.client_name || inv.client_reference || "Client").toUpperCase() : "Stock / sans client",
+        sublabel: lead ? [lead.postal_code, lead.city].filter(Boolean).join(" ") || null : ck ? inv.client_reference : "Matériel non affecté à un chantier",
+        kind: inv.lead_id ? "lead" : ck ? "a_associer" : "stock",
+        invoiceCount: 0,
+        totalHt: 0,
+        totalTtc: 0,
+        remaining: 0,
+        suppliers: [],
+      };
+      map.set(key, s);
+    }
+    s.invoiceCount++;
+    s.totalHt = round2(s.totalHt + Number(inv.amount_ht ?? inv.amount_ttc ?? 0));
+    s.totalTtc = round2(s.totalTtc + Number(inv.amount_ttc ?? 0));
+    if (invoiceStatus(inv, today) !== "payee") s.remaining = round2(s.remaining + remainingAmount(inv));
+    const sName = (inv.supplier_id && supplierNames[inv.supplier_id]) || inv.supplier_name;
+    if (sName && !s.suppliers.includes(sName)) s.suppliers.push(sName);
+  }
+  const order = { a_associer: 0, lead: 1, stock: 2 };
+  return [...map.values()].sort((a, b) => order[a.kind] - order[b.kind] || b.totalTtc - a.totalTtc);
 }
