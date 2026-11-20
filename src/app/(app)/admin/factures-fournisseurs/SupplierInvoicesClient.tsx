@@ -412,14 +412,15 @@ export function SupplierInvoicesClient({
     toast.success("Facture supprimée");
   };
 
-  const reprocess = async (inv: SupplierInvoice) => {
+  /** Relit le fichier d'une facture ; retourne le nombre de factures reconnues (0 si échec). */
+  const reprocess = async (inv: SupplierInvoice, quiet = false): Promise<number> => {
     setReprocessing(inv.id);
     try {
       const res = await fetch(`/api/admin/supplier-invoices/${inv.id}/reprocess`, { method: "POST" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        toast.error(data.error || "Relecture impossible");
-        return;
+        if (!quiet) toast.error(data.error || "Relecture impossible");
+        return 0;
       }
       const created = (data.invoices ?? []) as SupplierInvoice[];
       setInvoices((list) => [...created, ...list.filter((i) => i.id !== inv.id)]);
@@ -430,10 +431,27 @@ export function SupplierInvoicesClient({
         }
         return next.sort((a, b) => a.name.localeCompare(b.name, "fr"));
       });
-      toast.success(`${created.length} facture(s) reconnue(s)${data.duplicates?.length ? `, ${data.duplicates.length} déjà présente(s)` : ""}`);
+      if (!quiet) toast.success(`${created.length} facture(s) reconnue(s)${data.duplicates?.length ? `, ${data.duplicates.length} déjà présente(s)` : ""}`);
+      return created.length;
+    } catch {
+      return 0;
     } finally {
       setReprocessing(null);
     }
+  };
+
+  const [bulkProgress, setBulkProgress] = useState<string | null>(null);
+  const toReread = scoped.filter((inv) => inv.needs_review && inv.storage_path && Number(inv.amount_paid) === 0);
+  const rereadAll = async () => {
+    const list = [...toReread];
+    let ok = 0;
+    for (let i = 0; i < list.length; i++) {
+      setBulkProgress(`Relecture ${i + 1} / ${list.length}…`);
+      if ((await reprocess(list[i], true)) > 0) ok++;
+    }
+    setBulkProgress(null);
+    if (ok === list.length) toast.success(`${ok} facture(s) relue(s) et complétée(s)`);
+    else toast.warning(`${ok} relue(s) sur ${list.length} : les autres sont à compléter à la main (« Modifier »)`);
   };
 
   const toggleExpand = async (inv: SupplierInvoice) => {
@@ -626,11 +644,19 @@ export function SupplierInvoicesClient({
         title={[selectedSupplierName ?? "Toutes les factures", selectedClientName].filter(Boolean).join(" · ")}
         description={`${filtered.length} facture(s) · reste à payer ${formatEuro(filteredRemaining)} · cliquez sur une facture pour voir son détail ligne par ligne`}
         action={
-          clientFilter ? (
-            <Button variant="ghost" size="sm" onClick={() => setClientFilter("")}>
-              <X className="h-4 w-4" /> Tous les clients
-            </Button>
-          ) : null
+          <div className="flex flex-wrap items-center gap-2">
+            {toReread.length > 0 && (
+              <Button variant="outline" size="sm" onClick={rereadAll} disabled={!!bulkProgress} className="gap-1.5">
+                {bulkProgress ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                {bulkProgress ?? `Relire les ${toReread.length} facture(s) à vérifier`}
+              </Button>
+            )}
+            {clientFilter ? (
+              <Button variant="ghost" size="sm" onClick={() => setClientFilter("")}>
+                <X className="h-4 w-4" /> Tous les clients
+              </Button>
+            ) : null}
+          </div>
         }
         bodyClassName="px-0 pb-2 pt-3"
       >
@@ -676,7 +702,7 @@ export function SupplierInvoicesClient({
                 const status = invoiceStatus(inv, today);
                 const name = (inv.supplier_id && supplierNames[inv.supplier_id]) || inv.supplier_name || "Fournisseur inconnu";
                 const open = expanded === inv.id;
-                const unread = !inv.invoice_number && inv.amount_ttc === null;
+                const unread = inv.needs_review && Number(inv.amount_paid) === 0;
                 const cols = supplierFilter ? 9 : 10;
                 return (
                   <Fragment key={inv.id}>

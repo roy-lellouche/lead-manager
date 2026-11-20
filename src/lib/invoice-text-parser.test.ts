@@ -171,3 +171,61 @@ POSEURS | SAS, société par actions simplifiée | N° SIREN 111.222.333 1 / 1`;
     expect(frDate("5/3/2026")).toBe("2026-03-05");
   });
 });
+
+describe("format à libellés doublés, fournisseur seulement en pied de page", () => {
+  const p1 = `RS ECOLOGIE
+12 IMP DES IFS
+95200 SARCELLES
+SIRET : 92165306900010
+Facture FAC/2026/00999
+Date de la facture :Date de la facture :
+17/06/2026
+Date d'échéance :Date d'échéance :
+01/07/2026
+DESCRIPTION QUANTITÉ PRIX UNITAIRE TAXES MONTANT
+POSE PAC 1,00 2 500,00 2 500,00 €
+MARTIN 81
+POSE BALLON 1,00 100,00 TVA 0% 100,00 €
+Montant hors taxes 2 600,00 €
+TVA 0% sur 100,00 € 0,00 €
+TotalTotal 2 600,002 600,00 €€
+POSETOUT
+POSETOUT -27 rue des Lilas, 93220 Gagny - 06 00 00 00 00 -
+contact.posetout@gmail.com
+SAS au capital de 20000 € - SIRET : 880 461 041 00019 -APE : 4321A
+FAC/2026/00999, Page : 1 / 2`;
+  const p2 = `Conditions générales…
+POSETOUT -27 rue des Lilas, 93220 Gagny
+FAC/2026/00999, Page : 2 / 2`;
+
+  it("lit fournisseur, dates, lignes et client", () => {
+    const inv = parseInvoicesFromText([p1, p2]);
+    expect(inv).toHaveLength(1);
+    expect(inv[0]).toMatchObject({
+      start_page: 1,
+      end_page: 2,
+      supplier_name: "POSETOUT",
+      supplier_siret: "88046104100019",
+      invoice_number: "FAC/2026/00999",
+      invoice_date: "2026-06-17",
+      due_date: "2026-07-01",
+      amount_ht: 2600,
+      amount_tva: 0,
+      amount_ttc: 2600,
+      client_name: "MARTIN",
+      client_department: "81",
+    });
+    expect(inv[0].lines.filter((l) => !l.is_comment).map((l) => [l.description, l.amount])).toEqual([
+      ["POSE PAC", 2500],
+      ["POSE BALLON", 100],
+    ]);
+    expect(isReliable(inv)).toBe(true);
+  });
+
+  it("nom tiré d'une adresse gmail quand rien d'autre n'est trouvé", () => {
+    const [inv] = parseInvoicesFromText([
+      "Facture F-1\nDate de la facture : 01/01/2026\nTotal 10,00 €\nmail : ecoklim.compta@gmail.com",
+    ]);
+    expect(inv.supplier_name).toBe("ECOKLIM");
+  });
+});

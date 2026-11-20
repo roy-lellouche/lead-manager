@@ -91,9 +91,11 @@ export async function persistInvoices(
     fileName: string;
     userId: string;
     analysis: DocumentAnalysis;
+    /** Fiche remplacée par une relecture : ignorée par le contrôle des doublons. */
+    replaceId?: string;
   }
 ): Promise<IngestResult> {
-  const { bytes, mime, fileName: originalName, userId, analysis } = args;
+  const { bytes, mime, fileName: originalName, userId, analysis, replaceId } = args;
   const isPdf = mime === "application/pdf";
   const ranges = normalizePageRanges(analysis.invoices, analysis.totalPages);
   const entries = analysis.invoices.map((raw, i) => ({ raw, fields: toInvoiceFields(raw), ...ranges[i] }));
@@ -124,6 +126,7 @@ export async function persistInvoices(
       seen.add(k);
       let q = admin.from("supplier_invoices").select("id").eq("invoice_number", f.invoice_number).limit(1);
       q = supplier ? q.eq("supplier_id", supplier.id) : q.is("supplier_id", null);
+      if (replaceId) q = q.neq("id", replaceId);
       const { data: dup } = await q;
       if (dup && dup.length > 0) {
         result.duplicates.push(f.invoice_number);

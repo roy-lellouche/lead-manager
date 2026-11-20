@@ -84,6 +84,20 @@ export function detectInvoiceNumber(text: string): string | null {
   return candidates.find((c): c is string => !!c && /\d/.test(c)) ?? null;
 }
 
+/**
+ * Première date qui suit un libellé (sur la même ligne ou les deux suivantes) :
+ * résiste aux libellés répétés (« Date de la facture :Date de la facture : »).
+ */
+function dateAfter(text: string, label: RegExp): string | null {
+  const re = new RegExp(label.source, "gi");
+  for (const m of text.matchAll(re)) {
+    const after = text.slice((m.index ?? 0) + m[0].length).split("\n").slice(0, 3).join("\n");
+    const d = frDate(after);
+    if (d) return d;
+  }
+  return null;
+}
+
 function valueAfter(text: string, label: RegExp): string | null {
   const m = text.match(new RegExp(String.raw`${label.source}\s*:?\s*\n?\s*([^\n]+)`, "im"));
   return m ? m[1].trim() : null;
@@ -114,10 +128,30 @@ function detectSupplier(text: string): string | null {
   for (const m of text.matchAll(/^\s*([A-Z0-9][A-Z0-9 &'.-]{2,60})\s+(?:SAS|SASU|SARL|EURL|SA|SNC)\s*$/gm)) {
     if (!OWN_NAME.test(m[1])) return m[1].trim();
   }
-  const mail = text.match(/[\w.+-]+@([\w-]+)\.[a-z]{2,}/i);
-  if (mail && !/gmail|hotmail|outlook|yahoo|orange|free|wanadoo|rsecologie/i.test(mail[1])) return mail[1].toUpperCase();
+  // Pied de page « DAVITECH -27 rue du 19 mars 1962, 93220 Gagny »
+  for (const m of text.matchAll(/^[ \t]*([A-Z][A-Z0-9&'.]*(?:[ \t][A-Z0-9&'.]+){0,3})[ \t]+-[ \t]*\d{1,4}[ \t]/gm)) {
+    if (!OWN_NAME.test(m[1]) && !GENERIC_LINE.test(m[1])) return m[1].trim();
+  }
+  // « … de la société DAVITECH »
+  const company = text.match(/\bsoci[ée]t[ée][ \t]+([A-Z][A-Z0-9&'.-]{2,}(?:[ \t][A-Z][A-Z0-9&'.-]+){0,2})\b/);
+  if (company && !OWN_NAME.test(company[1])) return company[1].trim();
+  const mails = [...text.matchAll(/([\w.+-]+)@([\w-]+)\.[a-z]{2,}/gi)].filter((m) => !/rsecologie/i.test(m[0]));
+  for (const m of mails) {
+    if (!GENERIC_MAIL.test(m[2])) return m[2].toUpperCase();
+  }
+  // Adresse gmail : le nom est souvent dans la partie avant @ (contact.davitech, ecoklim.compta).
+  for (const m of mails) {
+    const name = m[1]
+      .split(/[._+-]/)
+      .filter((w) => w.length >= 3 && !/^(contact|compta|comptabilite|info|infos|facturation|factures?|admin|direction|commercial|bonjour|hello|sav|devis|\d+)$/i.test(w))
+      .join(" ");
+    if (name) return name.toUpperCase();
+  }
   return null;
 }
+
+const GENERIC_MAIL = /^(gmail|hotmail|outlook|yahoo|orange|free|wanadoo|sfr|laposte|icloud|live|msn|aol|neuf|bbox)$/i;
+const GENERIC_LINE = /^(FRANCE|TVA|SIRET|SIREN|RCS|APE|IBAN|BIC|TEL|PAGE|TOTAL)$/i;
 
 function detectSiret(text: string): string | null {
   for (const m of text.matchAll(/SIRE[TN]\s*:?\s*(\d{3}[ .]?\d{3}[ .]?\d{3}(?:[ .]?\d{5})?)(?!\d)/gi)) {
@@ -227,7 +261,7 @@ export function parseLines(text: string): ParsedLine[] {
 const TABLE_HEADER = /^\s*(?:Produits?|D[ée]signation|Description|Libell[ée]|Articles?|Prestations?)\b.*\b(?:Quantit[ée]|Qt[ée]|Qté)/i;
 const TABLE_END = /^\s*(?:D[ée]tails?\s+TVA|R[ée]capitulatif|Total\s+HT|Sous[- ]total|Montant\s+hors\s+taxes|Conditions|Paiement|Taux\s+Montant)/i;
 const TABLE_ROW = new RegExp(
-  String.raw`^(.+?)\s+(${NUM})\s*(?:[A-Za-zÀ-ÿ.]{1,10}\s+)?(${NUM})\s*€?\s+(?:(?:Aucune|Exon[ée]r[ée]e?|N\/A|\d+(?:,\d+)?\s*%)\s+)?(${NUM})\s*€?\s*$`
+  String.raw`^(.+?)\s+(${NUM})\s*(?:[A-Za-zÀ-ÿ.]{1,10}\s+)?(${NUM})\s*€?\s+(?:(?:Aucune|Exon[ée]r[ée]e?|N\/A|(?:TVA\s*)?\d+(?:[,.]\d+)?\s*%)\s+)?(${NUM})\s*€?\s*$`
 );
 
 /**
@@ -264,6 +298,9 @@ export function parseTableLines(text: string): ParsedLine[] {
         amount,
         is_comment: false,
       });
+    } else if (/\bclient\b/i.test(row) || /^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ' -]{1,40}\s+(\d{2}|2A|2B)$/.test(row)) {
+      // Référence client glissée entre deux lignes (« LAFON 81 », « CLIENT DUPONT »).
+      out.push({ position: out.length + 1, reference: null, description: row, quantity: null, unit_price: null, amount: null, is_comment: true });
     } else if (out.length > 0 && !out[out.length - 1].is_comment) {
       // Suite de la désignation précédente (« AVEC ACCESSOIRES »).
       out[out.length - 1].description = `${out[out.length - 1].description} ${row}`.trim();
@@ -360,11 +397,10 @@ function parseOne(text: string, start: number, end: number): ParsedInvoice {
     supplier_name: supplier,
     supplier_siret: detectSiret(text),
     invoice_number: detectInvoiceNumber(text),
-    invoice_date: frDate(
-      valueAfter(text, /Date\s+de\s+(?:la\s+)?facture/) ?? valueAfter(text, /Date\s+d['’]\s*[ée]mission/) ?? valueAfter(text, /^\s*Date/m)
-    ),
-    due_date: frDate(valueAfter(text, /Date\s+d['’]\s*[ée]ch[ée]ance/)),
-    delivery_date: frDate(valueAfter(text, /Date\s+de\s+livraison/)),
+    invoice_date:
+      dateAfter(text, /Date\s+de\s+(?:la\s+)?facture/) ?? dateAfter(text, /Date\s+d['’]\s*[ée]mission/) ?? dateAfter(text, /^\s*Date\b/m),
+    due_date: dateAfter(text, /Date\s+d['’]\s*[ée]ch[ée]ance/),
+    delivery_date: dateAfter(text, /Date\s+de\s+livraison/),
     order_reference: valueAfter(text, /^\s*Source/m) ?? valueAfter(text, /^\s*R[ée]f[ée]rence(?:\s+commande)?(?=\s|:)/m),
     payment_terms: valueAfter(text, /Conditions\s+de\s+paiement/),
     amount_ht: ht,
