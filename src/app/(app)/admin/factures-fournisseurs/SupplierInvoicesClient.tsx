@@ -442,6 +442,39 @@ export function SupplierInvoicesClient({
 
   const [bulkProgress, setBulkProgress] = useState<string | null>(null);
   const toReread = scoped.filter((inv) => inv.needs_review && inv.storage_path && Number(inv.amount_paid) === 0);
+
+  // À l'ouverture : les factures restées sans fournisseur sont relues automatiquement
+  // (le lecteur s'améliore ; une seule tentative par facture et par session).
+  const autoReread = useRef(false);
+  useEffect(() => {
+    if (autoReread.current) return;
+    autoReread.current = true;
+    let tried: string[] = [];
+    try {
+      tried = JSON.parse(sessionStorage.getItem("factures-relues") ?? "[]");
+    } catch {
+      tried = [];
+    }
+    const list = initialInvoices.filter(
+      (inv) => !inv.supplier_id && inv.needs_review && inv.storage_path && Number(inv.amount_paid) === 0 && !tried.includes(inv.id)
+    );
+    if (list.length === 0) return;
+    try {
+      sessionStorage.setItem("factures-relues", JSON.stringify([...tried, ...list.map((i) => i.id)]));
+    } catch {
+      /* stockage indisponible : sans conséquence */
+    }
+    (async () => {
+      let ok = 0;
+      for (let i = 0; i < list.length; i++) {
+        setBulkProgress(`Mise à jour automatique ${i + 1} / ${list.length}…`);
+        if ((await reprocess(list[i], true)) > 0) ok++;
+      }
+      setBulkProgress(null);
+      if (ok > 0) toast.success(`${ok} facture(s) incomplète(s) relue(s) et complétée(s) automatiquement`);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const rereadAll = async () => {
     const list = [...toReread];
     let ok = 0;
@@ -583,6 +616,12 @@ export function SupplierInvoicesClient({
             ))}
           </ul>
         </Panel>
+      )}
+
+      {bulkProgress && (
+        <p className="flex items-center gap-2 rounded-lg border border-brand/30 bg-brand-soft px-4 py-2 text-sm text-ink">
+          <Loader2 className="h-4 w-4 animate-spin text-brand" /> {bulkProgress}
+        </p>
       )}
 
       {/* Onglets fournisseurs : ce que je dois à chacun */}

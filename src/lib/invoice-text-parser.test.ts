@@ -229,3 +229,32 @@ FAC/2026/00999, Page : 2 / 2`;
     expect(inv.supplier_name).toBe("ECOKLIM");
   });
 });
+
+describe("références client sur plusieurs lignes", () => {
+  it("nom + département suivi de notes et d'adresse", async () => {
+    const { parseTableLines } = await import("./invoice-text-parser");
+    const lines = parseTableLines(`DESCRIPTION QUANTITÉ PRIX UNITAIRE TAXES MONTANT
+POSE PAC 1,00 2 500,00 2 500,00 €
+COUSIN 35 WOLF Lundi, 11 mai
+4 Rue du Moulin, 35300 Fougères, France
+POSE BALLON 1,00 100,00 TVA 0% 100,00 €
+lapeyre
+Montant hors taxes 2 600,00 €`);
+    expect(lines.map((l) => [l.description, l.is_comment])).toEqual([
+      ["POSE PAC", false],
+      ["COUSIN 35 WOLF Lundi, 11 mai 4 Rue du Moulin, 35300 Fougères, France", true],
+      ["POSE BALLON", false],
+      ["lapeyre", true],
+    ]);
+  });
+  it("le client et son code postal en ressortent", () => {
+    const [inv] = parseInvoicesFromText([
+      `Facture F-9\nDate de la facture : 01/01/2026\nDESCRIPTION QUANTITÉ PRIX UNITAIRE MONTANT\nPOSE PAC 1,00 2 500,00 2 500,00 €\nLEHURT PATRICK 35 RAC 3590EURO\nMontant hors taxes 2 500,00 €\nTotal 2 500,00 €`,
+    ]);
+    expect(inv).toMatchObject({ client_name: "LEHURT PATRICK", client_department: "35" });
+    const [inv2] = parseInvoicesFromText([
+      `Facture F-10\nDate de la facture : 01/01/2026\nDESCRIPTION QUANTITÉ PRIX UNITAIRE MONTANT\nPOSE PAC 1,00 2 500,00 2 500,00 €\nlapeyre\nMontant hors taxes 2 500,00 €\nTotal 2 500,00 €`,
+    ]);
+    expect(inv2).toMatchObject({ client_name: "lapeyre", client_department: null });
+  });
+});

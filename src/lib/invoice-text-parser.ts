@@ -298,11 +298,14 @@ export function parseTableLines(text: string): ParsedLine[] {
         amount,
         is_comment: false,
       });
-    } else if (/\bclient\b/i.test(row) || /^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ' -]{1,40}\s+(\d{2}|2A|2B)$/.test(row)) {
-      // Référence client glissée entre deux lignes (« LAFON 81 », « CLIENT DUPONT »).
+    } else if (/\bclient\b/i.test(row) || /^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ' -]{1,40}?\s+(\d{2}|2A|2B)(?:\s|$)/.test(row)) {
+      // Référence client glissée entre deux lignes (« LAFON 81 », « COUSIN 35 WOLF », « CLIENT DUPONT »).
       out.push({ position: out.length + 1, reference: null, description: row, quantity: null, unit_price: null, amount: null, is_comment: true });
-    } else if (out.length > 0 && !out[out.length - 1].is_comment) {
-      // Suite de la désignation précédente (« AVEC ACCESSOIRES »).
+    } else if (out.length > 0 && out[out.length - 1].is_comment) {
+      // Suite d'un commentaire (date de pose, adresse du chantier…).
+      out[out.length - 1].description = `${out[out.length - 1].description} ${row}`.trim();
+    } else if (out.length > 0 && row === row.toUpperCase()) {
+      // Suite de la désignation précédente, en majuscules comme elle (« AVEC ACCESSOIRES »).
       out[out.length - 1].description = `${out[out.length - 1].description} ${row}`.trim();
     } else {
       out.push({ position: out.length + 1, reference: null, description: row, quantity: null, unit_price: null, amount: null, is_comment: true });
@@ -379,7 +382,15 @@ function parseOne(text: string, start: number, end: number): ParsedInvoice {
       break;
     }
   }
-  let clientPostal: string | null = null;
+  let clientPostal: string | null = clientRef?.match(/\b(\d{5})\b/)?.[1] ?? null;
+  // Commentaire réduit à un nom (« lapeyre ») : probable nom du client, sans département.
+  if (!client) {
+    const named = comments.find((c) => /^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'-]+(?:\s[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'-]+){0,2}$/.test(c.description.trim()));
+    if (named) {
+      client = { name: named.description.trim(), department: null };
+      clientRef = named.description.trim();
+    }
+  }
   if (!client) {
     const site = detectSiteClient(text);
     if (site) {
