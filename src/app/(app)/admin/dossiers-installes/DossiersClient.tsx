@@ -12,13 +12,17 @@ import {
   DOSSIER_STAGES,
   DOSSIER_STAGE_LABELS,
   dossierStage,
+  gridCee,
   missingInfo,
+  needsPac,
   patchForStage,
   revenueOf,
   summarize,
   type DossierRow,
   type DossierStage,
+  type PacModel,
 } from "@/lib/dossiers";
+import { PacGridPanel } from "./PacGridPanel";
 import { DELEGATAIRE_GROUPS, INSTALLATEUR_OPTIONS, INSTALLATION_TYPE_LABELS, type InstallationType } from "@/lib/types";
 import { formatEuro } from "@/lib/finance/format";
 
@@ -85,8 +89,10 @@ function MoneyCell({ row, field, onSave }: { row: DossierRow; field: MoneyField;
   );
 }
 
-export function DossiersClient({ initialRows }: { initialRows: DossierRow[] }) {
+export function DossiersClient({ initialRows, initialModels }: { initialRows: DossierRow[]; initialModels: PacModel[] }) {
   const [rows, setRows] = useState(initialRows);
+  const [models, setModels] = useState(initialModels);
+  const [pac, setPac] = useState("");
   const [stage, setStage] = useState<DossierStage | "">("");
   const [q, setQ] = useState("");
   const [installateur, setInstallateur] = useState("");
@@ -107,11 +113,36 @@ export function DossiersClient({ initialRows }: { initialRows: DossierRow[] }) {
       if (installateur === "none" ? r.installateur : installateur && r.installateur !== installateur) return false;
       if (delegataire === "none" ? r.delegataire_group : delegataire && r.delegataire_group !== delegataire) return false;
       if (month && monthKey(r.installed_at) !== month) return false;
+      if (pac === "none" ? r.pac_model_id || !needsPac(r.installation_type) : pac && r.pac_model_id !== pac) return false;
       if (onlyIncomplete && missingInfo(r).length === 0) return false;
       if (needle && !`${r.first_name ?? ""} ${r.last_name ?? ""} ${r.city ?? ""} ${r.postal_code ?? ""}`.toLowerCase().includes(needle)) return false;
       return true;
     });
-  }, [rows, q, installateur, delegataire, month, onlyIncomplete]);
+  }, [rows, q, installateur, delegataire, month, pac, onlyIncomplete]);
+
+  const modelName = useMemo(() => new Map(models.map((m) => [m.id, m.name])), [models]);
+  const usage = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of rows) if (r.pac_model_id) m.set(r.pac_model_id, (m.get(r.pac_model_id) ?? 0) + 1);
+    return m;
+  }, [rows]);
+  const applicableCount = useMemo(
+    () => rows.filter((r) => r.pac_model_id && (r.benefit_cee === null || r.benefit_cee === undefined) && gridCee(r.pac_model_id, models) !== null).length,
+    [rows, models]
+  );
+
+  /** Choix de la PAC : la prime CEE de la grille est proposée automatiquement. */
+  function choosePac(r: DossierRow, modelId: string | null) {
+    const patch: Partial<DossierRow> = { pac_model_id: modelId };
+    const grid = gridCee(modelId, models);
+    const current = r.benefit_cee === null || r.benefit_cee === undefined || r.benefit_cee === "" ? null : Number(r.benefit_cee);
+    if (grid !== null && current !== grid) {
+      if (current === null || window.confirm(`Remplacer la prime CEE actuelle (${formatEuro(current)}) par celle de cette PAC (${formatEuro(grid)}) ?`)) {
+        patch.benefit_cee = grid;
+      }
+    }
+    update(r.id, patch, `PAC « ${modelId ? modelName.get(modelId) ?? "" : "aucune"} »`);
+  }
 
   const summary = useMemo(() => summarize(baseFiltered), [baseFiltered]);
 
@@ -142,7 +173,7 @@ export function DossiersClient({ initialRows }: { initialRows: DossierRow[] }) {
 
   function exportCsv() {
     const head = [
-      "Nom", "Prénom", "Ville", "Code postal", "Installé le", "Type", "Installateur", "Délégataire", "Étape",
+      "Nom", "Prénom", "Ville", "Code postal", "Installé le", "Type", "PAC installée", "Installateur", "Délégataire", "Étape",
       "Prime CEE", "MPR", "Total primes", "Coût installation", "Coût matériel", "Coût régie", "Total coûts",
       "Rentabilité", "Factures fournisseurs HT", "À compléter",
     ];
@@ -150,6 +181,7 @@ export function DossiersClient({ initialRows }: { initialRows: DossierRow[] }) {
     const lines = visible.map((r) => [
       r.last_name ?? "", r.first_name ?? "", r.city ?? "", r.postal_code ?? "", fmtDate(r.installed_at),
       r.installation_type ? INSTALLATION_TYPE_LABELS[r.installation_type as InstallationType] ?? r.installation_type : "",
+      r.pac_model_id ? modelName.get(r.pac_model_id) ?? "" : "",
       r.installateur ?? "", r.delegataire_group ?? "", DOSSIER_STAGE_LABELS[dossierStage(r)],
       n(r.benefit_cee), n(r.benefit_mpr), n(revenueOf(r)), n(r.installation_cost), n(r.material_cost), n(r.regie_cost),
       n(costOf(r)), n(computeProfitability(r)), n(r.supplier_invoices_ht || ""), missingInfo(r).join(" / "),
@@ -166,14 +198,14 @@ export function DossiersClient({ initialRows }: { initialRows: DossierRow[] }) {
   }
 
   const resetFilters = () => {
-    setStage(""); setQ(""); setInstallateur(""); setDelegataire(""); setMonth(""); setOnlyIncomplete(false);
+    setStage(""); setQ(""); setInstallateur(""); setDelegataire(""); setMonth(""); setPac(""); setOnlyIncomplete(false);
   };
 
   return (
     <div className="space-y-5">
       <PageHeader
         title="Dossiers installés"
-        subtitle="Pipeline après installation et rentabilité de chaque dossier : Rentabilité = Prime CEE + MPR − installation − matériel − régie. Les montants se modifient directement dans le tableau."
+        subtitle="Pipeline après installation et rentabilité de chaque dossier : Rentabilité = Prime CEE + MPR − installation − matériel − régie. La prime CEE est proposée selon la PAC installée ; tous les montants se modifient directement dans le tableau."
         actions={
           <button onClick={exportCsv} className="h-9 px-3 inline-flex items-center gap-1.5 rounded-[9px] border border-line bg-white text-sm text-ink hover:bg-canvas">
             <Download className="w-4 h-4" /> Export Excel (CSV)
@@ -234,6 +266,17 @@ export function DossiersClient({ initialRows }: { initialRows: DossierRow[] }) {
         </div>
       )}
 
+      <PacGridPanel
+        models={models}
+        onModelsChange={setModels}
+        usage={usage}
+        applicableCount={applicableCount}
+        onApplied={(updated) => {
+          const byId = new Map(updated.map((u) => [u.id, u.benefit_cee]));
+          setRows((rs) => rs.map((r) => (byId.has(r.id) ? { ...r, benefit_cee: byId.get(r.id)! } : r)));
+        }}
+      />
+
       {/* ── Filtres ──────────────────────────────────────── */}
       <div className={`${CARD} p-3 flex flex-wrap items-center gap-2`}>
         <div className="relative flex-1 min-w-[180px]">
@@ -249,6 +292,11 @@ export function DossiersClient({ initialRows }: { initialRows: DossierRow[] }) {
           <option value="">Tous délégataires</option>
           {DELEGATAIRE_GROUPS.map((o) => <option key={o} value={o}>{o}</option>)}
           <option value="none">Non renseigné</option>
+        </select>
+        <select value={pac} onChange={(e) => setPac(e.target.value)} className={CONTROL} aria-label="PAC installée">
+          <option value="">Toutes PAC</option>
+          {models.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+          <option value="none">PAC non renseignée</option>
         </select>
         <select value={month} onChange={(e) => setMonth(e.target.value)} className={CONTROL} aria-label="Mois d'installation">
           <option value="">Tous les mois</option>
@@ -274,11 +322,12 @@ export function DossiersClient({ initialRows }: { initialRows: DossierRow[] }) {
       {/* ── Tableau ─────────────────────────────────────── */}
       <div className={`${CARD} overflow-hidden`}>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1180px] text-sm">
+          <table className="w-full min-w-[1340px] text-sm">
             <thead className="bg-canvas">
               <tr className="text-left text-xs text-subtle">
                 <th className="px-3 py-2 font-medium">Client</th>
                 <th className="px-2 py-2 font-medium">Installé le</th>
+                <th className="px-2 py-2 font-medium">PAC installée</th>
                 <th className="px-2 py-2 font-medium">Installateur</th>
                 <th className="px-2 py-2 font-medium">Délégataire</th>
                 <th className="px-2 py-2 font-medium text-right">Prime CEE</th>
@@ -311,6 +360,25 @@ export function DossiersClient({ initialRows }: { initialRows: DossierRow[] }) {
                     </td>
                     <td className="px-2 py-1.5 text-subtle tabular-nums whitespace-nowrap">{fmtDate(r.installed_at)}</td>
                     <td className="px-2 py-1.5">
+                      {needsPac(r.installation_type) || r.pac_model_id ? (
+                        <select
+                          className={`${CELL_SELECT} max-w-[170px] ${!r.pac_model_id ? "text-gold" : ""}`}
+                          value={r.pac_model_id ?? ""}
+                          aria-label="PAC installée"
+                          onChange={(e) => choosePac(r, e.target.value || null)}
+                        >
+                          <option value="">— choisir —</option>
+                          {models.map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.name}{m.cee_amount !== null ? ` · ${formatEuro(m.cee_amount)}` : ""}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className="text-xs text-faint px-1.5">Sans PAC</span>
+                      )}
+                    </td>
+                    <td className="px-2 py-1.5">
                       <select
                         className={CELL_SELECT}
                         value={r.installateur ?? ""}
@@ -338,11 +406,24 @@ export function DossiersClient({ initialRows }: { initialRows: DossierRow[] }) {
                         )}
                       </select>
                     </td>
-                    {(["benefit_cee", "benefit_mpr", "installation_cost"] as MoneyField[]).map((f) => (
-                      <td key={f} className="px-1 py-1.5 text-right">
-                        <MoneyCell row={r} field={f} onSave={(field, v) => update(r.id, { [field]: v }, "montants")} />
-                      </td>
-                    ))}
+                    {(["benefit_cee", "benefit_mpr", "installation_cost"] as MoneyField[]).map((f) => {
+                      const grid = f === "benefit_cee" ? gridCee(r.pac_model_id, models) : null;
+                      const showGrid = grid !== null && Number(r.benefit_cee ?? NaN) !== grid;
+                      return (
+                        <td key={f} className="px-1 py-1.5 text-right">
+                          <MoneyCell row={r} field={f} onSave={(field, v) => update(r.id, { [field]: v }, "montants")} />
+                          {showGrid && (
+                            <button
+                              className="block ml-auto pr-2 text-[11px] text-brand hover:underline"
+                              title="Appliquer la prime prévue pour cette PAC"
+                              onClick={() => update(r.id, { benefit_cee: grid }, "prime CEE d'après la PAC")}
+                            >
+                              PAC : {formatEuro(grid)}
+                            </button>
+                          )}
+                        </td>
+                      );
+                    })}
                     <td className="px-2 py-1.5 text-right tabular-nums whitespace-nowrap">
                       <Link href={`/admin/leads/${r.id}`} title="Le matériel se modifie sur la fiche client" className="text-ink hover:underline">
                         {r.material_cost ? formatEuro(r.material_cost) : "—"}
@@ -379,13 +460,13 @@ export function DossiersClient({ initialRows }: { initialRows: DossierRow[] }) {
                 );
               })}
               {visible.length === 0 && (
-                <tr><td colSpan={11} className="px-3 py-6 text-center text-subtle">Aucun dossier pour ces filtres.</td></tr>
+                <tr><td colSpan={12} className="px-3 py-6 text-center text-subtle">Aucun dossier pour ces filtres.</td></tr>
               )}
             </tbody>
             {visible.length > 0 && (
               <tfoot className="bg-canvas font-semibold text-ink">
                 <tr className="border-t border-line">
-                  <td className="px-3 py-2" colSpan={4}>Total ({visible.length} dossiers)</td>
+                  <td className="px-3 py-2" colSpan={5}>Total ({visible.length} dossiers)</td>
                   <td className="px-2 py-2 text-right tabular-nums" colSpan={2}>{formatEuro(visibleSummary.revenue)}</td>
                   <td className="px-2 py-2 text-right tabular-nums" colSpan={3}>{formatEuro(visibleSummary.cost)}</td>
                   <td className={`px-2 py-2 text-right tabular-nums ${visibleSummary.margin < 0 ? "text-ruby" : "text-emerald"}`}>{formatEuro(visibleSummary.margin)}</td>

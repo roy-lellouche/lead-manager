@@ -105,8 +105,11 @@ export function costOf(m: DossierMoney): number {
 }
 
 /** Ce qui manque pour que la rentabilité du dossier soit fiable. */
-export function missingInfo(m: DossierMoney & { installateur?: string | null }): string[] {
+export function missingInfo(
+  m: DossierMoney & { installateur?: string | null; installation_type?: string | null; pac_model_id?: string | null }
+): string[] {
   const out: string[] = [];
+  if (needsPac(m.installation_type) && !m.pac_model_id) out.push("Modèle de PAC");
   if (m.benefit_cee === null || m.benefit_cee === undefined || m.benefit_cee === "") out.push("Prime CEE");
   if (!num(m.installation_cost)) out.push("Coût installation");
   if (!num(m.material_cost)) out.push("Coût matériel");
@@ -114,8 +117,55 @@ export function missingInfo(m: DossierMoney & { installateur?: string | null }):
   return out;
 }
 
+/** Dossier avec pompe à chaleur (type d'installation PAC ou non renseigné). */
+export function needsPac(installationType: string | null | undefined): boolean {
+  return !installationType || installationType.startsWith("pac");
+}
+
+export interface PacModel {
+  id: string;
+  name: string;
+  cee_amount: number | null;
+  active: boolean;
+}
+
+/** Prime CEE prévue par la grille pour le modèle de PAC du dossier (null si inconnue). */
+export function gridCee(pacModelId: string | null | undefined, models: PacModel[]): number | null {
+  if (!pacModelId) return null;
+  const m = models.find((x) => x.id === pacModelId);
+  return m && m.cee_amount !== null && m.cee_amount !== undefined ? Number(m.cee_amount) : null;
+}
+
+/** Validation des saisies de la grille PAC → prime CEE. */
+export function parsePacModelInput(
+  body: unknown,
+  creating: boolean
+): { values: Record<string, unknown> } | { error: string } {
+  const b = (body && typeof body === "object" ? body : {}) as Record<string, unknown>;
+  const values: Record<string, unknown> = {};
+  if (creating || "name" in b) {
+    const name = typeof b.name === "string" ? b.name.trim().replace(/\s+/g, " ") : "";
+    if (!name) return { error: "Nom du modèle obligatoire" };
+    if (name.length > 120) return { error: "Nom trop long" };
+    values.name = name;
+  }
+  if ("cee_amount" in b) {
+    const raw = b.cee_amount;
+    if (raw === null || raw === "") values.cee_amount = null;
+    else {
+      const n = Number(typeof raw === "string" ? raw.replace(",", ".") : raw);
+      if (!Number.isFinite(n) || n < 0 || n > 100000) return { error: "Montant de prime invalide" };
+      values.cee_amount = round2(n);
+    }
+  }
+  if ("active" in b) values.active = b.active === true;
+  if (!creating && Object.keys(values).length === 0) return { error: "Rien à modifier" };
+  return { values };
+}
+
 export interface DossierRow extends DossierMoney, DossierFlags {
   id: string;
+  pac_model_id: string | null;
   first_name: string | null;
   last_name: string | null;
   city: string | null;

@@ -70,7 +70,7 @@ export async function PATCH(
     "is_paye", "is_compte_bloque", "is_rejete",
     "material_cost_comment", "regie_cost", "benefit_cee", "benefit_mpr",
     "benefit_apporteur_affaires", "profitability", "chantier_comment", "delegataire_group",
-    "installateur", "category",
+    "installateur", "category", "pac_model_id",
   ];
 
   for (const key of allowedFields) {

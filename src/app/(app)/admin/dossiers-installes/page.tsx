@@ -2,13 +2,13 @@ import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessionProfile, getSessionUser } from "@/lib/supabase/session";
 import { normalizeRole, roleLandingPath } from "@/lib/roles";
-import type { DossierRow } from "@/lib/dossiers";
+import type { DossierRow, PacModel } from "@/lib/dossiers";
 import { DossiersClient } from "./DossiersClient";
 
 export const dynamic = "force-dynamic";
 
 const LEAD_COLUMNS = [
-  "id", "first_name", "last_name", "city", "postal_code", "installateur", "delegataire_group",
+  "id", "pac_model_id", "first_name", "last_name", "city", "postal_code", "installateur", "delegataire_group",
   "installation_type", "category", "status_changed_at", "chantier_comment",
   "benefit_cee", "benefit_mpr", "installation_cost", "material_cost", "regie_cost",
   "is_depose", "is_controle_veritas", "is_paye", "is_cee_paye", "is_compte_bloque", "is_rejete",
@@ -21,7 +21,7 @@ export default async function DossiersInstallesPage() {
   if (role !== "admin") redirect(roleLandingPath(role));
 
   const admin = createAdminClient();
-  const [{ data: leads, error }, { data: invoices }] = await Promise.all([
+  const [{ data: leads, error }, { data: invoices }, { data: pacModels }] = await Promise.all([
     admin
       .from("leads")
       .select(LEAD_COLUMNS)
@@ -33,6 +33,7 @@ export default async function DossiersInstallesPage() {
       .select("lead_id, amount_ht, amount_ttc")
       .not("lead_id", "is", null)
       .limit(5000),
+    admin.from("pac_models").select("id, name, cee_amount, active").order("name"),
   ]);
 
   const invByLead = new Map<string, { ht: number; count: number }>();
@@ -49,6 +50,7 @@ export default async function DossiersInstallesPage() {
     const inv = invByLead.get(String(l.id));
     return {
       id: String(l.id),
+      pac_model_id: (l.pac_model_id as string) ?? null,
       first_name: (l.first_name as string) ?? null,
       last_name: (l.last_name as string) ?? null,
       city: (l.city as string) ?? null,
@@ -78,7 +80,10 @@ export default async function DossiersInstallesPage() {
   return (
     <>
       {error && <p className="text-sm text-ruby">Erreur de chargement : {error.message}</p>}
-      <DossiersClient initialRows={rows} />
+      <DossiersClient
+        initialRows={rows}
+        initialModels={((pacModels || []) as PacModel[]).map((m) => ({ ...m, cee_amount: m.cee_amount === null ? null : Number(m.cee_amount) }))}
+      />
     </>
   );
 }
