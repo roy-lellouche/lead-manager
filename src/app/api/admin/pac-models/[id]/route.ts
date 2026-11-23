@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/finance/auth";
 import { parsePacModelInput } from "@/lib/dossiers";
 
-const PAC_COLUMNS = "id, name, active, cee_h1, cee_h2, cee_h3, cost_items";
+const PAC_COLUMNS = "id, name, active, etas_band, cee_h1, cee_h2, cee_h3, cost_items";
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireRole(request, ["admin"]);

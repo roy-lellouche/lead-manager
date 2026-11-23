@@ -5,11 +5,16 @@ import { toast } from "sonner";
 import { ChevronDown, ChevronRight, Copy, Plus, Trash2, Wand2 } from "lucide-react";
 import {
   COST_CATEGORIES,
+  ETAS_BANDS,
+  INCOME_CATEGORIES,
   computeProfitability,
   modelAmounts,
   modelCosts,
   normalizeModel,
+  type CeeBareme,
   type CostItem,
+  type EtasBand,
+  type IncomeCategory,
   type PacModel,
 } from "@/lib/dossiers";
 import { formatEuro } from "@/lib/finance/format";
@@ -20,6 +25,58 @@ const ZONES = [
   { key: "cee_h2", label: "H2" },
   { key: "cee_h3", label: "H3" },
 ] as const;
+
+// Barème neutre : seules les primes forfaitaires de la fiche sont utilisées pour l'aperçu.
+const EMPTY_BAREME = {} as CeeBareme;
+
+/** Prix du MWhc cumac par catégorie de revenus. */
+function BaremeEditor({ bareme, onChange }: { bareme: CeeBareme; onChange: (b: CeeBareme) => void }) {
+  const [draft, setDraft] = useState<Record<string, string>>({});
+  async function save(cat: IncomeCategory) {
+    const v = draft[cat];
+    setDraft((d) => {
+      const n = { ...d };
+      delete n[cat];
+      return n;
+    });
+    if (v === undefined || Number(v.replace(",", ".")) === bareme.price_mwhc[cat]) return;
+    try {
+      onChange(await api("/api/admin/pac-models/bareme", "PATCH", { price_mwhc: { [cat]: v } }));
+      toast.success("Prix du MWhc enregistré");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Enregistrement impossible");
+    }
+  }
+  return (
+    <div className="rounded-[10px] border border-line-soft bg-canvas/60 px-3 py-2.5 space-y-2">
+      <p className="text-xs text-subtle">
+        <strong className="text-ink">Barème CEE Coup de pouce 2026</strong> (maison individuelle) : prime = kWhc selon l&apos;ETAS
+        ({bareme.kwhc["111_140"].toLocaleString("fr-FR")} ou {bareme.kwhc["140_plus"].toLocaleString("fr-FR")}) × zone (H1 {bareme.zone_factor.H1}, H2 {bareme.zone_factor.H2}, H3 {bareme.zone_factor.H3})
+        × surface (&lt; 70 m² : {bareme.shab.lt70}, 70–90 m² : {bareme.shab["70_90"]}, ≥ 90 m² : {bareme.shab.gte90}) × {bareme.cdp_multiplier} × prix du MWhc.
+        Utilisé dès que la zone, la surface et la couleur du foyer sont renseignées ; sinon la prime forfaitaire de la fiche PAC sert d&apos;estimation.
+      </p>
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-xs font-medium text-subtle">Prix du MWhc cumac :</span>
+        {INCOME_CATEGORIES.map((c) => (
+          <label key={c.key} className="flex items-center gap-1.5 text-sm text-ink">
+            {c.key}
+            <input
+              className={`${INPUT} w-[70px] text-right tabular-nums`}
+              type="number"
+              step="0.01"
+              title={`${c.label} (couleur ${c.color})`}
+              value={draft[c.key] ?? String(bareme.price_mwhc[c.key])}
+              onChange={(e) => setDraft({ ...draft, [c.key]: e.target.value })}
+              onBlur={() => save(c.key)}
+              onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+            />
+            <span className="text-xs text-subtle">€</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 async function api(url: string, method: string, body?: unknown) {
   const res = await fetch(url, {
@@ -33,7 +90,8 @@ async function api(url: string, method: string, body?: unknown) {
 }
 
 function margin(m: PacModel, zone: "H1" | "H2" | "H3"): number | null {
-  const a = modelAmounts(m, zone);
+  // Prime forfaitaire de la fiche (sans surface ni catégorie, le barème ne s'applique pas).
+  const a = modelAmounts(m, { cee_zone: zone }, { ...EMPTY_BAREME });
   return a.benefit_cee === undefined ? null : computeProfitability(a);
 }
 
@@ -109,12 +167,16 @@ function CostEditor({ model, onSaved }: { model: PacModel; onSaved: (m: PacModel
 export function PacGridPanel({
   models,
   onModelsChange,
+  bareme,
+  onBaremeChange,
   usage,
   applicableCount,
   onApplied,
 }: {
   models: PacModel[];
   onModelsChange: (m: PacModel[]) => void;
+  bareme: CeeBareme;
+  onBaremeChange: (b: CeeBareme) => void;
   usage: Map<string, number>;
   /** Dossiers avec PAC dont au moins un montant vide peut être rempli par la fiche. */
   applicableCount: number;
@@ -145,12 +207,20 @@ export function PacGridPanel({
     }
   }
 
+  async function saveEtas(m: PacModel, band: string) {
+    try {
+      replace(normalizeModel(await api(`/api/admin/pac-models/${m.id}`, "PATCH", { etas_band: band || null })));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Enregistrement impossible");
+    }
+  }
+
   async function create(name: string, from?: PacModel) {
     if (!name.trim()) return;
     setBusy(true);
     try {
       const body = from
-        ? { name, cee_h1: from.cee_h1, cee_h2: from.cee_h2, cee_h3: from.cee_h3, cost_items: from.cost_items }
+        ? { name, etas_band: from.etas_band, cee_h1: from.cee_h1, cee_h2: from.cee_h2, cee_h3: from.cee_h3, cost_items: from.cost_items }
         : { name };
       const saved = normalizeModel(await api("/api/admin/pac-models", "POST", body));
       onModelsChange([...models, saved]);
@@ -215,18 +285,20 @@ export function PacGridPanel({
       {open && (
         <div className="border-t border-line-soft px-4 py-3 space-y-3">
           <p className="text-xs text-subtle">
-            Choisir la PAC d&apos;un dossier dans le tableau remplit sa prime CEE (selon la zone H1/H2/H3 du client) et ses coûts.
-            Chaque montant reste modifiable dossier par dossier. Les montants sont comptés tels que saisis (HT ou TTC).
+            Choisir la PAC d&apos;un dossier dans le tableau remplit sa prime CEE et ses coûts. Chaque montant reste modifiable
+            dossier par dossier. Les coûts sont comptés tels que saisis (HT ou TTC).
           </p>
+          <BaremeEditor bareme={bareme} onChange={onBaremeChange} />
           <div className="overflow-x-auto -mx-4 sm:mx-0">
-            <table className="w-full min-w-[860px] text-sm">
+            <table className="w-full min-w-[960px] text-sm">
               <thead>
                 <tr className="text-left text-xs text-subtle">
                   <th className="px-2 py-1.5 font-medium">Modèle</th>
-                  {ZONES.map((z) => <th key={z.key} className="px-1 py-1.5 font-medium text-right">Prime {z.label}</th>)}
+                  <th className="px-1 py-1.5 font-medium">ETAS</th>
+                  {ZONES.map((z) => <th key={z.key} className="px-1 py-1.5 font-medium text-right" title="Prime forfaitaire, utilisée quand le barème ne peut pas être appliqué">Forfait {z.label}</th>)}
                   <th className="px-2 py-1.5 font-medium text-right">Coût total</th>
-                  <th className="px-2 py-1.5 font-medium text-right">Rentab. H1</th>
-                  <th className="px-2 py-1.5 font-medium text-right">Rentab. H2</th>
+                  <th className="px-2 py-1.5 font-medium text-right" title="Avec la prime forfaitaire H1">Rentab. H1</th>
+                  <th className="px-2 py-1.5 font-medium text-right" title="Avec la prime forfaitaire H2">Rentab. H2</th>
                   <th className="px-2 py-1.5 font-medium text-right">Dossiers</th>
                   <th />
                 </tr>
@@ -254,6 +326,17 @@ export function PacGridPanel({
                               onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
                             />
                           </div>
+                        </td>
+                        <td className="px-1 py-1">
+                          <select
+                            className={`${INPUT} ${!m.etas_band ? "text-gold" : ""}`}
+                            value={m.etas_band ?? ""}
+                            aria-label={`ETAS ${m.name}`}
+                            onChange={(e) => saveEtas(m, e.target.value as EtasBand | "")}
+                          >
+                            <option value="">ETAS ?</option>
+                            {ETAS_BANDS.map((b) => <option key={b.key} value={b.key}>{b.key === "140_plus" ? "≥ 140 %" : "111–140 %"}</option>)}
+                          </select>
                         </td>
                         {ZONES.map((z) => (
                           <td key={z.key} className="px-1 py-1 text-right">
@@ -286,7 +369,7 @@ export function PacGridPanel({
                       </tr>
                       {isOpen && (
                         <tr>
-                          <td colSpan={9} className="px-2 pb-3 pt-1 bg-canvas/60">
+                          <td colSpan={10} className="px-2 pb-3 pt-1 bg-canvas/60">
                             <CostEditor key={JSON.stringify(m.cost_items)} model={m} onSaved={replace} />
                           </td>
                         </tr>

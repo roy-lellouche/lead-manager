@@ -13,8 +13,9 @@ import {
   DOSSIER_STAGE_LABELS,
   dossierStage,
   CEE_ZONES,
+  ceePrime,
+  INCOME_CATEGORIES,
   missingInfo,
-  modelCee,
   modelPatch,
   needsPac,
   zoneOf,
@@ -23,6 +24,7 @@ import {
   summarize,
   type DossierRow,
   type DossierStage,
+  type CeeBareme,
   type PacModel,
 } from "@/lib/dossiers";
 import { PacGridPanel } from "./PacGridPanel";
@@ -66,7 +68,17 @@ async function patchLead(id: string, body: Record<string, unknown>) {
   }
 }
 
-function MoneyCell({ row, field, onSave }: { row: DossierRow; field: MoneyField; onSave: (f: MoneyField, v: number | null) => void }) {
+function MoneyCell<F extends MoneyField | "surface_m2">({
+  row,
+  field,
+  onSave,
+  className,
+}: {
+  row: DossierRow;
+  field: F;
+  onSave: (f: F, v: number | null) => void;
+  className?: string;
+}) {
   const current = row[field];
   const [draft, setDraft] = useState<string | null>(null);
   const shown = draft ?? (current === null || current === undefined ? "" : String(current));
@@ -76,7 +88,7 @@ function MoneyCell({ row, field, onSave }: { row: DossierRow; field: MoneyField;
       step="0.01"
       inputMode="decimal"
       aria-label={field}
-      className={CELL_INPUT}
+      className={className ?? CELL_INPUT}
       value={shown}
       placeholder="—"
       onChange={(e) => setDraft(e.target.value)}
@@ -96,7 +108,16 @@ function MoneyCell({ row, field, onSave }: { row: DossierRow; field: MoneyField;
   );
 }
 
-export function DossiersClient({ initialRows, initialModels }: { initialRows: DossierRow[]; initialModels: PacModel[] }) {
+export function DossiersClient({
+  initialRows,
+  initialModels,
+  initialBareme,
+}: {
+  initialRows: DossierRow[];
+  initialModels: PacModel[];
+  initialBareme: CeeBareme;
+}) {
+  const [bareme, setBareme] = useState(initialBareme);
   const [rows, setRows] = useState(initialRows);
   const [models, setModels] = useState(initialModels);
   const [pac, setPac] = useState("");
@@ -139,9 +160,9 @@ export function DossiersClient({ initialRows, initialModels }: { initialRows: Do
     () =>
       rows.filter((r) => {
         const m = r.pac_model_id ? modelById.get(r.pac_model_id) : null;
-        return m && Object.keys(modelPatch(m, r, false).patch).length > 0;
+        return m && Object.keys(modelPatch(m, r, false, bareme).patch).length > 0;
       }).length,
-    [rows, modelById]
+    [rows, modelById, bareme]
   );
 
   /**
@@ -152,12 +173,12 @@ export function DossiersClient({ initialRows, initialModels }: { initialRows: Do
     const m = modelId ? modelById.get(modelId) : null;
     let patch: Record<string, unknown> = {};
     if (m) {
-      const fill = modelPatch(m, r, false);
+      const fill = modelPatch(m, r, false, bareme);
       patch = fill.patch;
       if (fill.differs.length && window.confirm(
         `Remplacer aussi les montants déjà saisis (${fill.differs.map((f) => FIELD_LABELS[f as MoneyField] ?? f).join(", ")}) par ceux de la fiche « ${m.name} » ?`
       )) {
-        patch = modelPatch(m, r, true).patch;
+        patch = modelPatch(m, r, true, bareme).patch;
       }
     }
     update(r.id, { ...patch, pac_model_id: modelId }, `PAC « ${m?.name ?? "aucune"} »`);
@@ -167,25 +188,28 @@ export function DossiersClient({ initialRows, initialModels }: { initialRows: Do
   function reapplyModel(r: DossierRow) {
     const m = r.pac_model_id ? modelById.get(r.pac_model_id) : null;
     if (!m) return;
-    const { patch, differs } = modelPatch(m, r, true);
+    const { patch, differs } = modelPatch(m, r, true, bareme);
     if (!Object.keys(patch).length) return;
     if (differs.length && !window.confirm(`Remplacer ${differs.map((f) => FIELD_LABELS[f as MoneyField] ?? f).join(", ")} par les montants de la fiche « ${m.name} » ?`)) return;
     update(r.id, patch, `montants de la fiche PAC « ${m.name} »`);
   }
 
-  function chooseZone(r: DossierRow, zone: string) {
-    const next = { ...r, cee_zone: zone || null };
-    const patch: Partial<DossierRow> = { cee_zone: zone || null };
-    // La prime suit la zone si elle venait de la fiche PAC (ou était vide).
+  /**
+   * Zone, surface ou couleur du foyer modifiée : la prime CEE est recalculée si elle
+   * venait de la fiche PAC / du barème (ou était vide) ; une prime saisie à la main est gardée.
+   */
+  function changeCeeInput(r: DossierRow, change: Partial<Pick<DossierRow, "cee_zone" | "surface_m2" | "color">>, label: string) {
+    const patch: Partial<DossierRow> = { ...change };
     const m = r.pac_model_id ? modelById.get(r.pac_model_id) : null;
     if (m) {
-      const before = modelCee(m, zoneOf(r).zone);
-      const after = modelCee(m, zoneOf(next).zone);
+      const before = ceePrime(m, r, bareme).amount;
+      const after = ceePrime(m, { ...r, ...change }, bareme).amount;
       const cur = r.benefit_cee === null || r.benefit_cee === undefined || r.benefit_cee === "" ? null : Number(r.benefit_cee);
       if (after !== null && (cur === null || cur === before)) patch.benefit_cee = after;
     }
-    update(r.id, patch, `zone ${zone || "automatique"}`);
+    update(r.id, patch, label);
   }
+
 
 
   const summary = useMemo(() => summarize(baseFiltered), [baseFiltered]);
@@ -217,7 +241,7 @@ export function DossiersClient({ initialRows, initialModels }: { initialRows: Do
 
   function exportCsv() {
     const head = [
-      "Nom", "Prénom", "Ville", "Code postal", "Installé le", "Type", "PAC installée", "Zone", "Installateur", "Délégataire", "Étape",
+      "Nom", "Prénom", "Ville", "Code postal", "Installé le", "Type", "PAC installée", "Zone", "Catégorie", "Surface m²", "Installateur", "Délégataire", "Étape",
       "Prime CEE", "MPR", "Total primes", "Coût installation", "Coût matériel", "Coût régie", "Frais de dossier", "Total coûts",
       "Rentabilité", "Factures fournisseurs HT", "À compléter",
     ];
@@ -225,7 +249,7 @@ export function DossiersClient({ initialRows, initialModels }: { initialRows: Do
     const lines = visible.map((r) => [
       r.last_name ?? "", r.first_name ?? "", r.city ?? "", r.postal_code ?? "", fmtDate(r.installed_at),
       r.installation_type ? INSTALLATION_TYPE_LABELS[r.installation_type as InstallationType] ?? r.installation_type : "",
-      r.pac_model_id ? modelName.get(r.pac_model_id) ?? "" : "", zoneOf(r).zone ?? "",
+      r.pac_model_id ? modelName.get(r.pac_model_id) ?? "" : "", zoneOf(r).zone ?? "", INCOME_CATEGORIES.find((c) => c.color === r.color)?.key ?? "", n(r.surface_m2),
       r.installateur ?? "", r.delegataire_group ?? "", DOSSIER_STAGE_LABELS[dossierStage(r)],
       n(r.benefit_cee), n(r.benefit_mpr), n(revenueOf(r)), n(r.installation_cost), n(r.material_cost), n(r.regie_cost), n(r.dossier_cost),
       n(costOf(r)), n(computeProfitability(r)), n(r.supplier_invoices_ht || ""), missingInfo(r).join(" / "),
@@ -313,6 +337,8 @@ export function DossiersClient({ initialRows, initialModels }: { initialRows: Do
       <PacGridPanel
         models={models}
         onModelsChange={setModels}
+        bareme={bareme}
+        onBaremeChange={setBareme}
         usage={usage}
         applicableCount={applicableCount}
         onApplied={(updated) => {
@@ -366,12 +392,13 @@ export function DossiersClient({ initialRows, initialModels }: { initialRows: Do
       {/* ── Tableau ─────────────────────────────────────── */}
       <div className={`${CARD} overflow-hidden`}>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1420px] text-sm">
+          <table className="w-full min-w-[1540px] text-sm">
             <thead className="bg-canvas">
               <tr className="text-left text-xs text-subtle">
                 <th className="px-3 py-2 font-medium">Client</th>
                 <th className="px-2 py-2 font-medium">PAC installée</th>
                 <th className="px-2 py-2 font-medium">Zone</th>
+                <th className="px-2 py-2 font-medium" title="Catégorie de revenus (couleur MaPrimeRénov') et surface habitable">Foyer · surface</th>
                 <th className="px-2 py-2 font-medium">Installateur</th>
                 <th className="px-2 py-2 font-medium">Délégataire</th>
                 <th className="px-2 py-2 font-medium text-right">Prime CEE</th>
@@ -392,8 +419,9 @@ export function DossiersClient({ initialRows, initialModels }: { initialRows: Do
                 const invGap = r.supplier_invoices_ht > 0 && r.supplier_invoices_ht - Number(r.material_cost ?? 0) > 1;
                 const zone = zoneOf(r);
                 const model = r.pac_model_id ? modelById.get(r.pac_model_id) : null;
-                const suggestedCee = modelCee(model, zone.zone);
-                const pacDiffers = !!model && modelPatch(model, r, true).differs.length > 0;
+                const prime = ceePrime(model, r, bareme);
+                const suggestedCee = prime.amount;
+                const pacDiffers = !!model && modelPatch(model, r, true, bareme).differs.length > 0;
                 return (
                   <tr key={r.id} className="border-t border-line-soft hover:bg-canvas/60 align-middle">
                     <td className="px-3 py-1.5">
@@ -440,11 +468,34 @@ export function DossiersClient({ initialRows, initialModels }: { initialRows: Do
                         value={r.cee_zone ?? ""}
                         aria-label="Zone climatique"
                         title={zone.zone && !zone.manual ? "Déduite du code postal" : undefined}
-                        onChange={(e) => chooseZone(r, e.target.value)}
+                        onChange={(e) => changeCeeInput(r, { cee_zone: e.target.value || null }, `zone ${e.target.value || "automatique"}`)}
                       >
                         <option value="">{zone.zone && !zone.manual ? `${zone.zone} (CP)` : "— ?"}</option>
                         {CEE_ZONES.map((z) => <option key={z} value={z}>{z}</option>)}
                       </select>
+                    </td>
+                    <td className="px-2 py-1.5">
+                      <select
+                        className={`${CELL_SELECT} w-[118px] ${!r.color ? "text-gold" : ""}`}
+                        value={r.color ?? ""}
+                        aria-label="Catégorie de revenus"
+                        onChange={(e) => changeCeeInput(r, { color: e.target.value || null }, "catégorie de revenus")}
+                      >
+                        <option value="">— ?</option>
+                        {INCOME_CATEGORIES.map((c) => (
+                          <option key={c.key} value={c.color}>{c.key} · {c.color}</option>
+                        ))}
+                        {r.color && !INCOME_CATEGORIES.some((c) => c.color === r.color) && <option value={r.color}>{r.color}</option>}
+                      </select>
+                      <div className="flex items-center">
+                        <MoneyCell
+                          row={r}
+                          field="surface_m2"
+                          className={`${CELL_INPUT} w-[70px] text-xs h-7`}
+                          onSave={(_, v) => changeCeeInput(r, { surface_m2: v }, "surface")}
+                        />
+                        <span className="text-[11px] text-subtle">m²</span>
+                      </div>
                     </td>
                     <td className="px-2 py-1.5">
                       <select
@@ -480,11 +531,14 @@ export function DossiersClient({ initialRows, initialModels }: { initialRows: Do
                         {f === "benefit_cee" && suggestedCee !== null && Number(r.benefit_cee ?? NaN) !== suggestedCee && (
                           <button
                             className="block ml-auto pr-2 text-[11px] text-brand hover:underline"
-                            title="Appliquer la prime prévue pour cette PAC dans cette zone"
-                            onClick={() => update(r.id, { benefit_cee: suggestedCee }, "prime CEE d'après la fiche PAC")}
+                            title={prime.source === "bareme" ? `Barème Coup de pouce : ${prime.detail}` : `Prime forfaitaire de la fiche PAC — manque : ${prime.missing.join(", ")}`}
+                            onClick={() => update(r.id, { benefit_cee: suggestedCee }, prime.source === "bareme" ? "prime CEE d'après le barème" : "prime CEE d'après la fiche PAC")}
                           >
-                            Fiche {zone.zone} : {formatEuro(suggestedCee)}
+                            {prime.source === "bareme" ? "Barème" : "Forfait"} : {formatEuro(suggestedCee)}
                           </button>
+                        )}
+                        {f === "benefit_cee" && prime.source === "bareme" && Number(r.benefit_cee ?? NaN) === suggestedCee && (
+                          <div className="pr-2 text-[11px] text-emerald" title={prime.detail}>barème {prime.category}</div>
                         )}
                         {f === "material_cost" && r.supplier_invoices_count > 0 && (
                           <div className={`pr-2 text-[11px] ${invGap ? "text-ruby" : "text-subtle"}`} title="Total HT des factures fournisseurs rattachées à ce client">
@@ -516,13 +570,13 @@ export function DossiersClient({ initialRows, initialModels }: { initialRows: Do
                 );
               })}
               {visible.length === 0 && (
-                <tr><td colSpan={13} className="px-3 py-6 text-center text-subtle">Aucun dossier pour ces filtres.</td></tr>
+                <tr><td colSpan={14} className="px-3 py-6 text-center text-subtle">Aucun dossier pour ces filtres.</td></tr>
               )}
             </tbody>
             {visible.length > 0 && (
               <tfoot className="bg-canvas font-semibold text-ink">
                 <tr className="border-t border-line">
-                  <td className="px-3 py-2" colSpan={5}>Total ({visible.length} dossiers)</td>
+                  <td className="px-3 py-2" colSpan={6}>Total ({visible.length} dossiers)</td>
                   <td className="px-2 py-2 text-right tabular-nums" colSpan={2}>{formatEuro(visibleSummary.revenue)}</td>
                   <td className="px-2 py-2 text-right tabular-nums" colSpan={4}>{formatEuro(visibleSummary.cost)}</td>
                   <td className={`px-2 py-2 text-right tabular-nums ${visibleSummary.margin < 0 ? "text-ruby" : "text-emerald"}`}>{formatEuro(visibleSummary.margin)}</td>

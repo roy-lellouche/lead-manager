@@ -147,14 +147,119 @@ export interface CostItem {
   category: CostCategory;
 }
 
+export type EtasBand = "111_140" | "140_plus";
+export const ETAS_BANDS: { key: EtasBand; label: string }[] = [
+  { key: "111_140", label: "111 % ≤ ETAS < 140 %" },
+  { key: "140_plus", label: "ETAS ≥ 140 %" },
+];
+
 export interface PacModel {
   id: string;
   name: string;
   active: boolean;
+  /** Tranche d'ETAS : sert au barème CEE (null = barème inutilisable, prime forfaitaire de la fiche). */
+  etas_band: EtasBand | null;
   cee_h1: number | null;
   cee_h2: number | null;
   cee_h3: number | null;
   cost_items: CostItem[];
+}
+
+/* ── Barème CEE « Coup de pouce » 2026 ─────────────────────────────── */
+
+export type IncomeCategory = "TMO" | "MO" | "IT" | "CL";
+export const INCOME_CATEGORIES: { key: IncomeCategory; label: string; color: string }[] = [
+  { key: "TMO", label: "Très modestes", color: "bleu" },
+  { key: "MO", label: "Modestes", color: "jaune" },
+  { key: "IT", label: "Intermédiaires", color: "violet" },
+  { key: "CL", label: "Classiques", color: "rose" },
+];
+
+/** Catégorie de revenus du foyer d'après la couleur MaPrimeRénov' de la fiche. */
+export function incomeCategory(color: string | null | undefined): IncomeCategory | null {
+  return INCOME_CATEGORIES.find((c) => c.color === color)?.key ?? null;
+}
+
+export interface CeeBareme {
+  kwhc: Record<EtasBand, number>;
+  zone_factor: Record<CeeZone, number>;
+  shab: { lt70: number; "70_90": number; gte90: number };
+  cdp_multiplier: number;
+  /** € par MWhc cumac, selon la catégorie de revenus. */
+  price_mwhc: Record<IncomeCategory, number>;
+}
+
+export const DEFAULT_BAREME: CeeBareme = {
+  kwhc: { "111_140": 90900, "140_plus": 109200 },
+  zone_factor: { H1: 1.2, H2: 1, H3: 0.7 },
+  shab: { lt70: 0.5, "70_90": 0.7, gte90: 1 },
+  cdp_multiplier: 5,
+  price_mwhc: { TMO: 14, MO: 7.5, IT: 7.5, CL: 7.5 },
+};
+
+export function normalizeBareme(v: unknown): CeeBareme {
+  const b = (v && typeof v === "object" ? v : {}) as Partial<CeeBareme>;
+  return {
+    kwhc: { ...DEFAULT_BAREME.kwhc, ...(b.kwhc || {}) },
+    zone_factor: { ...DEFAULT_BAREME.zone_factor, ...(b.zone_factor || {}) },
+    shab: { ...DEFAULT_BAREME.shab, ...(b.shab || {}) },
+    cdp_multiplier: Number(b.cdp_multiplier) || DEFAULT_BAREME.cdp_multiplier,
+    price_mwhc: { ...DEFAULT_BAREME.price_mwhc, ...(b.price_mwhc || {}) },
+  };
+}
+
+export function shabFactor(surface: number, b: CeeBareme): number {
+  if (surface < 70) return b.shab.lt70;
+  if (surface < 90) return b.shab["70_90"];
+  return b.shab.gte90;
+}
+
+export interface CeeInputs {
+  cee_zone?: string | null;
+  postal_code?: string | null;
+  surface_m2?: number | string | null;
+  color?: string | null;
+}
+
+export type CeePrime =
+  | { source: "bareme"; amount: number; kwhc: number; zone: CeeZone; category: IncomeCategory; detail: string }
+  | { source: "fiche"; amount: number; zone: CeeZone; missing: string[] }
+  | { source: "aucune"; amount: null; missing: string[] };
+
+/**
+ * Prime CEE d'un dossier :
+ * - barème Coup de pouce quand ETAS, zone, surface et catégorie de revenus sont connus ;
+ * - sinon prime forfaitaire de la fiche PAC pour la zone (estimation) ;
+ * - sinon aucune.
+ */
+export function ceePrime(model: PacModel | null | undefined, r: CeeInputs, bareme: CeeBareme): CeePrime {
+  if (!model) return { source: "aucune", amount: null, missing: ["Modèle de PAC"] };
+  const zone = zoneOf(r).zone;
+  const surface = isBlank(r.surface_m2) ? null : Number(r.surface_m2);
+  const category = incomeCategory(r.color);
+  const missing: string[] = [];
+  if (!model.etas_band) missing.push("ETAS de la PAC");
+  if (!zone) missing.push("Zone H1/H2/H3");
+  if (surface === null || !Number.isFinite(surface) || surface <= 0) missing.push("Surface habitable");
+  if (!category) missing.push("Catégorie de revenus (couleur)");
+  if (missing.length === 0 && model.etas_band && zone && category && surface !== null) {
+    const kwhc = round2(
+      bareme.kwhc[model.etas_band] * bareme.zone_factor[zone] * shabFactor(surface, bareme) * bareme.cdp_multiplier
+    );
+    const price = bareme.price_mwhc[category];
+    const amount = round2((kwhc / 1000) * price);
+    return {
+      source: "bareme",
+      amount,
+      kwhc,
+      zone,
+      category,
+      detail: `${kwhc.toLocaleString("fr-FR")} kWhc × ${price.toLocaleString("fr-FR")} €/MWhc (${category}, ${zone}, ${surface} m²)`,
+    };
+  }
+  const flat = modelCee(model, zone);
+  if (flat !== null && zone) return { source: "fiche", amount: flat, zone, missing };
+  return { source: "aucune", amount: null, missing };
 }
 
 /** Montants numériques (PostgREST peut renvoyer les numeric en texte). */
@@ -188,10 +293,14 @@ export function modelCosts(model: PacModel): Record<CostCategory, number> & { to
 }
 
 /** Montants que la fiche PAC donnerait au dossier (prime selon la zone + coûts par rubrique). */
-export function modelAmounts(model: PacModel, zone: CeeZone | null): Partial<Record<(typeof MONEY_FIELDS)[number], number>> {
+export function modelAmounts(
+  model: PacModel,
+  r: CeeInputs,
+  bareme: CeeBareme
+): Partial<Record<(typeof MONEY_FIELDS)[number], number>> {
   const costs = modelCosts(model);
   const out: Partial<Record<(typeof MONEY_FIELDS)[number], number>> = {};
-  const cee = modelCee(model, zone);
+  const cee = ceePrime(model, r, bareme).amount;
   if (cee !== null) out.benefit_cee = cee;
   for (const c of COST_CATEGORIES) if (costs[c.key] > 0) out[c.field] = costs[c.key];
   return out;
@@ -204,10 +313,11 @@ export function modelAmounts(model: PacModel, zone: CeeZone | null): Partial<Rec
  */
 export function modelPatch(
   model: PacModel,
-  row: DossierMoney & { cee_zone?: string | null; postal_code?: string | null },
-  replace: boolean
+  row: DossierMoney & CeeInputs,
+  replace: boolean,
+  bareme: CeeBareme
 ): { patch: Record<string, number>; differs: string[] } {
-  const target = modelAmounts(model, zoneOf(row).zone);
+  const target = modelAmounts(model, row, bareme);
   const patch: Record<string, number> = {};
   const differs: string[] = [];
   for (const [field, value] of Object.entries(target)) {
@@ -231,13 +341,17 @@ export function missingInfo(
     pac_model_id?: string | null;
     cee_zone?: string | null;
     postal_code?: string | null;
+    surface_m2?: number | string | null;
+    color?: string | null;
   }
 ): string[] {
   const out: string[] = [];
   if (needsPac(m.installation_type) && !m.pac_model_id) out.push("Modèle de PAC");
-  if (isBlank(m.benefit_cee)) {
-    out.push("Prime CEE");
-    if (m.pac_model_id && !zoneOf(m).zone) out.push("Zone H1/H2/H3");
+  if (isBlank(m.benefit_cee)) out.push("Prime CEE");
+  if (m.pac_model_id) {
+    if (!zoneOf(m).zone) out.push("Zone H1/H2/H3");
+    if (isBlank(m.surface_m2)) out.push("Surface");
+    if (!incomeCategory(m.color)) out.push("Catégorie de revenus");
   }
   if (!num(m.installation_cost)) out.push("Coût installation");
   if (!num(m.material_cost)) out.push("Coût matériel");
@@ -285,6 +399,11 @@ export function parsePacModelInput(
     }
     values.cost_items = items;
   }
+  if ("etas_band" in b) {
+    if (b.etas_band !== null && b.etas_band !== "" && !ETAS_BANDS.some((e) => e.key === b.etas_band))
+      return { error: "Tranche d'ETAS invalide" };
+    values.etas_band = b.etas_band || null;
+  }
   if ("active" in b) values.active = b.active === true;
   if (!creating && Object.keys(values).length === 0) return { error: "Rien à modifier" };
   return { values };
@@ -294,6 +413,8 @@ export interface DossierRow extends DossierMoney, DossierFlags {
   id: string;
   pac_model_id: string | null;
   cee_zone: string | null;
+  surface_m2: number | null;
+  color: string | null;
   first_name: string | null;
   last_name: string | null;
   city: string | null;
