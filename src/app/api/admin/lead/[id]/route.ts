@@ -3,6 +3,7 @@ import { createClientFromRequest } from "@/lib/supabase/route-handler";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getUserFromClient } from "@/lib/supabase/session";
 import { recalcIfRelevant } from "@/lib/finance/server";
+import { computeProfitability, MONEY_FIELDS } from "@/lib/dossiers";
 
 /** En-tête requis pour éviter les anciens clients en boucle (sans ce header = 403). */
 const CLIENT_VERSION_HEADER = "x-lead-form-version";
@@ -74,6 +75,17 @@ export async function PATCH(
 
   for (const key of allowedFields) {
     if (key in rest) updates[key] = rest[key];
+  }
+
+  // Rentabilité toujours recalculée côté serveur quand un montant change
+  // (saisie depuis la fiche comme depuis le suivi des dossiers installés).
+  if (MONEY_FIELDS.some((k) => k in updates)) {
+    const { data: current } = await adminClient
+      .from("leads")
+      .select(MONEY_FIELDS.join(", "))
+      .eq("id", id)
+      .single();
+    updates.profitability = computeProfitability({ ...((current as unknown as Record<string, unknown>) || {}), ...updates });
   }
 
   const { error } = await adminClient

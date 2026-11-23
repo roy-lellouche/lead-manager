@@ -51,7 +51,7 @@ const JEWEL_ICON = ["text-brand", "text-emerald", "text-ruby", "text-gold", "tex
 
 const adminNav = [
   { href: "/admin", label: "Statistique télépro", icon: TrendingUp },
-  { href: "/admin/leads?status=installe", label: "Dossiers Installés", icon: FileCheck, statusParam: "installe" },
+  { href: "/admin/dossiers-installes", label: "Dossiers Installés", icon: FileCheck },
   { href: "/admin/leads", label: "Tous les leads", icon: List, hasStatusSubmenu: true },
   { href: "/admin/code-courrier", label: "Code courrier", icon: Mail },
   { href: "/admin/sav", label: "SAV", icon: Wrench },
