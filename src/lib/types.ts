@@ -1,5 +1,5 @@
 import { STATUS_STYLES } from "@/lib/statusColors";
-export type UserRole = 'admin' | 'telepro' | 'secretaire' | 'stockage';
+export type UserRole = 'admin' | 'telepro' | 'secretaire' | 'stockage' | 'cee';
 
 export type LeadStatus =
   | 'nouveau'

@@ -93,3 +93,24 @@ describe("canAccessAdminPath", () => {
     expect(canAccessAdminPath(undefined, "/admin")).toBe(true);
   });
 });
+
+describe("rôle cee (responsable CEE)", () => {
+  it("est reconnu et atterrit sur DOC CEE", () => {
+    expect(normalizeRole(" CEE ")).toBe("cee");
+    expect(roleLandingPath("cee")).toBe("/admin/doc-cee");
+    expect(usesAdminSpace("cee")).toBe(true);
+  });
+
+  it("ne voit que l'onglet DOC CEE", () => {
+    expect(canAccessAdminPath("cee", "/admin/doc-cee")).toBe(true);
+    expect(canAccessAdminPath("cee", "/admin")).toBe(false);
+    expect(canAccessAdminPath("cee", "/admin/leads")).toBe(false);
+    expect(canAccessAdminPath("cee", "/admin/taches")).toBe(false);
+    expect(canAccessAdminPath("cee", "/admin/doc-cee-archive")).toBe(false);
+  });
+
+  it("DOC CEE est aussi ouvert aux secrétaires et admins", () => {
+    expect(canAccessAdminPath("secretaire", "/admin/doc-cee")).toBe(true);
+    expect(canAccessAdminPath("admin", "/admin/doc-cee")).toBe(true);
+  });
+});

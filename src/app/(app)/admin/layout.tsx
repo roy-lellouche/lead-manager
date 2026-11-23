@@ -28,7 +28,7 @@ export default async function AdminLayout({
           <RappelsNotifications />
         </div>
       )}
-      <TaskReminders tasksHref="/admin/taches" />
+      {role !== "cee" && <TaskReminders tasksHref="/admin/taches" />}
       {children}
     </>
   );

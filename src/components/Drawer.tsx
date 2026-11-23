@@ -29,6 +29,7 @@ import {
   Mountain,
   Search,
   Receipt,
+  FolderOpen,
 } from "lucide-react";
 import { CommandPalette, openCommandPalette } from "@/components/CommandPalette";
 import { createClient } from "@/lib/supabase/client";
@@ -37,7 +38,7 @@ import { useRouter } from "next/navigation";
 import { LEAD_STATUS_LABELS, LEAD_STATUSES_ADMIN, LEAD_CATEGORIES, LEAD_CATEGORY_LABELS, type LeadStatus, type LeadCategory } from "@/lib/types";
 
 interface DrawerProps {
-  role: "admin" | "telepro" | "secretaire" | "stockage";
+  role: "admin" | "telepro" | "secretaire" | "stockage" | "cee";
   userName?: string;
   unreadNotifications?: number;
   statusCounts?: Record<string, Record<string, number>>;
@@ -50,6 +51,7 @@ const JEWEL_ICON = ["text-brand", "text-emerald", "text-ruby", "text-gold", "tex
 const adminNav = [
   { href: "/admin", label: "Statistique télépro", icon: TrendingUp },
   { href: "/admin/dossiers-installes", label: "Dossiers Installés", icon: FileCheck },
+  { href: "/admin/doc-cee", label: "DOC CEE", icon: FolderOpen },
   { href: "/admin/leads", label: "Tous les leads", icon: List, hasStatusSubmenu: true },
   { href: "/admin/code-courrier", label: "Code courrier", icon: Mail },
   { href: "/admin/sav", label: "SAV", icon: Wrench },
@@ -64,6 +66,7 @@ const adminNav = [
 
 const secretaireNav = [
   { href: "/admin/documents-recus", label: "Documents reçus", icon: FileCheck },
+  { href: "/admin/doc-cee", label: "DOC CEE", icon: FolderOpen },
   { href: "/admin/leads", label: "Tous les leads", icon: List, hasStatusSubmenu: true },
   { href: "/admin/code-courrier", label: "Code courrier", icon: Mail },
   { href: "/admin/sav", label: "SAV", icon: Wrench },
@@ -81,6 +84,8 @@ const stockageNav = [
   { href: "/admin/altitude", label: "Altitude", icon: Mountain },
   { href: "/admin/taches", label: "Tâches", icon: ListTodo, tasksBadge: true },
 ];
+
+const ceeNav: typeof stockageNav = [{ href: "/admin/doc-cee", label: "DOC CEE", icon: FolderOpen, tasksBadge: false }];
 
 const teleproNav = [
   { href: "/telepro", label: "Tableau de bord", icon: LayoutDashboard },
@@ -103,12 +108,30 @@ export function Drawer({ role, userName, unreadNotifications = 0, statusCounts =
   // Le menu suit l'URL : /admin → menu admin/secretaire, /telepro → menu télépro
   const isAdminSpace = pathname.startsWith("/admin");
   const adminSpaceNav =
-    role === "secretaire" ? secretaireNav : role === "stockage" ? stockageNav : adminNav;
+    role === "secretaire"
+      ? secretaireNav
+      : role === "stockage"
+      ? stockageNav
+      : role === "cee"
+      ? ceeNav
+      : adminNav;
   const nav = isAdminSpace ? adminSpaceNav : teleproNav;
   const adminSpaceHome =
-    role === "secretaire" ? "/admin/documents-recus" : role === "stockage" ? "/admin/stockage" : "/admin";
+    role === "secretaire"
+      ? "/admin/documents-recus"
+      : role === "stockage"
+      ? "/admin/stockage"
+      : role === "cee"
+      ? "/admin/doc-cee"
+      : "/admin";
   const adminSpaceLabel =
-    role === "secretaire" ? "Espace secrétaire" : role === "stockage" ? "Espace stockage" : "Espace administrateur";
+    role === "secretaire"
+      ? "Espace secrétaire"
+      : role === "stockage"
+      ? "Espace stockage"
+      : role === "cee"
+      ? "Espace responsable CEE"
+      : "Espace administrateur";
 
   const handleLogout = async () => {
     const supabase = createClient();

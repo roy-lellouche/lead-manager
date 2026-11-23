@@ -48,6 +48,7 @@ const ROLE_LABELS: Record<string, string> = {
   secretaire: "Secrétaire",
   telepro: "Télépro",
   stockage: "Stockage",
+  cee: "Responsable CEE",
 };
 
 export const PRIORITY_STYLES: Record<
