@@ -1,4 +1,4 @@
-import type { ClimateZone } from "./engine";
+export type ClimateZone = "H1" | "H2" | "H3";
 
 /**
  * Zones climatiques CEE par département (métropole).

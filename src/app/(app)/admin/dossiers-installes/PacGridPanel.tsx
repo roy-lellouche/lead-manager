@@ -208,8 +208,12 @@ export function PacGridPanel({
   }
 
   async function saveEtas(m: PacModel, band: string) {
+    await patchModel(m, { etas_band: band || null });
+  }
+
+  async function patchModel(m: PacModel, body: Record<string, unknown>) {
     try {
-      replace(normalizeModel(await api(`/api/admin/pac-models/${m.id}`, "PATCH", { etas_band: band || null })));
+      replace(normalizeModel(await api(`/api/admin/pac-models/${m.id}`, "PATCH", body)));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Enregistrement impossible");
     }
@@ -220,7 +224,7 @@ export function PacGridPanel({
     setBusy(true);
     try {
       const body = from
-        ? { name, etas_band: from.etas_band, cee_h1: from.cee_h1, cee_h2: from.cee_h2, cee_h3: from.cee_h3, cost_items: from.cost_items }
+        ? { name, etas_band: from.etas_band, cee_mode: from.cee_mode, cee_h1: from.cee_h1, cee_h2: from.cee_h2, cee_h3: from.cee_h3, cost_items: from.cost_items }
         : { name };
       const saved = normalizeModel(await api("/api/admin/pac-models", "POST", body));
       onModelsChange([...models, saved]);
@@ -290,12 +294,13 @@ export function PacGridPanel({
           </p>
           <BaremeEditor bareme={bareme} onChange={onBaremeChange} />
           <div className="overflow-x-auto -mx-4 sm:mx-0">
-            <table className="w-full min-w-[960px] text-sm">
+            <table className="w-full min-w-[1040px] text-sm">
               <thead>
                 <tr className="text-left text-xs text-subtle">
                   <th className="px-2 py-1.5 font-medium">Modèle</th>
                   <th className="px-1 py-1.5 font-medium">ETAS</th>
-                  {ZONES.map((z) => <th key={z.key} className="px-1 py-1.5 font-medium text-right" title="Prime forfaitaire, utilisée quand le barème ne peut pas être appliqué">Forfait {z.label}</th>)}
+                  <th className="px-1 py-1.5 font-medium" title="Barème : prime calculée selon zone, surface et revenus. Forfait : prime fixe ci-contre.">Prime</th>
+                  {ZONES.map((z) => <th key={z.key} className="px-1 py-1.5 font-medium text-right" title="Prime fixe (mode Forfait), ou estimation quand le barème ne peut pas être appliqué">Forfait {z.label}</th>)}
                   <th className="px-2 py-1.5 font-medium text-right">Coût total</th>
                   <th className="px-2 py-1.5 font-medium text-right" title="Avec la prime forfaitaire H1">Rentab. H1</th>
                   <th className="px-2 py-1.5 font-medium text-right" title="Avec la prime forfaitaire H2">Rentab. H2</th>
@@ -338,6 +343,17 @@ export function PacGridPanel({
                             {ETAS_BANDS.map((b) => <option key={b.key} value={b.key}>{b.key === "140_plus" ? "≥ 140 %" : "111–140 %"}</option>)}
                           </select>
                         </td>
+                        <td className="px-1 py-1">
+                          <select
+                            className={INPUT}
+                            value={m.cee_mode}
+                            aria-label={`Mode de prime ${m.name}`}
+                            onChange={(e) => patchModel(m, { cee_mode: e.target.value })}
+                          >
+                            <option value="bareme">Barème</option>
+                            <option value="forfait">Forfait</option>
+                          </select>
+                        </td>
                         {ZONES.map((z) => (
                           <td key={z.key} className="px-1 py-1 text-right">
                             <input
@@ -369,7 +385,7 @@ export function PacGridPanel({
                       </tr>
                       {isOpen && (
                         <tr>
-                          <td colSpan={10} className="px-2 pb-3 pt-1 bg-canvas/60">
+                          <td colSpan={11} className="px-2 pb-3 pt-1 bg-canvas/60">
                             <CostEditor key={JSON.stringify(m.cost_items)} model={m} onSaved={replace} />
                           </td>
                         </tr>

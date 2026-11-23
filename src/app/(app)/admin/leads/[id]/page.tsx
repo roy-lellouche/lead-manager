@@ -4,7 +4,6 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { AdminLeadForm } from "./AdminLeadForm";
 import { DocumentsSection } from "./DocumentsSection";
-import { ProfitabilitySection } from "./ProfitabilitySection";
 import { SupplierInvoicesSection } from "./SupplierInvoicesSection";
 import { getSessionProfile, getSessionUser } from "@/lib/supabase/session";
 import { normalizeRole } from "@/lib/roles";
@@ -98,9 +97,6 @@ export default async function AdminLeadPage({
       <div className="flex gap-6 items-start">
         <div className="flex-1 min-w-0 space-y-4">
           <AdminLeadForm lead={lead} />
-          {(role === "admin" || role === "secretaire") && (
-            <ProfitabilitySection leadId={id} isAdmin={role === "admin"} />
-          )}
           {role === "admin" && <SupplierInvoicesSection leadId={id} />}
           <RedistributionHistorySection
             realAddedAt={lead.added_at ?? lead.created_at}

@@ -34,7 +34,8 @@ describe("dossiers", () => {
 
   it("liste les informations manquantes", () => {
     expect(missingInfo(row({}))).toEqual([]);
-    expect(missingInfo(row({ surface_m2: null, color: null }))).toEqual(["Surface", "Catégorie de revenus"]);
+    expect(missingInfo(row({ surface_m2: null, color: null }))).toEqual([]);
+    expect(missingInfo(row({ benefit_cee: null, surface_m2: null, color: null }))).toEqual(["Prime CEE", "Surface", "Catégorie de revenus"]);
     expect(missingInfo(row({ benefit_cee: null, installateur: null, material_cost: 0 }))).toEqual(["Prime CEE", "Coût matériel", "Installateur"]);
   });
 
@@ -69,7 +70,7 @@ describe("dossiers", () => {
   });
 
   const atlantic: PacModel = {
-    id: "m1", name: "Atlantic Alfea Excellia S9", active: true, etas_band: "140_plus", cee_h1: 9450, cee_h2: 7800, cee_h3: null,
+    id: "m1", name: "Atlantic Alfea Excellia S9", active: true, etas_band: "140_plus", cee_mode: "bareme", cee_h1: 9450, cee_h2: 7800, cee_h3: null,
     cost_items: [
       { label: "PAC", amount: 3200, basis: "HT", category: "materiel" },
       { label: "Installation", amount: 700, basis: "HT", category: "installation" },
@@ -139,5 +140,25 @@ describe("dossiers", () => {
     expect(p).toEqual({ source: "fiche", amount: 9450, zone: "H1", missing: ["Surface habitable"] });
     expect(ceePrime(atlantic, { cee_zone: null, postal_code: null }, B).source).toBe("aucune");
     expect(ceePrime({ ...atlantic, etas_band: null }, { cee_zone: "H1", surface_m2: 100, color: "bleu" }, B).source).toBe("fiche");
+  });
+
+  it("forfait : même prime en H1, H2, H3, zone inutile", () => {
+    const ai: PacModel = {
+      ...atlantic, name: "Atlantic Excellia AI 11 kW", etas_band: "111_140", cee_mode: "forfait", cee_h1: 4000, cee_h2: 4000, cee_h3: 4000,
+      cost_items: [
+        { label: "PAC", amount: 1500, basis: "HT", category: "materiel" },
+        { label: "Kit accessoires", amount: 500, basis: "HT", category: "materiel" },
+        { label: "Installation", amount: 700, basis: "HT", category: "installation" },
+        { label: "Employé chantier", amount: 600, basis: "TTC", category: "installation" },
+        { label: "Régie commerciale", amount: 300, basis: "TTC", category: "regie" },
+        { label: "Secrétariat CEE", amount: 70, basis: "TTC", category: "dossier" },
+        { label: "Coût du lead", amount: 30, basis: "HT", category: "dossier" },
+      ],
+    };
+    for (const r of [{ cee_zone: "H1", surface_m2: 100, color: "bleu" }, { cee_zone: "H3" }, { postal_code: null }]) {
+      expect(ceePrime(ai, r, B)).toMatchObject({ source: "fiche", amount: 4000, missing: [] });
+    }
+    expect(modelCosts(ai).total).toBe(3700);
+    expect(computeProfitability(modelAmounts(ai, {}, B))).toBe(300);
   });
 });

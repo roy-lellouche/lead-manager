@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
   const admin = auth.admin;
 
   const [{ data: models }, { data: setting }, { data: leads, error }] = await Promise.all([
-    admin.from("pac_models").select("id, name, active, etas_band, cee_h1, cee_h2, cee_h3, cost_items"),
+    admin.from("pac_models").select("id, name, active, etas_band, cee_mode, cee_h1, cee_h2, cee_h3, cost_items"),
     admin.from("financial_settings").select("value").eq("key", "cee_cdp_bareme").maybeSingle(),
     admin
       .from("leads")

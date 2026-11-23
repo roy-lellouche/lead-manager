@@ -30,7 +30,7 @@ export function usesAdminSpace(role: UserRole | undefined): boolean {
   return role === "admin" || role === "secretaire" || role === "stockage";
 }
 
-const SECRETAIRE_DENIED_PREFIXES = ["/admin/users", "/admin/stats", "/admin/rentabilite", "/admin/parametres-financiers", "/admin/factures-fournisseurs"];
+const SECRETAIRE_DENIED_PREFIXES = ["/admin/users", "/admin/stats", "/admin/rentabilite", "/admin/parametres-financiers", "/admin/factures-fournisseurs", "/admin/dossiers-installes"];
 const STOCKAGE_ALLOWED_PREFIXES = ["/admin/stockage", "/admin/sav", "/admin/taches"];
 
 /**

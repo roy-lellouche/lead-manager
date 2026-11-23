@@ -7,6 +7,7 @@ import { StatCard } from "@/components/ui-kit/StatCard";
 import { Panel, SectionTitle } from "@/components/ui-kit/Panel";
 import { BarList } from "@/components/ui-kit/BarList";
 import { PeriodFilter, DelegataireChips } from "@/components/ui-kit/PeriodFilter";
+import { summarize, type DossierRow } from "@/lib/dossiers";
 
 const STATUSES: LeadStatus[] = LEAD_STATUSES_ADMIN;
 
@@ -39,7 +40,7 @@ export default async function AdminStatsPage({
 
   let docRecusQuery = adminClient
     .from("leads")
-    .select("status, delegataire_group, installation_type, is_installe, is_depot_mpr, is_cee_paye, is_mpe_paye, is_code_envoye, is_depose, is_controle_veritas, is_paye, is_compte_bloque, is_rejete, lead_financials(method_id, calc_status, gross_margin, revenue, total_cost, cee_forecast, cee_received)")
+    .select("status, delegataire_group, installation_type, is_installe, is_depot_mpr, is_cee_paye, is_mpe_paye, is_code_envoye, is_depose, is_controle_veritas, is_paye, is_compte_bloque, is_rejete, installateur, pac_model_id, cee_zone, postal_code, surface_m2, color, benefit_cee, benefit_mpr, installation_cost, material_cost, regie_cost, dossier_cost")
     .eq("status", "installe")
     .gte("updated_at", fromDate.toISOString())
     .lte("updated_at", toDate.toISOString());
@@ -68,26 +69,8 @@ export default async function AdminStatsPage({
 
   const leads = docRecusLeads || [];
   const leadsDocRecusOnly = leads;
-  // Finances : uniquement le calcul automatique des méthodes économiques (méthodes 1, 2, 3).
-  // Les anciens montants saisis à la main restent sur les fiches mais ne sont plus comptés.
-  type Fin = { method_id: string | null; calc_status: string; gross_margin: number | null; revenue: number | null; total_cost: number | null; cee_forecast: number | null; cee_received: number | null };
-  const finOf = (l: Record<string, unknown>): Fin | null => {
-    const f = l.lead_financials as Fin | Fin[] | null | undefined;
-    return (Array.isArray(f) ? f[0] : f) ?? null;
-  };
-  const cents = (v: unknown) => Math.round((Number(v) || 0) * 100);
-  const fins = leads.map((l) => finOf(l as Record<string, unknown>));
-  const withMethod = fins.filter((f) => f?.method_id);
-  const computed = withMethod.filter((f) => f!.calc_status === "calcule" && f!.gross_margin !== null) as Fin[];
-  const sum = (list: Fin[], k: keyof Fin) => list.reduce((s, f) => s + cents(f[k]), 0) / 100;
-  const totalMargin = sum(computed, "gross_margin");
-  const totalRevenue = sum(computed, "revenue");
-  const totalCosts = sum(computed, "total_cost");
-  const totalCeeForecast = sum(computed, "cee_forecast");
-  const totalCeeReceived = sum(withMethod as Fin[], "cee_received");
-  const withoutMethod = leads.length - withMethod.length;
-  const pendingCalc = withMethod.length - computed.length;
-  const avgMargin = computed.length > 0 ? totalMargin / computed.length : 0;
+  // Finances : même calcul que le suivi des dossiers installés (montants de la fiche client).
+  const fin = summarize(leads as unknown as DossierRow[]);
   const count = leads.length;
 
   const delegataireCounts = leads.reduce<Record<string, number>>((acc, l) => {
@@ -135,17 +118,16 @@ export default async function AdminStatsPage({
         />
       </PeriodFilter>
 
-      <SectionTitle hint="Dossiers installés sur la période, calcul automatique par méthode (1, 2, 3)">Finances</SectionTitle>
+      <SectionTitle hint="Dossiers installés sur la période : Prime CEE + MPR − installation − matériel − régie − frais de dossier">Finances</SectionTitle>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Marge brute prévisionnelle" value={eur(totalMargin)} icon={TrendingUp} tone="success" size="lg" href="/admin/rentabilite" hint={`${eur(avgMargin)} en moyenne par chantier calculé`} />
-        <StatCard label="Chiffre d'affaires prévisionnel" value={eur(totalRevenue)} icon={Coins} tone="brand" size="lg" href="/admin/rentabilite" hint="Prime CEE HT + reste à charge" />
-        <StatCard label="Coût de revient" value={eur(totalCosts)} icon={Banknote} tone="danger" size="lg" href="/admin/rentabilite" hint="Coûts standards des méthodes, TVA récupérable déduite" />
-        <StatCard label="Dossiers installés" value={count} icon={Hammer} tone="amethyst" size="lg" href={baseInstalleUrl} hint={`${computed.length} calculés · ${pendingCalc} en attente`} />
+        <StatCard label="Rentabilité totale" value={eur(fin.margin)} icon={TrendingUp} tone={fin.margin < 0 ? "danger" : "success"} size="lg" href="/admin/dossiers-installes" hint={`${eur(fin.avgMargin)} en moyenne par dossier complet`} />
+        <StatCard label="Primes (CEE + MPR)" value={eur(fin.revenue)} icon={Coins} tone="brand" size="lg" href="/admin/dossiers-installes" />
+        <StatCard label="Coûts" value={eur(fin.cost)} icon={Banknote} tone="danger" size="lg" href="/admin/dossiers-installes" hint="Installation, matériel, régie, frais de dossier" />
+        <StatCard label="Dossiers installés" value={count} icon={Hammer} tone="amethyst" size="lg" href="/admin/dossiers-installes" hint={`${fin.complete} complets · ${fin.incomplete} à compléter`} />
       </div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard label="Prime CEE prévisionnelle" value={eur(totalCeeForecast)} href="/admin/rentabilite" />
-        <StatCard label="Prime CEE encaissée" value={eur(totalCeeReceived)} href="/admin/rentabilite" />
-        <StatCard label="Installés sans méthode" value={withoutMethod} href={baseInstalleUrl} hint="À attribuer : méthode 1, 2 ou 3 sur la fiche" />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <StatCard label="Primes restant à encaisser" value={eur(fin.toCollect)} href="/admin/dossiers-installes" />
+        <StatCard label="Primes encaissées" value={eur(fin.collected)} href="/admin/dossiers-installes" hint="Dossiers à l'étape « Payé »" />
       </div>
 
       {selectedDelegataires.length > 0 && (

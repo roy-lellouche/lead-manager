@@ -33,7 +33,7 @@ export default async function DossiersInstallesPage() {
       .select("lead_id, amount_ht, amount_ttc")
       .not("lead_id", "is", null)
       .limit(5000),
-    admin.from("pac_models").select("id, name, active, etas_band, cee_h1, cee_h2, cee_h3, cost_items").order("display_order").order("name"),
+    admin.from("pac_models").select("id, name, active, etas_band, cee_mode, cee_h1, cee_h2, cee_h3, cost_items").order("display_order").order("name"),
     admin.from("financial_settings").select("value").eq("key", "cee_cdp_bareme").maybeSingle(),
   ]);
 

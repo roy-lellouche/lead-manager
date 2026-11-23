@@ -159,6 +159,8 @@ export interface PacModel {
   active: boolean;
   /** Tranche d'ETAS : sert au barème CEE (null = barème inutilisable, prime forfaitaire de la fiche). */
   etas_band: EtasBand | null;
+  /** « bareme » : barème Coup de pouce (repli sur le forfait) ; « forfait » : prime fixe de la fiche. */
+  cee_mode: "bareme" | "forfait";
   cee_h1: number | null;
   cee_h2: number | null;
   cee_h3: number | null;
@@ -235,6 +237,12 @@ export type CeePrime =
 export function ceePrime(model: PacModel | null | undefined, r: CeeInputs, bareme: CeeBareme): CeePrime {
   if (!model) return { source: "aucune", amount: null, missing: ["Modèle de PAC"] };
   const zone = zoneOf(r).zone;
+  if (model.cee_mode === "forfait") {
+    const flat = modelCee(model, zone) ?? sameEverywhere(model);
+    return flat === null
+      ? { source: "aucune", amount: null, missing: ["Zone H1/H2/H3"] }
+      : { source: "fiche", amount: flat, zone: zone ?? "H1", missing: [] };
+  }
   const surface = isBlank(r.surface_m2) ? null : Number(r.surface_m2);
   const category = incomeCategory(r.color);
   const missing: string[] = [];
@@ -262,11 +270,18 @@ export function ceePrime(model: PacModel | null | undefined, r: CeeInputs, barem
   return { source: "aucune", amount: null, missing };
 }
 
+/** Prime forfaitaire identique dans les trois zones (utilisable sans connaître la zone). */
+function sameEverywhere(m: PacModel): number | null {
+  const v = [m.cee_h1, m.cee_h2, m.cee_h3];
+  return v.every((x) => x !== null && x !== undefined) && v[0] === v[1] && v[1] === v[2] ? Number(v[0]) : null;
+}
+
 /** Montants numériques (PostgREST peut renvoyer les numeric en texte). */
 export function normalizeModel(m: PacModel): PacModel {
   const n = (v: unknown) => (v === null || v === undefined || v === "" ? null : Number(v));
   return {
     ...m,
+    cee_mode: m.cee_mode === "forfait" ? "forfait" : "bareme",
     cee_h1: n(m.cee_h1),
     cee_h2: n(m.cee_h2),
     cee_h3: n(m.cee_h3),
@@ -347,11 +362,14 @@ export function missingInfo(
 ): string[] {
   const out: string[] = [];
   if (needsPac(m.installation_type) && !m.pac_model_id) out.push("Modèle de PAC");
-  if (isBlank(m.benefit_cee)) out.push("Prime CEE");
-  if (m.pac_model_id) {
-    if (!zoneOf(m).zone) out.push("Zone H1/H2/H3");
-    if (isBlank(m.surface_m2)) out.push("Surface");
-    if (!incomeCategory(m.color)) out.push("Catégorie de revenus");
+  if (isBlank(m.benefit_cee)) {
+    out.push("Prime CEE");
+    // Ce qu'il faut pour que la prime soit calculée par le barème.
+    if (m.pac_model_id) {
+      if (!zoneOf(m).zone) out.push("Zone H1/H2/H3");
+      if (isBlank(m.surface_m2)) out.push("Surface");
+      if (!incomeCategory(m.color)) out.push("Catégorie de revenus");
+    }
   }
   if (!num(m.installation_cost)) out.push("Coût installation");
   if (!num(m.material_cost)) out.push("Coût matériel");
@@ -403,6 +421,10 @@ export function parsePacModelInput(
     if (b.etas_band !== null && b.etas_band !== "" && !ETAS_BANDS.some((e) => e.key === b.etas_band))
       return { error: "Tranche d'ETAS invalide" };
     values.etas_band = b.etas_band || null;
+  }
+  if ("cee_mode" in b) {
+    if (b.cee_mode !== "bareme" && b.cee_mode !== "forfait") return { error: "Mode de prime invalide" };
+    values.cee_mode = b.cee_mode;
   }
   if ("active" in b) values.active = b.active === true;
   if (!creating && Object.keys(values).length === 0) return { error: "Rien à modifier" };
