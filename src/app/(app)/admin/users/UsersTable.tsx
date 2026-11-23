@@ -35,6 +35,7 @@ export function UsersTable({ users }: UsersTableProps) {
   const secretaires = users.filter((u) => normalize(u.role) === "secretaire");
   const admins = users.filter((u) => normalize(u.role) === "admin");
   const stockages = users.filter((u) => normalize(u.role) === "stockage");
+  const cees = users.filter((u) => normalize(u.role) === "cee");
 
   const handleDelete = async (telepro: User) => {
     if (!confirm(`Supprimer le télépro ${telepro.full_name || telepro.email} ?\n\nSes leads devront être redistribués.`)) return;
@@ -115,6 +116,20 @@ export function UsersTable({ users }: UsersTableProps) {
               <TableCell className="py-3.5 px-4">
                 <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-line-soft text-subtle">
                   Stockage
+                </span>
+              </TableCell>
+              <TableCell className="py-3.5 px-4" />
+            </TableRow>
+          ))}
+          {cees.map((u) => (
+            <TableRow key={u.id} className="border-b border-line hover:bg-canvas/60">
+              <TableCell className="py-3.5 px-4 font-medium text-ink">
+                {u.full_name || "-"}
+              </TableCell>
+              <TableCell className="py-3.5 px-4 text-subtle text-sm">{u.email}</TableCell>
+              <TableCell className="py-3.5 px-4">
+                <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-line-soft text-subtle">
+                  Responsable CEE
                 </span>
               </TableCell>
               <TableCell className="py-3.5 px-4" />

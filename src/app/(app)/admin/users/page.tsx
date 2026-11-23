@@ -29,7 +29,7 @@ export default async function AdminUsersPage() {
     <div className="space-y-6 max-w-2xl">
       <PageHeader
         title="Utilisateurs"
-        subtitle="Créez des comptes télépro, secrétaire ou stockage et gérez les utilisateurs"
+        subtitle="Créez des comptes télépro, secrétaire, stockage ou responsable CEE et gérez les utilisateurs"
       />
 
       <CreateUserForm />

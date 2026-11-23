@@ -3,12 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-type CreateUserRole = "telepro" | "secretaire" | "stockage";
+type CreateUserRole = "telepro" | "secretaire" | "stockage" | "cee";
 
 const ROLE_LABELS: Record<CreateUserRole, string> = {
   telepro: "télépro",
   secretaire: "secrétaire",
   stockage: "stockage",
+  cee: "responsable CEE",
 };
 
 const INPUT_CLS =
@@ -107,6 +108,7 @@ export function CreateUserForm() {
           <option value="telepro">Télépro</option>
           <option value="secretaire">Secrétaire</option>
           <option value="stockage">Stockage</option>
+          <option value="cee">Responsable CEE (DOC CEE uniquement)</option>
         </select>
       </div>
 

@@ -6,7 +6,7 @@ import type { UserRole } from "@/lib/types";
  */
 export function normalizeRole(raw: unknown): UserRole | undefined {
   const value = raw?.toString().trim().toLowerCase();
-  return value === "admin" || value === "telepro" || value === "secretaire" || value === "stockage"
+  return value === "admin" || value === "telepro" || value === "secretaire" || value === "stockage" || value === "cee"
     ? value
     : undefined;
 }
@@ -20,6 +20,8 @@ export function roleLandingPath(role: UserRole | undefined): string {
       return "/admin/documents-recus";
     case "stockage":
       return "/admin/stockage";
+    case "cee":
+      return "/admin/doc-cee";
     default:
       return "/telepro";
   }
@@ -27,11 +29,12 @@ export function roleLandingPath(role: UserRole | undefined): string {
 
 /** Les rôles dont l'espace vit sous /admin. */
 export function usesAdminSpace(role: UserRole | undefined): boolean {
-  return role === "admin" || role === "secretaire" || role === "stockage";
+  return role === "admin" || role === "secretaire" || role === "stockage" || role === "cee";
 }
 
 const SECRETAIRE_DENIED_PREFIXES = ["/admin/users", "/admin/stats", "/admin/rentabilite", "/admin/parametres-financiers", "/admin/factures-fournisseurs"];
 const STOCKAGE_ALLOWED_PREFIXES = ["/admin/stockage", "/admin/sav", "/admin/taches"];
+const CEE_ALLOWED_PREFIXES = ["/admin/doc-cee"];
 
 /**
  * Restrictions à l'intérieur de l'espace /admin. Les pages admin lisent leurs
@@ -51,6 +54,13 @@ export function canAccessAdminPath(role: UserRole | undefined, pathname: string)
   // pour qu'une page admin ajoutée plus tard lui reste fermée par défaut.
   if (role === "stockage") {
     return STOCKAGE_ALLOWED_PREFIXES.some(
+      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+    );
+  }
+
+  // Le responsable CEE ne voit que l'onglet DOC CEE (liste blanche également).
+  if (role === "cee") {
+    return CEE_ALLOWED_PREFIXES.some(
       (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
     );
   }

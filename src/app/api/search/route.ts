@@ -8,7 +8,7 @@ import { normalizeRole } from "@/lib/roles";
  * Recherche rapide de leads (palette Ctrl+K).
  * - admin / secrétaire : tous les leads
  * - télépro : uniquement ses leads
- * - stockage : aucun lead (pas d'accès aux fiches)
+ * - stockage / cee : aucun lead (pas d'accès aux fiches)
  */
 export async function GET(request: NextRequest) {
   const { supabase } = await createClientFromRequest(request);
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
   if (q.length < 2) return NextResponse.json({ leads: [] });
 
   const role = normalizeRole((await getSessionProfile(user.id))?.role);
-  if (role === "stockage") return NextResponse.json({ leads: [] });
+  if (role === "stockage" || role === "cee") return NextResponse.json({ leads: [] });
 
   const admin = createAdminClient();
   let query = admin
