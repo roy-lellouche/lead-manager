@@ -1,8 +1,10 @@
+import { zoneForDepartment } from "./finance/climate-zones";
+
 /**
  * Suivi des dossiers installés : étape du pipeline (après installation) et
  * rentabilité simple de chaque dossier, à partir des champs « chantier » de la fiche.
  *
- * Rentabilité = CEE + MPR − coût installation − coût matériel − coût régie
+ * Rentabilité = CEE + MPR − installation − matériel − régie − frais de dossier
  * (même formule que la fiche client).
  */
 
@@ -78,6 +80,8 @@ export interface DossierMoney {
   installation_cost?: number | string | null;
   material_cost?: number | string | null;
   regie_cost?: number | string | null;
+  /** Frais de dossier : secrétariat CEE, coût du lead… */
+  dossier_cost?: number | string | null;
 }
 
 const num = (v: unknown): number => {
@@ -85,15 +89,17 @@ const num = (v: unknown): number => {
   return v === null || v === undefined || v === "" || !Number.isFinite(n) ? 0 : n;
 };
 
+const isBlank = (v: unknown) => v === null || v === undefined || v === "";
+
 export const round2 = (n: number) => Math.round(n * 100) / 100;
 
-export const MONEY_FIELDS = ["benefit_cee", "benefit_mpr", "installation_cost", "material_cost", "regie_cost"] as const;
+export const MONEY_FIELDS = [
+  "benefit_cee", "benefit_mpr", "installation_cost", "material_cost", "regie_cost", "dossier_cost",
+] as const;
 
 /** Rentabilité du dossier (identique au calcul de la fiche client). */
 export function computeProfitability(m: DossierMoney): number {
-  return round2(
-    num(m.benefit_cee) + num(m.benefit_mpr) - num(m.installation_cost) - num(m.material_cost) - num(m.regie_cost)
-  );
+  return round2(revenueOf(m) - costOf(m));
 }
 
 export function revenueOf(m: DossierMoney): number {
@@ -101,20 +107,7 @@ export function revenueOf(m: DossierMoney): number {
 }
 
 export function costOf(m: DossierMoney): number {
-  return round2(num(m.installation_cost) + num(m.material_cost) + num(m.regie_cost));
-}
-
-/** Ce qui manque pour que la rentabilité du dossier soit fiable. */
-export function missingInfo(
-  m: DossierMoney & { installateur?: string | null; installation_type?: string | null; pac_model_id?: string | null }
-): string[] {
-  const out: string[] = [];
-  if (needsPac(m.installation_type) && !m.pac_model_id) out.push("Modèle de PAC");
-  if (m.benefit_cee === null || m.benefit_cee === undefined || m.benefit_cee === "") out.push("Prime CEE");
-  if (!num(m.installation_cost)) out.push("Coût installation");
-  if (!num(m.material_cost)) out.push("Coût matériel");
-  if (!m.installateur) out.push("Installateur");
-  return out;
+  return round2(num(m.installation_cost) + num(m.material_cost) + num(m.regie_cost) + num(m.dossier_cost));
 }
 
 /** Dossier avec pompe à chaleur (type d'installation PAC ou non renseigné). */
@@ -122,21 +115,144 @@ export function needsPac(installationType: string | null | undefined): boolean {
   return !installationType || installationType.startsWith("pac");
 }
 
+/* ── Zone climatique ─────────────────────────────────────────────── */
+
+export type CeeZone = "H1" | "H2" | "H3";
+export const CEE_ZONES: CeeZone[] = ["H1", "H2", "H3"];
+
+/** Zone du dossier : choisie à la main, sinon déduite du département (code postal). */
+export function zoneOf(r: { cee_zone?: string | null; postal_code?: string | null }): { zone: CeeZone | null; manual: boolean } {
+  if (r.cee_zone && (CEE_ZONES as string[]).includes(r.cee_zone)) return { zone: r.cee_zone as CeeZone, manual: true };
+  const cp = (r.postal_code || "").replace(/\s/g, "");
+  if (!/^\d{5}$/.test(cp)) return { zone: null, manual: false };
+  // Corse (20xxx) : 2A et 2B sont toutes deux en H3.
+  const dep = cp.startsWith("20") ? "2A" : cp.startsWith("97") ? cp.slice(0, 3) : cp.slice(0, 2);
+  return { zone: zoneForDepartment(dep) as CeeZone | null, manual: false };
+}
+
+/* ── Fiches PAC : prime par zone et postes de coût ───────────────── */
+
+export type CostCategory = "materiel" | "installation" | "regie" | "dossier";
+export const COST_CATEGORIES: { key: CostCategory; label: string; field: (typeof MONEY_FIELDS)[number] }[] = [
+  { key: "materiel", label: "Matériel", field: "material_cost" },
+  { key: "installation", label: "Installation", field: "installation_cost" },
+  { key: "regie", label: "Régie", field: "regie_cost" },
+  { key: "dossier", label: "Frais de dossier", field: "dossier_cost" },
+];
+
+export interface CostItem {
+  label: string;
+  amount: number;
+  basis: "HT" | "TTC";
+  category: CostCategory;
+}
+
 export interface PacModel {
   id: string;
   name: string;
-  cee_amount: number | null;
   active: boolean;
+  cee_h1: number | null;
+  cee_h2: number | null;
+  cee_h3: number | null;
+  cost_items: CostItem[];
 }
 
-/** Prime CEE prévue par la grille pour le modèle de PAC du dossier (null si inconnue). */
-export function gridCee(pacModelId: string | null | undefined, models: PacModel[]): number | null {
-  if (!pacModelId) return null;
-  const m = models.find((x) => x.id === pacModelId);
-  return m && m.cee_amount !== null && m.cee_amount !== undefined ? Number(m.cee_amount) : null;
+/** Montants numériques (PostgREST peut renvoyer les numeric en texte). */
+export function normalizeModel(m: PacModel): PacModel {
+  const n = (v: unknown) => (v === null || v === undefined || v === "" ? null : Number(v));
+  return {
+    ...m,
+    cee_h1: n(m.cee_h1),
+    cee_h2: n(m.cee_h2),
+    cee_h3: n(m.cee_h3),
+    cost_items: (Array.isArray(m.cost_items) ? m.cost_items : []).map((c) => ({ ...c, amount: Number(c.amount) || 0 })),
+  };
 }
 
-/** Validation des saisies de la grille PAC → prime CEE. */
+export function modelCee(model: PacModel | null | undefined, zone: CeeZone | null): number | null {
+  if (!model || !zone) return null;
+  const v = zone === "H1" ? model.cee_h1 : zone === "H2" ? model.cee_h2 : model.cee_h3;
+  return v === null || v === undefined ? null : Number(v);
+}
+
+/** Coûts de la fiche PAC regroupés par rubrique de la fiche client (montants tels que saisis, HT ou TTC). */
+export function modelCosts(model: PacModel): Record<CostCategory, number> & { total: number } {
+  const out = { materiel: 0, installation: 0, regie: 0, dossier: 0, total: 0 };
+  for (const c of model.cost_items || []) {
+    const a = num(c.amount);
+    out[c.category] += a;
+    out.total += a;
+  }
+  for (const k of Object.keys(out) as (keyof typeof out)[]) out[k] = round2(out[k]);
+  return out;
+}
+
+/** Montants que la fiche PAC donnerait au dossier (prime selon la zone + coûts par rubrique). */
+export function modelAmounts(model: PacModel, zone: CeeZone | null): Partial<Record<(typeof MONEY_FIELDS)[number], number>> {
+  const costs = modelCosts(model);
+  const out: Partial<Record<(typeof MONEY_FIELDS)[number], number>> = {};
+  const cee = modelCee(model, zone);
+  if (cee !== null) out.benefit_cee = cee;
+  for (const c of COST_CATEGORIES) if (costs[c.key] > 0) out[c.field] = costs[c.key];
+  return out;
+}
+
+/**
+ * Mise à jour proposée pour un dossier d'après sa fiche PAC.
+ * - `fill` : seulement les montants vides ;
+ * - `differs` : montants déjà saisis qui diffèrent de la fiche (remplacés si `replace`).
+ */
+export function modelPatch(
+  model: PacModel,
+  row: DossierMoney & { cee_zone?: string | null; postal_code?: string | null },
+  replace: boolean
+): { patch: Record<string, number>; differs: string[] } {
+  const target = modelAmounts(model, zoneOf(row).zone);
+  const patch: Record<string, number> = {};
+  const differs: string[] = [];
+  for (const [field, value] of Object.entries(target)) {
+    const cur = row[field as keyof DossierMoney];
+    // Régie à 0 = valeur par défaut de la fiche : considérée comme vide.
+    const empty = isBlank(cur) || (field === "regie_cost" && num(cur) === 0);
+    if (empty) patch[field] = value as number;
+    else if (round2(num(cur)) !== value) {
+      differs.push(field);
+      if (replace) patch[field] = value as number;
+    }
+  }
+  return { patch, differs };
+}
+
+/** Ce qui manque pour que la rentabilité du dossier soit fiable. */
+export function missingInfo(
+  m: DossierMoney & {
+    installateur?: string | null;
+    installation_type?: string | null;
+    pac_model_id?: string | null;
+    cee_zone?: string | null;
+    postal_code?: string | null;
+  }
+): string[] {
+  const out: string[] = [];
+  if (needsPac(m.installation_type) && !m.pac_model_id) out.push("Modèle de PAC");
+  if (isBlank(m.benefit_cee)) {
+    out.push("Prime CEE");
+    if (m.pac_model_id && !zoneOf(m).zone) out.push("Zone H1/H2/H3");
+  }
+  if (!num(m.installation_cost)) out.push("Coût installation");
+  if (!num(m.material_cost)) out.push("Coût matériel");
+  if (!m.installateur) out.push("Installateur");
+  return out;
+}
+
+function parseMoney(raw: unknown, label: string): number | null | { error: string } {
+  if (raw === null || raw === "" || raw === undefined) return null;
+  const n = Number(typeof raw === "string" ? raw.replace(",", ".") : raw);
+  if (!Number.isFinite(n) || n < 0 || n > 100000) return { error: `${label} invalide` };
+  return round2(n);
+}
+
+/** Validation des saisies d'une fiche PAC. */
 export function parsePacModelInput(
   body: unknown,
   creating: boolean
@@ -149,14 +265,25 @@ export function parsePacModelInput(
     if (name.length > 120) return { error: "Nom trop long" };
     values.name = name;
   }
-  if ("cee_amount" in b) {
-    const raw = b.cee_amount;
-    if (raw === null || raw === "") values.cee_amount = null;
-    else {
-      const n = Number(typeof raw === "string" ? raw.replace(",", ".") : raw);
-      if (!Number.isFinite(n) || n < 0 || n > 100000) return { error: "Montant de prime invalide" };
-      values.cee_amount = round2(n);
+  for (const z of ["cee_h1", "cee_h2", "cee_h3"] as const) {
+    if (!(z in b)) continue;
+    const v = parseMoney(b[z], `Prime ${z.slice(4).toUpperCase()}`);
+    if (v !== null && typeof v === "object") return v;
+    values[z] = v;
+  }
+  if ("cost_items" in b) {
+    if (!Array.isArray(b.cost_items) || b.cost_items.length > 30) return { error: "Postes de coût invalides" };
+    const items: CostItem[] = [];
+    for (const raw of b.cost_items as Record<string, unknown>[]) {
+      const label = typeof raw?.label === "string" ? raw.label.trim() : "";
+      if (!label) return { error: "Chaque poste de coût doit avoir un libellé" };
+      const amount = parseMoney(raw.amount, `Montant « ${label} »`);
+      if (amount !== null && typeof amount === "object") return amount;
+      const basis = raw.basis === "TTC" ? "TTC" : "HT";
+      const category = COST_CATEGORIES.some((c) => c.key === raw.category) ? (raw.category as CostCategory) : "materiel";
+      items.push({ label: label.slice(0, 120), amount: amount ?? 0, basis, category });
     }
+    values.cost_items = items;
   }
   if ("active" in b) values.active = b.active === true;
   if (!creating && Object.keys(values).length === 0) return { error: "Rien à modifier" };
@@ -166,6 +293,7 @@ export function parsePacModelInput(
 export interface DossierRow extends DossierMoney, DossierFlags {
   id: string;
   pac_model_id: string | null;
+  cee_zone: string | null;
   first_name: string | null;
   last_name: string | null;
   city: string | null;

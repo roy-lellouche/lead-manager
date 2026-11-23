@@ -70,11 +70,15 @@ export function MaterialCostSection({
           product: m.products,
         }));
         onMaterialsChange(mapped);
-        const sum = mapped.reduce(
-          (s, m) => s + (m.product?.price ?? 0) * m.quantity,
-          0
-        );
-        onMaterialCostChange(sum);
+        // À l'ouverture, un coût matériel déjà saisi (ex. d'après la fiche PAC) est conservé ;
+        // il n'est recalculé qu'en modifiant la liste du matériel.
+        if (materialCost === null || materialCost === undefined || materialCost === 0) {
+          const sum = mapped.reduce(
+            (s, m) => s + (m.product?.price ?? 0) * m.quantity,
+            0
+          );
+          onMaterialCostChange(sum);
+        }
       }
 
       setLoading(false);

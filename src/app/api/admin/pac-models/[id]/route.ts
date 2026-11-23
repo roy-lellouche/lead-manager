@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/finance/auth";
 import { parsePacModelInput } from "@/lib/dossiers";
 
+const PAC_COLUMNS = "id, name, active, cee_h1, cee_h2, cee_h3, cost_items";
+
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await requireRole(request, ["admin"]);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -12,7 +14,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     .from("pac_models")
     .update({ ...parsed.values, updated_at: new Date().toISOString() })
     .eq("id", id)
-    .select("id, name, cee_amount, active")
+    .select(PAC_COLUMNS)
     .single();
   if (error) {
     const msg = error.code === "23505" ? "Ce modèle existe déjà" : error.message;

@@ -78,6 +78,7 @@ function buildUpdates(lead: Record<string, unknown>) {
     material_cost: lead.material_cost ? Number(lead.material_cost) : null,
     material_cost_comment: lead.material_cost_comment,
     regie_cost: lead.regie_cost ? Number(lead.regie_cost) : 0,
+    dossier_cost: lead.dossier_cost ? Number(lead.dossier_cost) : null,
     benefit_cee: lead.benefit_cee ? Number(lead.benefit_cee) : null,
     benefit_mpr: lead.benefit_mpr ? Number(lead.benefit_mpr) : null,
     benefit_apporteur_affaires: lead.benefit_apporteur_affaires ? Number(lead.benefit_apporteur_affaires) : null,
@@ -224,14 +225,16 @@ export function AdminLeadForm({ lead: initialLead }: AdminLeadFormProps) {
     const inst = (lead.installation_cost as number) || 0;
     const mat = (lead.material_cost as number) || 0;
     const reg = (lead.regie_cost as number) || 0;
+    const dos = Number(lead.dossier_cost) || 0;
     const cee = (lead.benefit_cee as number) || 0;
     const mpr = (lead.benefit_mpr as number) || 0;
-    const profit = cee + mpr - inst - mat - reg;
+    const profit = cee + mpr - inst - mat - reg - dos;
     setLead((l) => ({ ...l, profitability: profit }));
   }, [
     lead.installation_cost,
     lead.material_cost,
     lead.regie_cost,
+    lead.dossier_cost,
     lead.benefit_cee,
     lead.benefit_mpr,
   ]);
@@ -663,6 +666,22 @@ export function AdminLeadForm({ lead: initialLead }: AdminLeadFormProps) {
                     updateField(
                       "regie_cost",
                       parseFloat(e.target.value) || 0
+                    )
+                  }
+                />
+              </div>
+              <div>
+                <label className={LABEL_CLS}>
+                  Frais de dossier (€) — secrétariat CEE, lead…
+                </label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={(lead.dossier_cost as number) ?? ""}
+                  onChange={(e) =>
+                    updateField(
+                      "dossier_cost",
+                      e.target.value ? parseFloat(e.target.value) : null
                     )
                   }
                 />
