@@ -11,7 +11,7 @@ describe("doc-cee", () => {
 
   it("valide une demande", () => {
     expect(parseCeeDocInput({ mandataire: "hellio", client_name: " Dupont ", document: "Facture" })).toEqual({
-      value: { mandataire: "hellio", client_name: "Dupont", document: "Facture", request_comment: null },
+      value: { mandataire: "hellio", client_name: "Dupont", document: "Facture", request_comment: null, assigned_to: null },
     });
     expect("error" in parseCeeDocInput({ mandataire: "inconnu", client_name: "a", document: "b" })).toBe(true);
     expect("error" in parseCeeDocInput({ mandataire: "ace", client_name: "", document: "b" })).toBe(true);
@@ -19,6 +19,12 @@ describe("doc-cee", () => {
 
   it("n'accepte que les champs connus en modification", () => {
     expect(parseCeeDocPatch({ response_comment: " ok ", foo: "bar" })).toEqual({ value: { response_comment: "ok" } });
+  });
+
+  it("accepte l'assignation et le commentaire télépro en modification", () => {
+    expect(parseCeeDocPatch({ assigned_to: "", telepro_comment: "client rappelé" })).toEqual({
+      value: { assigned_to: null, telepro_comment: "client rappelé" },
+    });
   });
 
   it("nettoie les noms de fichier", () => {

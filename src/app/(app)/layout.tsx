@@ -34,7 +34,7 @@ export default async function AppLayout({
 
   // Ces deux requêtes ne dépendent que de user.id / role : les enchaîner coûtait
   // un aller-retour pour rien.
-  const [notifRes, countsRes, tasksRes] = await Promise.all([
+  const [notifRes, countsRes, tasksRes, ceeDocsRes] = await Promise.all([
     supabase
       .from("notifications")
       .select("*", { count: "exact", head: true })
@@ -49,6 +49,14 @@ export default async function AppLayout({
       .select("id", { count: "exact", head: true })
       .eq("assigned_to", user.id)
       .is("completed_at", null),
+    // DOC CEE : documents qu'un télépro doit encore récupérer (demandes rouges assignées).
+    role === "telepro"
+      ? adminClient
+          .from("cee_doc_requests")
+          .select("id", { count: "exact", head: true })
+          .eq("assigned_to", user.id)
+          .is("completed_at", null)
+      : Promise.resolve({ count: 0 }),
   ]);
 
   const count = notifRes.count;
@@ -72,6 +80,7 @@ export default async function AppLayout({
             unreadNotifications={count || 0}
             statusCounts={statusCounts}
             pendingTasks={tasksRes.count || 0}
+            pendingCeeDocs={ceeDocsRes.count || 0}
           />
         </Suspense>
         <main className="flex-1 min-w-0 lg:ml-64 min-h-screen pt-16 lg:pt-8 pb-10 px-4 lg:px-10 bg-canvas">

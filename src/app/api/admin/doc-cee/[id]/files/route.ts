@@ -8,7 +8,13 @@ import {
   CEE_DOCS_BUCKET,
   type CeeDocRequest,
 } from "@/lib/doc-cee";
-import { extractFiles, requireCeeDocStaff, uploadCeeDocFiles, withCeeDocUrls } from "@/lib/doc-cee-server";
+import {
+  canAccessRequest,
+  extractFiles,
+  requireCeeDocStaff,
+  uploadCeeDocFiles,
+  withCeeDocUrls,
+} from "@/lib/doc-cee-server";
 
 export const maxDuration = 60;
 
@@ -22,10 +28,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params;
   const { data: existing } = await admin
     .from("cee_doc_requests")
-    .select("files, completed_at")
+    .select("files, completed_at, assigned_to")
     .eq("id", id)
     .single();
-  if (!existing) return NextResponse.json({ error: "Demande introuvable." }, { status: 404 });
+  if (!existing || !canAccessRequest(auth, existing)) return NextResponse.json({ error: "Demande introuvable." }, { status: 404 });
 
   const formData = await req.formData().catch(() => null);
   const files = formData ? extractFiles(formData) : [];
@@ -61,6 +67,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const admin = createAdminClient();
   const auth = await requireCeeDocStaff(async () => getUserFromClient(supabase), admin);
   if ("error" in auth) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  if (auth.role === "telepro") return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
 
   const { id } = await params;
   const path = req.nextUrl.searchParams.get("path");

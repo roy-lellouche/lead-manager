@@ -13,6 +13,7 @@ import {
   Plus,
   Trash2,
   Upload,
+  UserRound,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,7 +25,10 @@ import {
   isCeeDocComplete,
   type CeeDocRequestWithUrls,
   type CeeMandataire,
+  type CeeTeleproOption,
 } from "@/lib/doc-cee";
+
+export type DocCeeMode = "staff" | "telepro";
 
 type StatusFilter = "all" | "incomplet" | "complet";
 
@@ -57,11 +61,41 @@ function StatusBadge({ complete }: { complete: boolean }) {
   );
 }
 
-function NewRequestForm({ onCreated }: { onCreated: (r: CeeDocRequestWithUrls) => void }) {
+function TeleproSelect({
+  telepros,
+  value,
+  onChange,
+  disabled,
+}: {
+  telepros: CeeTeleproOption[];
+  value: string;
+  onChange: (v: string) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled} className={INPUT_CLS}>
+      <option value="">— Aucun télépro —</option>
+      {telepros.map((t) => (
+        <option key={t.id} value={t.id}>
+          {t.name}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function NewRequestForm({
+  telepros,
+  onCreated,
+}: {
+  telepros: CeeTeleproOption[];
+  onCreated: (r: CeeDocRequestWithUrls) => void;
+}) {
   const [mandataire, setMandataire] = useState<CeeMandataire>(CEE_MANDATAIRES[0]);
   const [clientName, setClientName] = useState("");
   const [docName, setDocName] = useState("");
   const [comment, setComment] = useState("");
+  const [assignedTo, setAssignedTo] = useState("");
   const [saving, setSaving] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
@@ -71,7 +105,13 @@ function NewRequestForm({ onCreated }: { onCreated: (r: CeeDocRequestWithUrls) =
       const res = await fetch("/api/admin/doc-cee", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mandataire, client_name: clientName, document: docName, request_comment: comment }),
+        body: JSON.stringify({
+          mandataire,
+          client_name: clientName,
+          document: docName,
+          request_comment: comment,
+          assigned_to: assignedTo || null,
+        }),
       });
       if (!res.ok) {
         toast.error(await readError(res, "Impossible de créer la demande."));
@@ -81,7 +121,10 @@ function NewRequestForm({ onCreated }: { onCreated: (r: CeeDocRequestWithUrls) =
       setClientName("");
       setDocName("");
       setComment("");
-      toast.success("Demande de document envoyée au secrétariat");
+      setAssignedTo("");
+      toast.success(
+        assignedTo ? "Demande envoyée au secrétariat et au télépro assigné" : "Demande de document envoyée au secrétariat"
+      );
     } finally {
       setSaving(false);
     }
@@ -127,6 +170,10 @@ function NewRequestForm({ onCreated }: { onCreated: (r: CeeDocRequestWithUrls) =
         />
       </div>
       <div>
+        <label className={LABEL_CLS}>Télépro chargé de récupérer le document (optionnel)</label>
+        <TeleproSelect telepros={telepros} value={assignedTo} onChange={setAssignedTo} />
+      </div>
+      <div>
         <label className={LABEL_CLS}>Commentaire (responsable CEE)</label>
         <textarea
           value={comment}
@@ -144,12 +191,16 @@ function NewRequestForm({ onCreated }: { onCreated: (r: CeeDocRequestWithUrls) =
 }
 
 function RequestCard({
+  mode,
+  telepros,
   item,
   expanded,
   onToggle,
   onChange,
   onDeleted,
 }: {
+  mode: DocCeeMode;
+  telepros: CeeTeleproOption[];
   item: CeeDocRequestWithUrls;
   expanded: boolean;
   onToggle: () => void;
@@ -159,13 +210,37 @@ function RequestCard({
   const complete = isCeeDocComplete(item);
   const [requestComment, setRequestComment] = useState(item.request_comment ?? "");
   const [responseComment, setResponseComment] = useState(item.response_comment ?? "");
+  const [teleproComment, setTeleproComment] = useState(item.telepro_comment ?? "");
   const [savingComments, setSavingComments] = useState(false);
+  const [assigning, setAssigning] = useState(false);
+  const isTelepro = mode === "telepro";
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const commentsDirty =
-    requestComment.trim() !== (item.request_comment ?? "") || responseComment.trim() !== (item.response_comment ?? "");
+    requestComment.trim() !== (item.request_comment ?? "") ||
+    responseComment.trim() !== (item.response_comment ?? "") ||
+    teleproComment.trim() !== (item.telepro_comment ?? "");
+
+  const assign = async (teleproId: string) => {
+    setAssigning(true);
+    try {
+      const res = await fetch(`/api/admin/doc-cee/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assigned_to: teleproId || null }),
+      });
+      if (!res.ok) {
+        toast.error(await readError(res, "Assignation impossible."));
+        return;
+      }
+      onChange(await res.json());
+      toast.success(teleproId ? "Télépro assigné" : "Assignation retirée");
+    } finally {
+      setAssigning(false);
+    }
+  };
 
   const saveComments = async () => {
     setSavingComments(true);
@@ -173,7 +248,11 @@ function RequestCard({
       const res = await fetch(`/api/admin/doc-cee/${item.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ request_comment: requestComment, response_comment: responseComment }),
+        body: JSON.stringify(
+          isTelepro
+            ? { telepro_comment: teleproComment }
+            : { request_comment: requestComment, response_comment: responseComment, telepro_comment: teleproComment }
+        ),
       });
       if (!res.ok) {
         toast.error(await readError(res, "Enregistrement impossible."));
@@ -183,6 +262,7 @@ function RequestCard({
       onChange(updated);
       setRequestComment(updated.request_comment ?? "");
       setResponseComment(updated.response_comment ?? "");
+      setTeleproComment(updated.telepro_comment ?? "");
       toast.success("Commentaires enregistrés");
     } finally {
       setSavingComments(false);
@@ -255,6 +335,12 @@ function RequestCard({
               {CEE_MANDATAIRE_LABELS[item.mandataire]}
             </span>
             <span className="font-semibold text-ink">{item.client_name}</span>
+            {item.assigned_to_name && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 px-2 py-0.5 text-xs font-medium text-brand">
+                <UserRound className="h-3 w-3" />
+                {item.assigned_to_name}
+              </span>
+            )}
           </div>
           <p className="mt-1 text-sm text-body">{item.document}</p>
           <p className="mt-1 text-xs text-subtle">
@@ -274,6 +360,17 @@ function RequestCard({
 
       {expanded && (
         <div className="space-y-4 border-t border-line px-4 py-4">
+          {!isTelepro && (
+            <div className="max-w-sm">
+              <label className={LABEL_CLS}>Télépro chargé de récupérer le document</label>
+              <TeleproSelect
+                telepros={telepros}
+                value={item.assigned_to ?? ""}
+                onChange={assign}
+                disabled={assigning}
+              />
+            </div>
+          )}
           <div
             onDragOver={(e) => {
               e.preventDefault();
@@ -343,6 +440,7 @@ function RequestCard({
                   <span className="shrink-0 text-xs text-subtle">
                     {formatSize(f.size)} · {formatDateTimeParis(f.uploaded_at)}
                   </span>
+                  {!isTelepro && (
                   <button
                     type="button"
                     onClick={() => removeFile(f.path, f.name)}
@@ -351,15 +449,17 @@ function RequestCard({
                   >
                     <X className="h-4 w-4" />
                   </button>
+                  )}
                 </li>
               ))}
             </ul>
           )}
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-3">
             <div>
               <label className={LABEL_CLS}>Commentaire du responsable CEE</label>
               <textarea
+                readOnly={isTelepro}
                 value={requestComment}
                 onChange={(e) => setRequestComment(e.target.value)}
                 placeholder="Précisions sur le document attendu…"
@@ -369,9 +469,19 @@ function RequestCard({
             <div>
               <label className={LABEL_CLS}>Commentaire du secrétariat</label>
               <textarea
+                readOnly={isTelepro}
                 value={responseComment}
                 onChange={(e) => setResponseComment(e.target.value)}
                 placeholder="Réponse, document manquant, relance client…"
+                className={TEXTAREA_CLS}
+              />
+            </div>
+            <div>
+              <label className={LABEL_CLS}>Commentaire du télépro</label>
+              <textarea
+                value={teleproComment}
+                onChange={(e) => setTeleproComment(e.target.value)}
+                placeholder="Client rappelé, document promis pour…"
                 className={TEXTAREA_CLS}
               />
             </div>
@@ -382,10 +492,12 @@ function RequestCard({
               {savingComments && <Loader2 className="animate-spin" />}
               Enregistrer les commentaires
             </Button>
-            <Button variant="destructive" onClick={removeRequest}>
-              <Trash2 />
-              Supprimer la demande
-            </Button>
+            {!isTelepro && (
+              <Button variant="destructive" onClick={removeRequest}>
+                <Trash2 />
+                Supprimer la demande
+              </Button>
+            )}
           </div>
         </div>
       )}
@@ -393,17 +505,29 @@ function RequestCard({
   );
 }
 
-export function DocCeeClient({ initialItems }: { initialItems: CeeDocRequestWithUrls[] }) {
+export function DocCeeClient({
+  initialItems,
+  telepros = [],
+  mode = "staff",
+}: {
+  initialItems: CeeDocRequestWithUrls[];
+  telepros?: CeeTeleproOption[];
+  mode?: DocCeeMode;
+}) {
   const [items, setItems] = useState(initialItems);
   const [showForm, setShowForm] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [mandataire, setMandataire] = useState<CeeMandataire | "all">("all");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [search, setSearch] = useState("");
+  const [telepro, setTelepro] = useState<string>("all");
 
   const byMandataire = useMemo(
-    () => (mandataire === "all" ? items : items.filter((i) => i.mandataire === mandataire)),
-    [items, mandataire]
+    () =>
+      items
+        .filter((i) => mandataire === "all" || i.mandataire === mandataire)
+        .filter((i) => telepro === "all" || (telepro === "none" ? !i.assigned_to : i.assigned_to === telepro)),
+    [items, mandataire, telepro]
   );
 
   const visible = useMemo(() => {
@@ -423,10 +547,12 @@ export function DocCeeClient({ initialItems }: { initialItems: CeeDocRequestWith
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <Button onClick={() => setShowForm((v) => !v)} variant={showForm ? "outline" : "default"} size="lg">
-          {showForm ? <X /> : <Plus />}
-          {showForm ? "Fermer le formulaire" : "Nouvelle demande"}
-        </Button>
+        {mode === "staff" && (
+          <Button onClick={() => setShowForm((v) => !v)} variant={showForm ? "outline" : "default"} size="lg">
+            {showForm ? <X /> : <Plus />}
+            {showForm ? "Fermer le formulaire" : "Nouvelle demande"}
+          </Button>
+        )}
         <span className="text-sm text-subtle">
           <span className="font-semibold text-red-600">{incompleteCount(items)}</span> à fournir ·{" "}
           <span className="font-semibold text-green-600">{items.length - incompleteCount(items)}</span> complet
@@ -434,8 +560,9 @@ export function DocCeeClient({ initialItems }: { initialItems: CeeDocRequestWith
         </span>
       </div>
 
-      {showForm && (
+      {showForm && mode === "staff" && (
         <NewRequestForm
+          telepros={telepros}
           onCreated={(r) => {
             setItems((prev) => [r, ...prev]);
             setShowForm(false);
@@ -504,17 +631,34 @@ export function DocCeeClient({ initialItems }: { initialItems: CeeDocRequestWith
           placeholder="Rechercher un client ou un document…"
           className={`${INPUT_CLS} max-w-xs`}
         />
+        {mode === "staff" && (
+          <select value={telepro} onChange={(e) => setTelepro(e.target.value)} className={`${INPUT_CLS} max-w-[220px]`}>
+            <option value="all">Tous les télépros</option>
+            <option value="none">Non assignées</option>
+            {telepros.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
 
       <div className="space-y-2">
         {visible.length === 0 ? (
           <p className="rounded-[14px] border border-dashed border-line-strong bg-white p-8 text-center text-sm text-subtle">
-            {items.length === 0 ? "Aucune demande de document pour le moment." : "Aucune demande ne correspond aux filtres."}
+            {items.length === 0
+              ? mode === "telepro"
+                ? "Aucun document à récupérer pour le moment."
+                : "Aucune demande de document pour le moment."
+              : "Aucune demande ne correspond aux filtres."}
           </p>
         ) : (
           visible.map((item) => (
             <RequestCard
               key={item.id}
+              mode={mode}
+              telepros={telepros}
               item={item}
               expanded={expandedId === item.id}
               onToggle={() => setExpandedId((id) => (id === item.id ? null : item.id))}

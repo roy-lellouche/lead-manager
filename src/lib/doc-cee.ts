@@ -41,6 +41,8 @@ export interface CeeDocRequest {
   document: string;
   request_comment: string | null;
   response_comment: string | null;
+  telepro_comment: string | null;
+  assigned_to: string | null;
   files: CeeDocFile[];
   created_by: string | null;
   completed_at: string | null;
@@ -55,6 +57,12 @@ export interface CeeDocFileWithUrl extends CeeDocFile {
 export interface CeeDocRequestWithUrls extends Omit<CeeDocRequest, "files"> {
   files: CeeDocFileWithUrl[];
   created_by_name: string | null;
+  assigned_to_name: string | null;
+}
+
+export interface CeeTeleproOption {
+  id: string;
+  name: string;
 }
 
 /** Vert dès que le secrétariat a déposé au moins un document, rouge sinon. */
@@ -77,6 +85,7 @@ export type CeeDocInput = {
   client_name: string;
   document: string;
   request_comment: string | null;
+  assigned_to: string | null;
 };
 
 export function parseCeeDocInput(body: unknown): { value: CeeDocInput } | { error: string } {
@@ -92,6 +101,7 @@ export function parseCeeDocInput(body: unknown): { value: CeeDocInput } | { erro
       client_name,
       document,
       request_comment: cleanText(b.request_comment, 2000),
+      assigned_to: cleanText(b.assigned_to, 64),
     },
   };
 }
@@ -116,6 +126,8 @@ export function parseCeeDocPatch(body: unknown): { value: Record<string, string 
   }
   if ("request_comment" in b) out.request_comment = cleanText(b.request_comment, 2000);
   if ("response_comment" in b) out.response_comment = cleanText(b.response_comment, 2000);
+  if ("telepro_comment" in b) out.telepro_comment = cleanText(b.telepro_comment, 2000);
+  if ("assigned_to" in b) out.assigned_to = cleanText(b.assigned_to, 64);
   return { value: out };
 }
 

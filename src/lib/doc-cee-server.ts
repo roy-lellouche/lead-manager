@@ -1,24 +1,56 @@
 import { randomUUID } from "crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { normalizeRole } from "@/lib/roles";
+import type { UserRole } from "@/lib/types";
 import {
   CEE_DOCS_BUCKET,
   safeFileName,
   type CeeDocRequest,
   type CeeDocRequestWithUrls,
+  type CeeTeleproOption,
 } from "@/lib/doc-cee";
 
-/** Vérifie que l'appelant est admin, secrétaire ou responsable CEE. */
+export type CeeDocCaller = { userId: string; role: Extract<UserRole, "admin" | "secretaire" | "cee" | "telepro"> };
+
+/**
+ * Vérifie que l'appelant est admin, secrétaire, responsable CEE ou télépro.
+ * Un télépro n'a accès qu'aux demandes qui lui sont assignées (voir canTeleproAccess).
+ */
 export async function requireCeeDocStaff(
   getUser: () => Promise<{ id: string } | null>,
   admin: SupabaseClient
-): Promise<{ userId: string } | { error: string; status: number }> {
+): Promise<CeeDocCaller | { error: string; status: number }> {
   const user = await getUser();
   if (!user) return { error: "Non autorisé", status: 401 };
-  const { data: profile } = await admin.from("profiles").select("role").eq("id", user.id).single();
-  const role = normalizeRole(profile?.role);
-  if (role !== "admin" && role !== "secretaire" && role !== "cee") return { error: "Accès refusé", status: 403 };
-  return { userId: user.id };
+  const { data: profile } = await admin.from("profiles").select("role, deleted_at").eq("id", user.id).single();
+  if (!profile || profile.deleted_at) return { error: "Accès refusé", status: 403 };
+  const role = normalizeRole(profile.role);
+  if (role !== "admin" && role !== "secretaire" && role !== "cee" && role !== "telepro")
+    return { error: "Accès refusé", status: 403 };
+  return { userId: user.id, role };
+}
+
+/** Un télépro ne touche qu'aux demandes qui lui sont assignées. */
+export function canAccessRequest(caller: CeeDocCaller, row: { assigned_to: string | null }): boolean {
+  return caller.role !== "telepro" || row.assigned_to === caller.userId;
+}
+
+/** Télépros actifs, proposés à l'assignation. */
+export async function listCeeTelepros(admin: SupabaseClient): Promise<CeeTeleproOption[]> {
+  const { data } = await admin
+    .from("profiles")
+    .select("id, full_name, email, role, deleted_at")
+    .is("deleted_at", null)
+    .order("full_name");
+  return (data ?? [])
+    .filter((p) => normalizeRole(p.role) === "telepro")
+    .map((p) => ({ id: p.id, name: p.full_name || p.email || "Télépro" }));
+}
+
+/** Vérifie qu'un identifiant d'assignation désigne bien un télépro actif. */
+export async function isValidTeleproId(admin: SupabaseClient, id: string): Promise<boolean> {
+  const { data } = await admin.from("profiles").select("role, deleted_at").eq("id", id).maybeSingle();
+  return !!data && !data.deleted_at && normalizeRole(data.role) === "telepro";
 }
 
 export function extractFiles(formData: FormData): File[] {
@@ -56,7 +88,9 @@ export async function withCeeDocUrls(admin: SupabaseClient, rows: CeeDocRequest[
       if (item.path && item.signedUrl) urlByPath.set(item.path, item.signedUrl);
     }
   }
-  const creatorIds = [...new Set(rows.map((r) => r.created_by).filter((v): v is string => !!v))];
+  const creatorIds = [
+    ...new Set(rows.flatMap((r) => [r.created_by, r.assigned_to]).filter((v): v is string => !!v)),
+  ];
   const nameById = new Map<string, string>();
   if (creatorIds.length) {
     const { data } = await admin.from("profiles").select("id, full_name, email").in("id", creatorIds);
@@ -66,5 +100,6 @@ export async function withCeeDocUrls(admin: SupabaseClient, rows: CeeDocRequest[
     ...r,
     files: (r.files ?? []).map((f) => ({ ...f, url: urlByPath.get(f.path) ?? "" })),
     created_by_name: r.created_by ? nameById.get(r.created_by) ?? null : null,
+    assigned_to_name: r.assigned_to ? nameById.get(r.assigned_to) ?? null : null,
   }));
 }

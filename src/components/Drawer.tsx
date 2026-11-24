@@ -43,6 +43,7 @@ interface DrawerProps {
   unreadNotifications?: number;
   statusCounts?: Record<string, Record<string, number>>;
   pendingTasks?: number;
+  pendingCeeDocs?: number;
 }
 
 // Icônes du menu teintées « pierres précieuses », en rotation.
@@ -94,9 +95,10 @@ const teleproNav = [
   { href: "/telepro/agenda", label: "Agenda", icon: Calendar },
   { href: "/telepro/altitude", label: "Altitude", icon: Mountain },
   { href: "/telepro/taches", label: "Tâches", icon: ListTodo, tasksBadge: true },
+  { href: "/telepro/doc-cee", label: "DOC CEE", icon: FolderOpen, ceeBadge: true },
 ];
 
-export function Drawer({ role, userName, unreadNotifications = 0, statusCounts = {}, pendingTasks = 0 }: DrawerProps) {
+export function Drawer({ role, userName, unreadNotifications = 0, statusCounts = {}, pendingTasks = 0, pendingCeeDocs = 0 }: DrawerProps) {
   const [open, setOpen] = useState(false);
   // Sous-menu des statuts : fermé par défaut, ne se ferme que au clic sur la flèche (persiste à la navigation)
   // Niveau 0 : déploie les catégories ; Niveau 1 : déploie les statuts d'UNE catégorie à la fois
@@ -363,9 +365,14 @@ export function Drawer({ role, userName, unreadNotifications = 0, statusCounts =
                     >
                       <item.icon className={`w-[18px] h-[18px] shrink-0 ${JEWEL_ICON[idx % JEWEL_ICON.length]}`} />
                       {item.label}
-                      {"tasksBadge" in item && item.tasksBadge && pendingTasks > 0 && (
+                      {"tasksBadge" in item && item.tasksBadge === true && pendingTasks > 0 && (
                         <span className="ml-auto bg-brand text-white text-[11px] font-semibold px-1.5 min-w-5 text-center py-0.5 rounded-full tabular-nums">
                           {pendingTasks}
+                        </span>
+                      )}
+                      {"ceeBadge" in item && item.ceeBadge === true && pendingCeeDocs > 0 && (
+                        <span className="ml-auto bg-red-600 text-white text-[11px] font-semibold px-1.5 min-w-5 text-center py-0.5 rounded-full tabular-nums">
+                          {pendingCeeDocs}
                         </span>
                       )}
                     </Link>
