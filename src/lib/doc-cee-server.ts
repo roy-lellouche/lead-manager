@@ -89,7 +89,7 @@ export async function withCeeDocUrls(admin: SupabaseClient, rows: CeeDocRequest[
     }
   }
   const creatorIds = [
-    ...new Set(rows.flatMap((r) => [r.created_by, r.assigned_to]).filter((v): v is string => !!v)),
+    ...new Set(rows.flatMap((r) => [r.created_by, r.assigned_to, r.completed_by]).filter((v): v is string => !!v)),
   ];
   const nameById = new Map<string, string>();
   if (creatorIds.length) {
@@ -101,5 +101,6 @@ export async function withCeeDocUrls(admin: SupabaseClient, rows: CeeDocRequest[
     files: (r.files ?? []).map((f) => ({ ...f, url: urlByPath.get(f.path) ?? "" })),
     created_by_name: r.created_by ? nameById.get(r.created_by) ?? null : null,
     assigned_to_name: r.assigned_to ? nameById.get(r.assigned_to) ?? null : null,
+    completed_by_name: r.completed_by ? nameById.get(r.completed_by) ?? null : null,
   }));
 }

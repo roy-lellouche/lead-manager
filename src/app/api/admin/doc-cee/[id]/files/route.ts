@@ -18,7 +18,7 @@ import {
 
 export const maxDuration = 60;
 
-/** Dépôt de documents (PDF, images ou autres) : la demande passe au vert. */
+/** Dépôt de documents (PDF, images ou autres) : la demande passe à l'orange. */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createClient();
   const admin = createAdminClient();
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params;
   const { data: existing } = await admin
     .from("cee_doc_requests")
-    .select("files, completed_at, assigned_to")
+    .select("files, assigned_to")
     .eq("id", id)
     .single();
   if (!existing || !canAccessRequest(auth, existing)) return NextResponse.json({ error: "Demande introuvable." }, { status: 404 });
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const now = new Date().toISOString();
   const { data, error } = await admin
     .from("cee_doc_requests")
-    .update({ files: [...current, ...stored], completed_at: existing.completed_at ?? now, updated_at: now })
+    .update({ files: [...current, ...stored], updated_at: now })
     .eq("id", id)
     .select()
     .single();
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   return NextResponse.json(row);
 }
 
-/** Retire un fichier ; sans fichier restant, la demande redevient rouge. */
+/** Retire un fichier (le statut « complet » éventuel n'est pas modifié). */
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createClient();
   const admin = createAdminClient();
@@ -82,7 +82,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     .from("cee_doc_requests")
     .update({
       files: remaining,
-      ...(remaining.length ? {} : { completed_at: null }),
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)

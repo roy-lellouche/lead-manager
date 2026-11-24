@@ -30,9 +30,9 @@ export default async function TeleproDocCeePage() {
     <div className="space-y-6">
       <PageHeader
         title="DOC CEE"
-        subtitle="Documents à récupérer auprès de vos clients. Rouge : à récupérer — vert : document déposé."
+        subtitle="Documents à récupérer auprès de vos clients. Rouge : à récupérer — orange : document déposé — vert : dossier complet."
       />
-      <DocCeeClient initialItems={items} mode="telepro" />
+      <DocCeeClient initialItems={items} mode="telepro" viewerRole="telepro" />
     </div>
   );
 }

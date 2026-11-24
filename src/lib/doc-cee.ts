@@ -45,7 +45,9 @@ export interface CeeDocRequest {
   assigned_to: string | null;
   files: CeeDocFile[];
   created_by: string | null;
+  /** Dossier marqué complet par le secrétariat ou le télépro (vert). */
   completed_at: string | null;
+  completed_by: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -58,6 +60,7 @@ export interface CeeDocRequestWithUrls extends Omit<CeeDocRequest, "files"> {
   files: CeeDocFileWithUrl[];
   created_by_name: string | null;
   assigned_to_name: string | null;
+  completed_by_name: string | null;
 }
 
 export interface CeeTeleproOption {
@@ -65,10 +68,23 @@ export interface CeeTeleproOption {
   name: string;
 }
 
-/** Vert dès que le secrétariat a déposé au moins un document, rouge sinon. */
-export function isCeeDocComplete(r: Pick<CeeDocRequest, "files">): boolean {
-  return (r.files ?? []).length > 0;
+export type CeeDocStatus = "incomplet" | "depose" | "complet";
+
+/**
+ * Rouge : rien de déposé. Orange : document(s) déposé(s), dossier pas encore
+ * validé. Vert : marqué complet par le secrétariat ou le télépro.
+ */
+export function ceeDocStatus(r: Pick<CeeDocRequest, "files" | "completed_at">): CeeDocStatus {
+  if (r.completed_at) return "complet";
+  return (r.files ?? []).length > 0 ? "depose" : "incomplet";
 }
+
+export function isCeeDocComplete(r: Pick<CeeDocRequest, "files" | "completed_at">): boolean {
+  return ceeDocStatus(r) === "complet";
+}
+
+/** Destinataire de l'email « dossier complet ». */
+export const CEE_DOC_NOTIFY_EMAIL_DEFAULT = "rsecocee@gmail.com";
 
 export function isCeeMandataire(v: unknown): v is CeeMandataire {
   return typeof v === "string" && (CEE_MANDATAIRES as readonly string[]).includes(v);

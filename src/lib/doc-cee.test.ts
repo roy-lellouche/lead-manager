@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { isCeeDocComplete, parseCeeDocInput, parseCeeDocPatch, safeFileName } from "@/lib/doc-cee";
+import { ceeDocStatus, isCeeDocComplete, parseCeeDocInput, parseCeeDocPatch, safeFileName } from "@/lib/doc-cee";
 
 describe("doc-cee", () => {
-  it("rouge tant qu'aucun document n'est déposé, vert ensuite", () => {
-    expect(isCeeDocComplete({ files: [] })).toBe(false);
-    expect(
-      isCeeDocComplete({ files: [{ path: "a", name: "a.pdf", type: "application/pdf", size: 1, uploaded_at: "" }] })
-    ).toBe(true);
+  it("rouge sans document, orange avec document, vert une fois marqué complet", () => {
+    const file = { path: "a", name: "a.pdf", type: "application/pdf", size: 1, uploaded_at: "" };
+    expect(ceeDocStatus({ files: [], completed_at: null })).toBe("incomplet");
+    expect(ceeDocStatus({ files: [file], completed_at: null })).toBe("depose");
+    expect(ceeDocStatus({ files: [file], completed_at: "2026-11-24T10:00:00Z" })).toBe("complet");
+    expect(ceeDocStatus({ files: [], completed_at: "2026-11-24T10:00:00Z" })).toBe("complet");
+    expect(isCeeDocComplete({ files: [file], completed_at: null })).toBe(false);
   });
 
   it("valide une demande", () => {

@@ -30,9 +30,9 @@ export default async function DocCeePage() {
     <div className="space-y-6">
       <PageHeader
         title="DOC CEE"
-        subtitle="Documents demandés par le responsable CEE. Rouge : à fournir — vert : déposé par le secrétariat."
+        subtitle="Documents demandés par le responsable CEE. Rouge : à fournir — orange : document déposé, à valider — vert : dossier complet."
       />
-      <DocCeeClient initialItems={items} telepros={telepros} />
+      <DocCeeClient initialItems={items} telepros={telepros} viewerRole={role} />
     </div>
   );
 }

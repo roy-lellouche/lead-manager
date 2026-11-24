@@ -4,6 +4,8 @@ import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   CheckCircle2,
+  Clock,
+  RotateCcw,
   ChevronDown,
   CircleAlert,
   FileText,
@@ -17,12 +19,14 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import type { UserRole } from "@/lib/types";
 import { formatDateTimeParis } from "@/lib/date";
 import {
   CEE_DOC_MAX_FILE_BYTES,
   CEE_MANDATAIRE_LABELS,
   CEE_MANDATAIRES,
-  isCeeDocComplete,
+  ceeDocStatus,
+  type CeeDocStatus,
   type CeeDocRequestWithUrls,
   type CeeMandataire,
   type CeeTeleproOption,
@@ -30,7 +34,33 @@ import {
 
 export type DocCeeMode = "staff" | "telepro";
 
-type StatusFilter = "all" | "incomplet" | "complet";
+type StatusFilter = "all" | CeeDocStatus;
+
+const STATUS_STYLE: Record<CeeDocStatus, { card: string; hover: string; drop: string; badge: string; label: string }> = {
+  incomplet: {
+    card: "border-red-200 border-l-red-500",
+    hover: "hover:bg-red-50/60",
+    drop: "border-red-300 bg-red-50/40 hover:bg-red-50",
+    badge: "bg-red-100 text-red-700",
+    label: "Incomplet",
+  },
+  depose: {
+    card: "border-orange-200 border-l-orange-500",
+    hover: "hover:bg-orange-50/60",
+    drop: "border-orange-300 bg-orange-50/40 hover:bg-orange-50",
+    badge: "bg-orange-100 text-orange-700",
+    label: "Document déposé",
+  },
+  complet: {
+    card: "border-green-200 border-l-green-500",
+    hover: "hover:bg-green-50/60",
+    drop: "border-green-300 bg-green-50/40 hover:bg-green-50",
+    badge: "bg-green-100 text-green-700",
+    label: "Dossier complet",
+  },
+};
+
+const STATUS_ORDER: Record<CeeDocStatus, number> = { incomplet: 0, depose: 1, complet: 2 };
 
 const INPUT_CLS =
   "w-full h-9 px-3 border border-line rounded-[9px] bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand transition-colors";
@@ -49,14 +79,13 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} Mo`;
 }
 
-function StatusBadge({ complete }: { complete: boolean }) {
-  return complete ? (
-    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700">
-      <CheckCircle2 className="h-3.5 w-3.5" /> Complet
-    </span>
-  ) : (
-    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700">
-      <CircleAlert className="h-3.5 w-3.5" /> Incomplet
+function StatusBadge({ status }: { status: CeeDocStatus }) {
+  const Icon = status === "complet" ? CheckCircle2 : status === "depose" ? Clock : CircleAlert;
+  return (
+    <span
+      className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_STYLE[status].badge}`}
+    >
+      <Icon className="h-3.5 w-3.5" /> {STATUS_STYLE[status].label}
     </span>
   );
 }
@@ -170,7 +199,10 @@ function NewRequestForm({
         />
       </div>
       <div>
-        <label className={LABEL_CLS}>Télépro chargé de récupérer le document (optionnel)</label>
+        <label className={LABEL_CLS}>
+          Télépro chargé de récupérer le document{" "}
+          <span className="font-normal text-subtle">(facultatif — peut être ajouté plus tard par l&apos;admin)</span>
+        </label>
         <TeleproSelect telepros={telepros} value={assignedTo} onChange={setAssignedTo} />
       </div>
       <div>
@@ -192,6 +224,7 @@ function NewRequestForm({
 
 function RequestCard({
   mode,
+  viewerRole,
   telepros,
   item,
   expanded,
@@ -200,6 +233,7 @@ function RequestCard({
   onDeleted,
 }: {
   mode: DocCeeMode;
+  viewerRole: UserRole;
   telepros: CeeTeleproOption[];
   item: CeeDocRequestWithUrls;
   expanded: boolean;
@@ -207,7 +241,39 @@ function RequestCard({
   onChange: (r: CeeDocRequestWithUrls) => void;
   onDeleted: (id: string) => void;
 }) {
-  const complete = isCeeDocComplete(item);
+  const status = ceeDocStatus(item);
+  const style = STATUS_STYLE[status];
+  const [togglingComplete, setTogglingComplete] = useState(false);
+  // Le secrétariat (et l'admin) ou le télépro assigné valident ; le responsable CEE peut rouvrir.
+  const canMarkComplete = viewerRole === "admin" || viewerRole === "secretaire" || viewerRole === "telepro";
+  const canReopen = viewerRole === "admin" || viewerRole === "secretaire" || viewerRole === "cee";
+
+  const setComplete = async (complete: boolean) => {
+    if (complete && !window.confirm("Marquer ce dossier comme complet ? Un email sera envoyé pour prévenir.")) return;
+    if (!complete && !window.confirm("Rouvrir ce dossier (il ne sera plus marqué complet) ?")) return;
+    setTogglingComplete(true);
+    try {
+      const res = await fetch(`/api/admin/doc-cee/${item.id}/complete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ complete }),
+      });
+      if (!res.ok) {
+        toast.error(await readError(res, "Enregistrement impossible."));
+        return;
+      }
+      const { mail, ...updated } = (await res.json()) as CeeDocRequestWithUrls & {
+        mail: { sent: boolean; error?: string } | null;
+      };
+      onChange(updated);
+      if (!complete) toast.success("Dossier rouvert");
+      else if (mail?.sent) toast.success("Dossier complet — email envoyé");
+      else if (mail) toast.warning("Dossier marqué complet, mais l'email n'a pas pu être envoyé.");
+      else toast.success("Dossier complet");
+    } finally {
+      setTogglingComplete(false);
+    }
+  };
   const [requestComment, setRequestComment] = useState(item.request_comment ?? "");
   const [responseComment, setResponseComment] = useState(item.response_comment ?? "");
   const [teleproComment, setTeleproComment] = useState(item.telepro_comment ?? "");
@@ -319,14 +385,14 @@ function RequestCard({
   return (
     <div
       className={`overflow-hidden rounded-[14px] border border-l-4 bg-white shadow-sm ${
-        complete ? "border-green-200 border-l-green-500" : "border-red-200 border-l-red-500"
+        style.card
       }`}
     >
       <button
         type="button"
         onClick={onToggle}
         className={`flex w-full items-start gap-3 px-4 py-3 text-left transition-colors ${
-          complete ? "hover:bg-green-50/60" : "hover:bg-red-50/60"
+          style.hover
         }`}
       >
         <div className="min-w-0 flex-1">
@@ -354,12 +420,44 @@ function RequestCard({
             )}
           </p>
         </div>
-        <StatusBadge complete={complete} />
+        <StatusBadge status={status} />
         <ChevronDown className={`mt-0.5 h-4 w-4 shrink-0 text-subtle transition-transform ${expanded ? "rotate-180" : ""}`} />
       </button>
 
       {expanded && (
         <div className="space-y-4 border-t border-line px-4 py-4">
+          {status === "complet" ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-[12px] border border-green-200 bg-green-50 px-4 py-3">
+              <p className="flex items-center gap-2 text-sm font-medium text-green-800">
+                <CheckCircle2 className="h-4 w-4" />
+                Dossier complet
+                {item.completed_at ? ` le ${formatDateTimeParis(item.completed_at)}` : ""}
+                {item.completed_by_name ? ` par ${item.completed_by_name}` : ""}
+              </p>
+              {canReopen && (
+                <Button variant="outline" size="sm" onClick={() => setComplete(false)} disabled={togglingComplete}>
+                  <RotateCcw />
+                  Rouvrir
+                </Button>
+              )}
+            </div>
+          ) : (
+            canMarkComplete && (
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-[12px] border border-line bg-canvas/50 px-4 py-3">
+                <p className="text-sm text-body">
+                  Tous les documents sont réunis ? Validez le dossier : un email prévient automatiquement.
+                </p>
+                <Button
+                  onClick={() => setComplete(true)}
+                  disabled={togglingComplete}
+                  className="bg-green-600 text-white hover:bg-green-700"
+                >
+                  {togglingComplete ? <Loader2 className="animate-spin" /> : <CheckCircle2 />}
+                  Marquer le dossier complet
+                </Button>
+              </div>
+            )
+          )}
           {!isTelepro && (
             <div className="max-w-sm">
               <label className={LABEL_CLS}>Télépro chargé de récupérer le document</label>
@@ -394,9 +492,7 @@ function RequestCard({
             className={`flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-[12px] border-2 border-dashed px-4 py-6 text-center transition-colors ${
               dragOver
                 ? "border-brand bg-brand/5"
-                : complete
-                ? "border-green-300 bg-green-50/40 hover:bg-green-50"
-                : "border-red-300 bg-red-50/40 hover:bg-red-50"
+                : style.drop
             }`}
           >
             {uploading ? (
@@ -509,10 +605,12 @@ export function DocCeeClient({
   initialItems,
   telepros = [],
   mode = "staff",
+  viewerRole,
 }: {
   initialItems: CeeDocRequestWithUrls[];
   telepros?: CeeTeleproOption[];
   mode?: DocCeeMode;
+  viewerRole: UserRole;
 }) {
   const [items, setItems] = useState(initialItems);
   const [showForm, setShowForm] = useState(false);
@@ -533,13 +631,14 @@ export function DocCeeClient({
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
     return byMandataire
-      .filter((i) => (status === "all" ? true : (status === "complet") === isCeeDocComplete(i)))
+      .filter((i) => status === "all" || ceeDocStatus(i) === status)
       .filter((i) => !q || `${i.client_name} ${i.document}`.toLowerCase().includes(q))
-      // Les demandes incomplètes (rouges) d'abord.
-      .sort((a, b) => Number(isCeeDocComplete(a)) - Number(isCeeDocComplete(b)));
+      // Rouges d'abord, puis orange, puis vertes.
+      .sort((a, b) => STATUS_ORDER[ceeDocStatus(a)] - STATUS_ORDER[ceeDocStatus(b)]);
   }, [byMandataire, status, search]);
 
-  const incompleteCount = (list: CeeDocRequestWithUrls[]) => list.filter((i) => !isCeeDocComplete(i)).length;
+  const countOf = (list: CeeDocRequestWithUrls[], st: CeeDocStatus) => list.filter((i) => ceeDocStatus(i) === st).length;
+  const incompleteCount = (list: CeeDocRequestWithUrls[]) => countOf(list, "incomplet");
 
   const replaceItem = (updated: CeeDocRequestWithUrls) =>
     setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
@@ -554,9 +653,10 @@ export function DocCeeClient({
           </Button>
         )}
         <span className="text-sm text-subtle">
-          <span className="font-semibold text-red-600">{incompleteCount(items)}</span> à fournir ·{" "}
-          <span className="font-semibold text-green-600">{items.length - incompleteCount(items)}</span> complet
-          {items.length - incompleteCount(items) > 1 ? "s" : ""}
+          <span className="font-semibold text-red-600">{countOf(items, "incomplet")}</span> à fournir ·{" "}
+          <span className="font-semibold text-orange-600">{countOf(items, "depose")}</span> à valider ·{" "}
+          <span className="font-semibold text-green-600">{countOf(items, "complet")}</span> complet
+          {countOf(items, "complet") > 1 ? "s" : ""}
         </span>
       </div>
 
@@ -602,6 +702,7 @@ export function DocCeeClient({
             [
               { key: "all", label: "Toutes" },
               { key: "incomplet", label: "Incomplètes" },
+              { key: "depose", label: "Documents déposés" },
               { key: "complet", label: "Complètes" },
             ] as { key: StatusFilter; label: string }[]
           ).map((s) => (
@@ -615,6 +716,8 @@ export function DocCeeClient({
                 status === s.key
                   ? s.key === "incomplet"
                     ? "bg-red-600 text-white"
+                    : s.key === "depose"
+                    ? "bg-orange-500 text-white"
                     : s.key === "complet"
                     ? "bg-green-600 text-white"
                     : "bg-ink text-white"
@@ -658,6 +761,7 @@ export function DocCeeClient({
             <RequestCard
               key={item.id}
               mode={mode}
+              viewerRole={viewerRole}
               telepros={telepros}
               item={item}
               expanded={expandedId === item.id}
