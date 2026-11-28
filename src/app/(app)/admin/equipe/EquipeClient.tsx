@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   FileDown,
+  ImageDown,
   Loader2,
   MapPin,
   Package,
@@ -29,6 +30,7 @@ import {
   type TeamId,
   type TeamInstallation,
 } from "@/lib/equipe";
+import { buildDayPlanningImage, dayLabelFr, shareOrDownload } from "@/lib/equipe-image";
 
 const INPUT_CLS =
   "w-full h-9 px-3 border border-line rounded-[9px] bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand transition-colors";
@@ -132,6 +134,7 @@ export function EquipeClient({
   const [form, setForm] = useState<FormState | null>(null);
   const [editing, setEditing] = useState<TeamInstallation | null>(null);
   const [saving, setSaving] = useState(false);
+  const [exportingDay, setExportingDay] = useState<string | null>(null);
 
   const days = useMemo(() => {
     const start = parseIso(weekStart);
@@ -168,6 +171,21 @@ export function EquipeClient({
       toast.error(e instanceof Error ? e.message : "Impossible de charger le planning.");
     } finally {
       setLoadingWeek(false);
+    }
+  }
+
+  async function exportDayImage(iso: string) {
+    setExportingDay(iso);
+    try {
+      const team = teamFilter === "all" ? null : teamFilter;
+      const dayItems = items.filter((i) => i.install_date === iso);
+      const blob = await buildDayPlanningImage({ date: iso, items: dayItems, team });
+      const name = `planning-${iso}${team ? `-equipe-${team}` : ""}.png`;
+      await shareOrDownload(blob, name, `Planning — ${dayLabelFr(iso)}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Export image impossible.");
+    } finally {
+      setExportingDay(null);
     }
   }
 
@@ -380,6 +398,7 @@ export function EquipeClient({
                         <div className="uppercase tracking-wide">{DAY_LABELS[i]}</div>
                         <div className="font-normal tabular-nums">{formatShort(d)}</div>
                       </div>
+                      <div className="flex flex-col items-end gap-1">
                       <a
                         href={`/api/admin/equipe/pdf?date=${iso}${teamFilter === "all" ? "" : `&team=${teamFilter}`}`}
                         target="_blank"
@@ -390,6 +409,17 @@ export function EquipeClient({
                         <FileDown className="size-3" />
                         PDF
                       </a>
+                      <button
+                        type="button"
+                        onClick={() => exportDayImage(iso)}
+                        disabled={exportingDay === iso}
+                        title={`Planning du ${DAY_LABELS[i].toLowerCase()} ${formatShort(d)} en photo`}
+                        className="inline-flex items-center gap-0.5 rounded-md border border-line bg-white px-1.5 py-0.5 text-[10px] font-semibold normal-case text-body shadow-sm hover:border-brand hover:text-brand disabled:opacity-50"
+                      >
+                        {exportingDay === iso ? <Loader2 className="size-3 animate-spin" /> : <ImageDown className="size-3" />}
+                        Photo
+                      </button>
+                      </div>
                     </div>
                   </th>
                 );
