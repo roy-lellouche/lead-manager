@@ -1,7 +1,16 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { normalizeRole } from "@/lib/roles";
 import type { UserRole } from "@/lib/types";
-import { stockDeltas, type StockProductOption, type TeamInstallation } from "@/lib/equipe";
+import {
+  EQUIPE_DOCS_BUCKET,
+  stockDeltas,
+  summarizeTeamDays,
+  type StockProductOption,
+  type TeamDayDocs,
+  type TeamDayFile,
+  type TeamId,
+  type TeamInstallation,
+} from "@/lib/equipe";
 
 export const EQUIPE_ROLES = ["admin", "secretaire", "stockage"] as const;
 
@@ -71,4 +80,31 @@ export async function applyStockChange(
     applied.push([id, delta]);
   }
   return { ok: true, rollback };
+}
+
+export async function listTeamDaySummaries(admin: SupabaseClient, from: string, to: string) {
+  const [{ data: files }, { data: notes }] = await Promise.all([
+    admin.from("team_day_files").select("team, day").gte("day", from).lte("day", to),
+    admin.from("team_day_notes").select("team, day, note").gte("day", from).lte("day", to),
+  ]);
+  return summarizeTeamDays(files ?? [], notes ?? []);
+}
+
+export async function loadTeamDayDocs(admin: SupabaseClient, team: TeamId, day: string): Promise<TeamDayDocs> {
+  const [{ data: files }, { data: note }] = await Promise.all([
+    admin.from("team_day_files").select("*").eq("team", team).eq("day", day).order("created_at"),
+    admin.from("team_day_notes").select("note").eq("team", team).eq("day", day).maybeSingle(),
+  ]);
+  const list = (files ?? []) as TeamDayFile[];
+  const urlByPath = new Map<string, string>();
+  if (list.length) {
+    const { data } = await admin.storage.from(EQUIPE_DOCS_BUCKET).createSignedUrls(list.map((f) => f.path), 3600);
+    for (const item of data ?? []) if (item.path && item.signedUrl) urlByPath.set(item.path, item.signedUrl);
+  }
+  return {
+    team,
+    day,
+    note: note?.note ?? "",
+    files: list.map((f) => ({ ...f, url: urlByPath.get(f.path) ?? "" })),
+  };
 }

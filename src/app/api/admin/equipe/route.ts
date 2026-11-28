@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getUserFromClient } from "@/lib/supabase/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { parseTeamInstallationInput } from "@/lib/equipe";
-import { applyStockChange, listStockProducts, productLabel, requireEquipeStaff } from "@/lib/equipe-server";
+import { applyStockChange, listStockProducts, listTeamDaySummaries, productLabel, requireEquipeStaff } from "@/lib/equipe-server";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
   if (!DATE_RE.test(from) || !DATE_RE.test(to))
     return NextResponse.json({ error: "Période invalide." }, { status: 400 });
 
-  const [{ data, error }, products] = await Promise.all([
+  const [{ data, error }, products, dayDocs] = await Promise.all([
     admin
       .from("team_installations")
       .select("*")
@@ -30,9 +30,10 @@ export async function GET(req: NextRequest) {
       .order("install_date")
       .order("created_at"),
     listStockProducts(admin),
+    listTeamDaySummaries(admin, from, to),
   ]);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ items: data ?? [], products });
+  return NextResponse.json({ items: data ?? [], products, dayDocs });
 }
 
 export async function POST(req: NextRequest) {

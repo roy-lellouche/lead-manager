@@ -153,3 +153,70 @@ export function addDays(d: Date, n: number): Date {
 export function teamName(id: number): string {
   return TEAMS.find((t) => t.id === id)?.name ?? `Équipe ${id}`;
 }
+
+/* ---------- Documents et note par jour / équipe ---------- */
+
+export const EQUIPE_DOCS_BUCKET = "equipe-docs";
+export const EQUIPE_DOC_MAX_BYTES = 50 * 1024 * 1024;
+
+export interface TeamDayFile {
+  id: string;
+  team: TeamId;
+  day: string;
+  path: string;
+  name: string;
+  type: string;
+  size: number;
+  uploaded_by: string | null;
+  created_at: string;
+  url?: string;
+}
+
+export interface TeamDayDocs {
+  team: TeamId;
+  day: string;
+  note: string;
+  files: TeamDayFile[];
+}
+
+/** Résumé affiché dans la grille (badge trombone). */
+export interface TeamDaySummary {
+  team: TeamId;
+  day: string;
+  files: number;
+  hasNote: boolean;
+  note: string;
+}
+
+export function parseTeamDay(team: unknown, day: unknown): { team: TeamId; day: string } | null {
+  const t = Number(team);
+  if (!TEAMS.some((x) => x.id === t)) return null;
+  if (typeof day !== "string" || !DATE_RE.test(day) || Number.isNaN(Date.parse(day))) return null;
+  return { team: t as TeamId, day };
+}
+
+/** Le chemin d'un fichier doit appartenir au dossier de son équipe / jour. */
+export function teamDayPrefix(team: TeamId, day: string): string {
+  return `equipe-${team}/${day}/`;
+}
+
+export function summarizeTeamDays(
+  files: Pick<TeamDayFile, "team" | "day">[],
+  notes: { team: number; day: string; note: string }[]
+): TeamDaySummary[] {
+  const map = new Map<string, TeamDaySummary>();
+  const get = (team: number, day: string) => {
+    const k = `${team}|${day}`;
+    let s = map.get(k);
+    if (!s) map.set(k, (s = { team: team as TeamId, day, files: 0, hasNote: false, note: "" }));
+    return s;
+  };
+  for (const f of files) get(f.team, f.day).files++;
+  for (const n of notes)
+    if (n.note.trim()) {
+      const s = get(n.team, n.day);
+      s.hasNote = true;
+      s.note = n.note;
+    }
+  return [...map.values()];
+}

@@ -64,6 +64,7 @@ export async function buildDayPlanningPdf(opts: {
   date: string; // yyyy-MM-dd
   items: TeamInstallation[];
   team?: TeamId | null;
+  notes?: Partial<Record<number, string>>;
 }): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);
@@ -120,6 +121,30 @@ export async function buildDayPlanningPdf(opts: {
       color: rgb(1, 1, 1),
     });
     y -= 30;
+
+    const note = opts.notes?.[t.id]?.trim();
+    if (note) {
+      const lines = wrap(note, font, 10, CONTENT_W - 24);
+      const nh = 22 + lines.length * 13 + 6;
+      ensure(nh);
+      const top = y + 12;
+      page.drawRectangle({
+        x: MARGIN,
+        y: top - nh,
+        width: CONTENT_W,
+        height: nh,
+        color: rgb(1, 0.99, 0.91),
+        borderColor: rgb(0.99, 0.9, 0.54),
+        borderWidth: 1,
+      });
+      text("Note du jour", MARGIN + 12, 10, bold, rgb(0.52, 0.3, 0.05));
+      y -= 16;
+      for (const line of lines) {
+        page.drawText(line, { x: MARGIN + 12, y, size: 10, font, color: rgb(0.1, 0.12, 0.16) });
+        y -= 13;
+      }
+      y -= 14;
+    }
 
     if (list.length === 0) {
       text("Aucune installation prévue.", MARGIN + 8, 10, font, rgb(0.45, 0.5, 0.56));

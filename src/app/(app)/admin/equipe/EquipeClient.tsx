@@ -11,6 +11,7 @@ import {
   Loader2,
   MapPin,
   Package,
+  Paperclip,
   Phone,
   Plus,
   ShoppingCart,
@@ -27,9 +28,11 @@ import {
   toIsoDate,
   type StockProductOption,
   type StockStatus,
+  type TeamDaySummary,
   type TeamId,
   type TeamInstallation,
 } from "@/lib/equipe";
+import { DayDocsModal } from "./DayDocsModal";
 import { buildDayPlanningImage, dayLabelFr, shareOrDownload } from "@/lib/equipe-image";
 
 const INPUT_CLS =
@@ -121,14 +124,18 @@ export function EquipeClient({
   initialWeekStart,
   initialItems,
   initialProducts,
+  initialDayDocs,
 }: {
   initialWeekStart: string;
   initialItems: TeamInstallation[];
   initialProducts: StockProductOption[];
+  initialDayDocs: TeamDaySummary[];
 }) {
   const [weekStart, setWeekStart] = useState(initialWeekStart);
   const [items, setItems] = useState<TeamInstallation[]>(initialItems);
   const [products, setProducts] = useState<StockProductOption[]>(initialProducts);
+  const [dayDocs, setDayDocs] = useState<TeamDaySummary[]>(initialDayDocs);
+  const [docsFor, setDocsFor] = useState<{ team: TeamId; day: string } | null>(null);
   const [teamFilter, setTeamFilter] = useState<TeamId | "all">("all");
   const [loadingWeek, setLoadingWeek] = useState(false);
   const [form, setForm] = useState<FormState | null>(null);
@@ -167,6 +174,7 @@ export function EquipeClient({
       const body = await res.json();
       setItems(body.items);
       setProducts(body.products);
+      setDayDocs(body.dayDocs ?? []);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Impossible de charger le planning.");
     } finally {
@@ -179,7 +187,8 @@ export function EquipeClient({
     try {
       const team = teamFilter === "all" ? null : teamFilter;
       const dayItems = items.filter((i) => i.install_date === iso);
-      const blob = await buildDayPlanningImage({ date: iso, items: dayItems, team });
+      const notes = Object.fromEntries(dayDocs.filter((x) => x.day === iso && x.hasNote).map((x) => [x.team, x.note]));
+      const blob = await buildDayPlanningImage({ date: iso, items: dayItems, team, notes });
       const name = `planning-${iso}${team ? `-equipe-${team}` : ""}.png`;
       await shareOrDownload(blob, name, `Planning — ${dayLabelFr(iso)}`);
     } catch (e) {
@@ -473,10 +482,31 @@ export function EquipeClient({
                             </button>
                           );
                         })}
+                        {(() => {
+                          const sum = dayDocs.find((x) => x.team === t.id && x.day === iso);
+                          const has = !!sum && (sum.files > 0 || sum.hasNote);
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => setDocsFor({ team: t.id, day: iso })}
+                              title="Note et documents du jour"
+                              className={`mt-auto flex w-full items-center justify-center gap-1 rounded-lg border py-1 text-xs transition ${
+                                has
+                                  ? "border-brand/40 bg-brand/5 font-medium text-brand hover:bg-brand/10"
+                                  : "border-dashed border-line text-subtle opacity-60 hover:border-brand hover:text-brand hover:opacity-100 group-hover:opacity-100"
+                              }`}
+                            >
+                              <Paperclip className="size-3.5" />
+                              {has
+                                ? `${sum!.files > 0 ? `${sum!.files} doc${sum!.files > 1 ? "s" : ""}` : ""}${sum!.files > 0 && sum!.hasNote ? " · " : ""}${sum!.hasNote ? "note" : ""}`
+                                : "Documents"}
+                            </button>
+                          );
+                        })()}
                         <button
                           type="button"
                           onClick={() => openCreate(t.id, iso)}
-                          className="mt-auto flex w-full items-center justify-center gap-1 rounded-lg border border-dashed border-line py-1 text-xs text-subtle opacity-60 transition hover:border-brand hover:text-brand hover:opacity-100 group-hover:opacity-100"
+                          className="flex w-full items-center justify-center gap-1 rounded-lg border border-dashed border-line py-1 text-xs text-subtle opacity-60 transition hover:border-brand hover:text-brand hover:opacity-100 group-hover:opacity-100"
                         >
                           <Plus className="size-3.5" /> Ajouter
                         </button>
@@ -489,6 +519,21 @@ export function EquipeClient({
           </tbody>
         </table>
       </div>
+
+      {docsFor && (
+        <DayDocsModal
+          team={docsFor.team}
+          day={docsFor.day}
+          dayLabel={dayLabelFr(docsFor.day)}
+          onClose={() => setDocsFor(null)}
+          onChange={({ files, hasNote, note }) =>
+            setDayDocs((prev) => [
+              ...prev.filter((x) => !(x.team === docsFor.team && x.day === docsFor.day)),
+              { team: docsFor.team, day: docsFor.day, files, hasNote, note },
+            ])
+          }
+        />
+      )}
 
       {form && (
         <div

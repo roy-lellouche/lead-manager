@@ -46,6 +46,7 @@ export async function buildDayPlanningImage(opts: {
   date: string;
   items: TeamInstallation[];
   team?: TeamId | null;
+  notes?: Partial<Record<number, string>>;
 }): Promise<Blob> {
   // 1re passe : mesure et liste d'opérations ; 2e passe : dessin à la bonne hauteur.
   const measure = document.createElement("canvas").getContext("2d")!;
@@ -86,6 +87,34 @@ export async function buildDayPlanningImage(opts: {
       ctx.fillText(c, PAD + CONTENT_W - 14 - ctx.measureText(c).width, hy + 26);
     });
     y += 52;
+
+    const note = opts.notes?.[t.id]?.trim();
+    if (note) {
+      setFont(measure, 15, 400);
+      const lines = wrap(measure, note, CONTENT_W - 40);
+      const nh = 16 + 22 + lines.length * 21 + 6;
+      const ny = y;
+      ops.push((ctx) => {
+        ctx.fillStyle = "#fefce8";
+        ctx.strokeStyle = "#fde68a";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.roundRect(PAD, ny, CONTENT_W, nh, 10);
+        ctx.fill();
+        ctx.stroke();
+        setFont(ctx, 15, 700);
+        ctx.fillStyle = "#854d0e";
+        ctx.fillText("Note du jour", PAD + 20, ny + 28);
+        setFont(ctx, 15, 400);
+        ctx.fillStyle = "#0f172a";
+        let ly = ny + 28 + 24;
+        for (const line of lines) {
+          ctx.fillText(line, PAD + 20, ly);
+          ly += 21;
+        }
+      });
+      y += nh + 12;
+    }
 
     if (list.length === 0) {
       const ey = y;

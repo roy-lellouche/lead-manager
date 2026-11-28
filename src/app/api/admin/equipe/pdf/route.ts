@@ -24,10 +24,14 @@ export async function GET(req: NextRequest) {
 
   let query = admin.from("team_installations").select("*").eq("install_date", date).order("created_at");
   if (team) query = query.eq("team", team);
-  const { data, error } = await query;
+  const [{ data, error }, { data: noteRows }] = await Promise.all([
+    query,
+    admin.from("team_day_notes").select("team, note").eq("day", date),
+  ]);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const notes = Object.fromEntries((noteRows ?? []).map((n) => [n.team, n.note as string]));
 
-  const bytes = await buildDayPlanningPdf({ date, items: (data ?? []) as TeamInstallation[], team });
+  const bytes = await buildDayPlanningPdf({ date, items: (data ?? []) as TeamInstallation[], team, notes });
   const fileName = `planning-${date}${team ? `-equipe-${team}-${teamName(team).toLowerCase()}` : ""}.pdf`;
 
   return new NextResponse(Buffer.from(bytes), {

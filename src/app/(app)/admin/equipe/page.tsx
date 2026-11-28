@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/supabase/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { normalizeRole, roleLandingPath } from "@/lib/roles";
-import { EQUIPE_ROLES, listStockProducts } from "@/lib/equipe-server";
+import { EQUIPE_ROLES, listStockProducts, listTeamDaySummaries } from "@/lib/equipe-server";
 import { addDays, mondayOf, toIsoDate, type TeamInstallation } from "@/lib/equipe";
 import { PageHeader } from "@/components/ui-kit/PageHeader";
 import { EquipeClient } from "./EquipeClient";
@@ -26,7 +26,7 @@ export default async function EquipePage() {
   const from = toIsoDate(monday);
   const to = toIsoDate(addDays(monday, 6));
 
-  const [{ data }, products] = await Promise.all([
+  const [{ data }, products, dayDocs] = await Promise.all([
     admin
       .from("team_installations")
       .select("*")
@@ -35,18 +35,20 @@ export default async function EquipePage() {
       .order("install_date")
       .order("created_at"),
     listStockProducts(admin),
+    listTeamDaySummaries(admin, from, to),
   ]);
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Équipe"
-        subtitle="Planning hebdomadaire des équipes de pose. Une pompe à chaleur « prise du stock » est retirée automatiquement du Stockage ; sinon marquez-la « à commander »."
+        subtitle="Planning hebdomadaire des équipes de pose. Le trombone de chaque jour permet d'écrire une note et de joindre des documents (PDF à signer, photos du chantier…). Une pompe à chaleur « prise du stock » est retirée automatiquement du Stockage ; sinon marquez-la « à commander »."
       />
       <EquipeClient
         initialWeekStart={from}
         initialItems={(data ?? []) as TeamInstallation[]}
         initialProducts={products}
+        initialDayDocs={dayDocs}
       />
     </div>
   );
