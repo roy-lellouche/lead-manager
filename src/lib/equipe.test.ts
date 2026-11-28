@@ -68,3 +68,11 @@ describe("mondayOf", () => {
     expect(toIsoDate(mondayOf(new Date(2026, 10, 23)))).toBe("2026-11-23"); // lundi
   });
 });
+
+describe("toWinAnsi", () => {
+  it("garde les accents français et simplifie le reste", async () => {
+    const { toWinAnsi } = await import("./equipe-pdf");
+    expect(toWinAnsi("Équipe à côté — œuvre")).toBe("Équipe à côté - œuvre");
+    expect(toWinAnsi("Nguyễn 😀")).toBe("Nguyen ");
+  });
+});

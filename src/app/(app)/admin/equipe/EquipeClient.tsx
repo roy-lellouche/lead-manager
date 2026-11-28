@@ -6,6 +6,7 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
+  FileDown,
   Loader2,
   MapPin,
   Package,
@@ -374,8 +375,22 @@ export function EquipeClient({
                       iso === todayIso ? "bg-brand/10 text-brand" : "text-subtle"
                     }`}
                   >
-                    <div className="uppercase tracking-wide">{DAY_LABELS[i]}</div>
-                    <div className="font-normal tabular-nums">{formatShort(d)}</div>
+                    <div className="flex items-start justify-between gap-1">
+                      <div>
+                        <div className="uppercase tracking-wide">{DAY_LABELS[i]}</div>
+                        <div className="font-normal tabular-nums">{formatShort(d)}</div>
+                      </div>
+                      <a
+                        href={`/api/admin/equipe/pdf?date=${iso}${teamFilter === "all" ? "" : `&team=${teamFilter}`}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={`Planning du ${DAY_LABELS[i].toLowerCase()} ${formatShort(d)} en PDF`}
+                        className="inline-flex items-center gap-0.5 rounded-md border border-line bg-white px-1.5 py-0.5 text-[10px] font-semibold normal-case text-body shadow-sm hover:border-brand hover:text-brand"
+                      >
+                        <FileDown className="size-3" />
+                        PDF
+                      </a>
+                    </div>
                   </th>
                 );
               })}
