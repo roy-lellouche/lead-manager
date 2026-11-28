@@ -30,6 +30,11 @@ export interface TeamInstallation {
   product_label: string | null;
   quantity: number;
   stock_status: StockStatus;
+  /** Heure du RDV (HH:MM[:SS]) : fixe l'ordre de la tournée du jour. */
+  start_time: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  geocoded_address?: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -54,6 +59,7 @@ export type TeamInstallationInput = Pick<
   | "product_label"
   | "quantity"
   | "stock_status"
+  | "start_time"
 >;
 
 function optText(v: unknown, max = 2000): string | null {
@@ -95,8 +101,16 @@ export function parseTeamInstallationInput(
   if (stock_status === "stock" && !product_id)
     return { error: "Choisissez une pompe à chaleur du stockage, ou marquez-la « à commander »." };
 
+  let start_time: string | null = null;
+  if (typeof b.start_time === "string" && b.start_time.trim()) {
+    const m = /^([01]\d|2[0-3]):([0-5]\d)(?::[0-5]\d)?$/.exec(b.start_time.trim());
+    if (!m) return { error: "Heure invalide." };
+    start_time = `${m[1]}:${m[2]}`;
+  }
+
   return {
     value: {
+      start_time,
       team: team as TeamId,
       install_date,
       client_name,
@@ -219,4 +233,77 @@ export function summarizeTeamDays(
       s.note = n.note;
     }
   return [...map.values()];
+}
+
+/** Ordre de la tournée : heure de RDV (sans heure en dernier), puis création. */
+export function compareInstallations(
+  a: Pick<TeamInstallation, "start_time" | "created_at">,
+  b: Pick<TeamInstallation, "start_time" | "created_at">
+): number {
+  if (a.start_time && b.start_time && a.start_time !== b.start_time) return a.start_time < b.start_time ? -1 : 1;
+  if (a.start_time && !b.start_time) return -1;
+  if (!a.start_time && b.start_time) return 1;
+  return a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : 0;
+}
+
+export function formatTime(t: string | null | undefined): string {
+  return t ? t.slice(0, 5).replace(":", "h") : "";
+}
+
+/* ---------- Kilométrage ---------- */
+
+/** Point de départ et de retour des équipes. */
+export const DEPOT = { label: "Cormeilles-en-Parisis (95240)", lat: 48.9739, lng: 2.2014 } as const;
+
+export interface KmStop {
+  id: string;
+  client_name: string;
+  address: string | null;
+  start_time: string | null;
+  /** false : adresse absente ou introuvable, exclue du calcul. */
+  located: boolean;
+}
+
+export interface KmDay {
+  day: string;
+  km: number;
+  minutes: number;
+  stops: KmStop[];
+  /** Distance estimée à vol d'oiseau (calculateur d'itinéraire indisponible). */
+  estimated: boolean;
+}
+
+export interface KmTeamWeek {
+  team: TeamId;
+  km: number;
+  minutes: number;
+  days: KmDay[];
+  missing: number;
+}
+
+/** Distance à vol d'oiseau en km. */
+export function haversineKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const R = 6371;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+/** Estimation route ≈ 1,3 × vol d'oiseau, 60 km/h de moyenne. */
+export function estimateRoute(points: { lat: number; lng: number }[]): { km: number; minutes: number } {
+  let km = 0;
+  for (let i = 1; i < points.length; i++) km += haversineKm(points[i - 1], points[i]) * 1.3;
+  return { km, minutes: km };
+}
+
+export function formatKm(km: number): string {
+  return `${Math.round(km).toLocaleString("fr-FR")} km`;
+}
+
+export function formatDuration(minutes: number): string {
+  const m = Math.round(minutes);
+  const h = Math.floor(m / 60);
+  return h ? `${h} h ${String(m % 60).padStart(2, "0")}` : `${m} min`;
 }

@@ -2,7 +2,7 @@
  * Export « photo » (PNG) du planning d'un jour, dessiné côté navigateur sur un
  * canvas : pratique pour l'envoyer aux équipes (WhatsApp, SMS…).
  */
-import { STOCK_STATUS_LABELS, TEAMS, type StockStatus, type TeamId, type TeamInstallation } from "@/lib/equipe";
+import { STOCK_STATUS_LABELS, TEAMS, compareInstallations, formatTime, type StockStatus, type TeamId, type TeamInstallation } from "@/lib/equipe";
 
 const W = 900;
 const PAD = 32;
@@ -72,7 +72,7 @@ export async function buildDayPlanningImage(opts: {
 
   const teams = opts.team ? TEAMS.filter((t) => t.id === opts.team) : TEAMS;
   for (const t of teams) {
-    const list = opts.items.filter((i) => i.team === t.id);
+    const list = opts.items.filter((i) => i.team === t.id).sort(compareInstallations);
     const hy = y;
     ops.push((ctx) => {
       ctx.fillStyle = TEAM_HEX[t.id];
@@ -158,7 +158,7 @@ export async function buildDayPlanningImage(opts: {
 
         setFont(ctx, 19, 700);
         ctx.fillStyle = "#0f172a";
-        ctx.fillText(it.client_name, PAD + 20, by + 34);
+        ctx.fillText(`${it.start_time ? `${formatTime(it.start_time)} · ` : ""}${it.client_name}`, PAD + 20, by + 34);
         let ly = by + 18 + 26 + 18;
         for (const r of wrapped) {
           setFont(ctx, 15, 600);

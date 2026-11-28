@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   CalendarDays,
@@ -11,6 +11,8 @@ import {
   Loader2,
   MapPin,
   Package,
+  Car,
+  Clock,
   Paperclip,
   Phone,
   Plus,
@@ -23,6 +25,11 @@ import { Button } from "@/components/ui/button";
 import {
   STOCK_STATUS_LABELS,
   TEAMS,
+  compareInstallations,
+  formatDuration,
+  formatKm,
+  formatTime,
+  type KmTeamWeek,
   addDays,
   mondayOf,
   toIsoDate,
@@ -33,6 +40,7 @@ import {
   type TeamInstallation,
 } from "@/lib/equipe";
 import { DayDocsModal } from "./DayDocsModal";
+import { KmModal } from "./KmModal";
 import { buildDayPlanningImage, dayLabelFr, shareOrDownload } from "@/lib/equipe-image";
 
 const INPUT_CLS =
@@ -86,6 +94,7 @@ type FormState = {
   product_label: string;
   quantity: number;
   stock_status: StockStatus;
+  start_time: string;
 };
 
 function emptyForm(team: TeamId, date: string): FormState {
@@ -101,6 +110,7 @@ function emptyForm(team: TeamId, date: string): FormState {
     product_label: "",
     quantity: 1,
     stock_status: "stock",
+    start_time: "",
   };
 }
 
@@ -117,6 +127,7 @@ function formFromItem(it: TeamInstallation): FormState {
     product_label: it.product_label ?? "",
     quantity: it.quantity,
     stock_status: it.stock_status,
+    start_time: it.start_time ? it.start_time.slice(0, 5) : "",
   };
 }
 
@@ -136,6 +147,9 @@ export function EquipeClient({
   const [products, setProducts] = useState<StockProductOption[]>(initialProducts);
   const [dayDocs, setDayDocs] = useState<TeamDaySummary[]>(initialDayDocs);
   const [docsFor, setDocsFor] = useState<{ team: TeamId; day: string } | null>(null);
+  const [km, setKm] = useState<KmTeamWeek[] | null>(null);
+  const [kmLoading, setKmLoading] = useState(false);
+  const [kmFor, setKmFor] = useState<TeamId | null>(null);
   const [teamFilter, setTeamFilter] = useState<TeamId | "all">("all");
   const [loadingWeek, setLoadingWeek] = useState(false);
   const [form, setForm] = useState<FormState | null>(null);
@@ -148,6 +162,39 @@ export function EquipeClient({
     return Array.from({ length: 7 }, (_, i) => addDays(start, i));
   }, [weekStart]);
   const todayIso = toIsoDate(new Date());
+
+  // Kilométrage recalculé dès que la semaine ou les adresses / heures changent.
+  const kmKey = useMemo(
+    () =>
+      weekStart +
+      items
+        .map((i) => `${i.id}|${i.team}|${i.install_date}|${i.address ?? ""}|${i.start_time ?? ""}`)
+        .sort()
+        .join(";"),
+    [items, weekStart]
+  );
+  useEffect(() => {
+    let cancelled = false;
+    const to = toIsoDate(addDays(parseIso(weekStart), 6));
+    const timer = setTimeout(async () => {
+      setKmLoading(true);
+      try {
+        const res = await fetch(`/api/admin/equipe/km?from=${weekStart}&to=${to}`, { cache: "no-store" });
+        if (!res.ok) throw new Error();
+        const body = (await res.json()) as { teams: KmTeamWeek[] };
+        if (!cancelled) setKm(body.teams);
+      } catch {
+        if (!cancelled) setKm(null);
+      } finally {
+        if (!cancelled) setKmLoading(false);
+      }
+    }, 500);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kmKey]);
 
   const productsById = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
   const productGroups = useMemo(() => {
@@ -246,6 +293,7 @@ export function EquipeClient({
         product_label: form.product_label,
         quantity: form.quantity,
         stock_status: form.stock_status,
+        start_time: form.start_time,
       };
       const res = await fetch(form.id ? `/api/admin/equipe/${form.id}` : "/api/admin/equipe", {
         method: form.id ? "PATCH" : "POST",
@@ -372,6 +420,12 @@ export function EquipeClient({
           );
         })}
         <div className="ml-auto flex flex-wrap gap-2 text-xs">
+          {km && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-700">
+              <Car className="size-3.5" />
+              {formatKm(km.filter((k) => teamFilter === "all" || k.team === teamFilter).reduce((s, k) => s + k.km, 0))} cette semaine
+            </span>
+          )}
           {toOrder > 0 && (
             <span className="rounded-full bg-red-100 px-2.5 py-1 font-medium text-red-700">
               {toOrder} à commander
@@ -446,10 +500,35 @@ export function EquipeClient({
                       <div className="font-semibold text-ink">{t.name}</div>
                     </div>
                   </div>
+                  {(() => {
+                    const k = km?.find((x) => x.team === t.id);
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => setKmFor(t.id)}
+                        disabled={!k}
+                        title="Kilométrage de la semaine (départ et retour Cormeilles-en-Parisis)"
+                        className="mt-2 flex w-full items-center gap-1.5 rounded-lg border border-line bg-canvas/50 px-2 py-1.5 text-left text-xs text-body transition hover:border-brand hover:text-brand disabled:cursor-default disabled:hover:border-line disabled:hover:text-body"
+                      >
+                        <Car className="size-3.5 shrink-0" />
+                        {k ? (
+                          <span>
+                            <span className="font-semibold tabular-nums">{formatKm(k.km)}</span>
+                            {k.km > 0 && <span className="text-subtle"> · {formatDuration(k.minutes)}</span>}
+                            {k.missing > 0 && <span className="ml-1 text-red-600">⚠ {k.missing}</span>}
+                          </span>
+                        ) : kmLoading ? (
+                          <Loader2 className="size-3 animate-spin" />
+                        ) : (
+                          <span className="text-subtle">—</span>
+                        )}
+                      </button>
+                    );
+                  })()}
                 </td>
                 {days.map((d) => {
                   const iso = toIsoDate(d);
-                  const cell = items.filter((i) => i.team === t.id && i.install_date === iso);
+                  const cell = items.filter((i) => i.team === t.id && i.install_date === iso).sort(compareInstallations);
                   return (
                     <td
                       key={iso}
@@ -466,7 +545,12 @@ export function EquipeClient({
                               onClick={() => openEdit(it)}
                               className={`w-full rounded-lg border border-line border-l-4 ${st.card} bg-white p-2 text-left shadow-sm transition-colors hover:bg-canvas`}
                             >
-                              <div className="truncate text-[13px] font-semibold text-ink">{it.client_name}</div>
+                              <div className="truncate text-[13px] font-semibold text-ink">
+                                {it.start_time && (
+                                  <span className="mr-1 font-bold text-brand">{formatTime(it.start_time)}</span>
+                                )}
+                                {it.client_name}
+                              </div>
                               {it.product_label && (
                                 <div className="mt-0.5 line-clamp-2 text-xs text-body">
                                   {it.quantity > 1 ? `${it.quantity} × ` : ""}
@@ -520,6 +604,14 @@ export function EquipeClient({
         </table>
       </div>
 
+      {kmFor && km && (
+        <KmModal
+          data={km.find((k) => k.team === kmFor)!}
+          weekLabel={weekLabel}
+          onClose={() => setKmFor(null)}
+        />
+      )}
+
       {docsFor && (
         <DayDocsModal
           team={docsFor.team}
@@ -569,15 +661,29 @@ export function EquipeClient({
                   ))}
                 </select>
               </div>
-              <div>
-                <label className={LABEL_CLS}>Date d&apos;installation</label>
-                <input
-                  type="date"
-                  required
-                  value={form.install_date}
-                  onChange={(e) => setForm({ ...form, install_date: e.target.value })}
-                  className={INPUT_CLS}
-                />
+              <div className="grid grid-cols-[1fr_110px] gap-2">
+                <div>
+                  <label className={LABEL_CLS}>Date</label>
+                  <input
+                    type="date"
+                    required
+                    value={form.install_date}
+                    onChange={(e) => setForm({ ...form, install_date: e.target.value })}
+                    className={INPUT_CLS}
+                  />
+                </div>
+                <div>
+                  <label className={LABEL_CLS}>
+                    <Clock className="mr-1 inline size-3.5" />
+                    Heure
+                  </label>
+                  <input
+                    type="time"
+                    value={form.start_time}
+                    onChange={(e) => setForm({ ...form, start_time: e.target.value })}
+                    className={INPUT_CLS}
+                  />
+                </div>
               </div>
               <div className="sm:col-span-2">
                 <label className={LABEL_CLS}>Client *</label>

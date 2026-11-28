@@ -76,3 +76,31 @@ describe("toWinAnsi", () => {
     expect(toWinAnsi("Nguyễn 😀")).toBe("Nguyen ");
   });
 });
+
+describe("kilométrage", () => {
+  it("ordonne la tournée par heure de RDV, sans heure en dernier", async () => {
+    const { compareInstallations } = await import("./equipe");
+    const list = [
+      { id: "c", start_time: null, created_at: "2026-01-01T00:00:00Z" },
+      { id: "b", start_time: "14:00", created_at: "2026-01-02T00:00:00Z" },
+      { id: "a", start_time: "08:30", created_at: "2026-01-03T00:00:00Z" },
+    ];
+    expect(list.sort(compareInstallations).map((x) => x.id)).toEqual(["a", "b", "c"]);
+  });
+
+  it("estime une boucle Cormeilles → Paris → Cormeilles", async () => {
+    const { DEPOT, estimateRoute } = await import("./equipe");
+    const paris = { lat: 48.8566, lng: 2.3522 };
+    const { km } = estimateRoute([DEPOT, paris, DEPOT]);
+    expect(km).toBeGreaterThan(35);
+    expect(km).toBeLessThan(55);
+  });
+
+  it("valide l'heure du RDV", () => {
+    const base = { team: 1, install_date: "2026-12-01", client_name: "X", product_label: "PAC", stock_status: "a_commander" };
+    const ok = parseTeamInstallationInput({ ...base, start_time: "8:30" });
+    expect("error" in ok).toBe(true);
+    const ok2 = parseTeamInstallationInput({ ...base, start_time: "08:30" });
+    expect("value" in ok2 && ok2.value.start_time).toBe("08:30");
+  });
+});

@@ -1,5 +1,5 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
-import { STOCK_STATUS_LABELS, TEAMS, type StockStatus, type TeamId, type TeamInstallation } from "@/lib/equipe";
+import { STOCK_STATUS_LABELS, TEAMS, compareInstallations, formatTime, type StockStatus, type TeamId, type TeamInstallation } from "@/lib/equipe";
 
 const PAGE_W = 595.28; // A4
 const PAGE_H = 841.89;
@@ -107,7 +107,7 @@ export async function buildDayPlanningPdf(opts: {
 
   const teams = opts.team ? TEAMS.filter((t) => t.id === opts.team) : TEAMS;
   for (const t of teams) {
-    const list = opts.items.filter((i) => i.team === t.id);
+    const list = opts.items.filter((i) => i.team === t.id).sort(compareInstallations);
     ensure(60);
     const [r, g, b] = TEAM_RGB[t.id];
     page.drawRectangle({ x: MARGIN, y: y - 6, width: CONTENT_W, height: 22, color: rgb(r, g, b) });
@@ -180,7 +180,7 @@ export async function buildDayPlanningPdf(opts: {
       const [sr, sg, sb] = STATUS_RGB[it.stock_status];
       page.drawRectangle({ x: MARGIN, y: top - blockH, width: 4, height: blockH, color: rgb(sr, sg, sb) });
 
-      text(it.client_name, MARGIN + 12, 12, bold);
+      text(`${it.start_time ? `${formatTime(it.start_time)} - ` : ""}${it.client_name}`, MARGIN + 12, 12, bold);
       y -= 20;
       for (const w of wrapped) {
         text(`${w.label} :`, MARGIN + 12, 10, bold, rgb(0.35, 0.4, 0.46));
