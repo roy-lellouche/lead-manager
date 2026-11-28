@@ -69,6 +69,7 @@ describe("canAccessAdminPath", () => {
     expect(canAccessAdminPath("stockage", "/admin/stockage")).toBe(true);
     expect(canAccessAdminPath("stockage", "/admin/sav")).toBe(true);
     expect(canAccessAdminPath("stockage", "/admin/taches")).toBe(true);
+    expect(canAccessAdminPath("stockage", "/admin/equipe")).toBe(true);
     expect(canAccessAdminPath("stockage", "/admin")).toBe(false);
     expect(canAccessAdminPath("stockage", "/admin/leads")).toBe(false);
     expect(canAccessAdminPath("stockage", "/admin/users")).toBe(false);

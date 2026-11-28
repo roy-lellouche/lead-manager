@@ -33,7 +33,7 @@ export function usesAdminSpace(role: UserRole | undefined): boolean {
 }
 
 const SECRETAIRE_DENIED_PREFIXES = ["/admin/users", "/admin/stats", "/admin/rentabilite", "/admin/parametres-financiers", "/admin/factures-fournisseurs", "/admin/dossiers-installes"];
-const STOCKAGE_ALLOWED_PREFIXES = ["/admin/stockage", "/admin/sav", "/admin/taches"];
+const STOCKAGE_ALLOWED_PREFIXES = ["/admin/stockage", "/admin/equipe", "/admin/sav", "/admin/taches"];
 const CEE_ALLOWED_PREFIXES = ["/admin/doc-cee"];
 
 /**
@@ -50,7 +50,7 @@ export function canAccessAdminPath(role: UserRole | undefined, pathname: string)
     );
   }
 
-  // Le rôle stockage ne voit que Stockage, SAV et Tâches : liste blanche, pas liste noire,
+  // Le rôle stockage ne voit que Stockage, Équipe, SAV et Tâches : liste blanche, pas liste noire,
   // pour qu'une page admin ajoutée plus tard lui reste fermée par défaut.
   if (role === "stockage") {
     return STOCKAGE_ALLOWED_PREFIXES.some(

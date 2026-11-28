@@ -30,6 +30,7 @@ import {
   Search,
   Receipt,
   FolderOpen,
+  HardHat,
 } from "lucide-react";
 import { CommandPalette, openCommandPalette } from "@/components/CommandPalette";
 import { createClient } from "@/lib/supabase/client";
@@ -58,6 +59,7 @@ const adminNav = [
   { href: "/admin/sav", label: "SAV", icon: Wrench },
   { href: "/admin/altitude", label: "Altitude", icon: Mountain },
   { href: "/admin/taches", label: "Tâches", icon: ListTodo, tasksBadge: true },
+  { href: "/admin/equipe", label: "Équipe", icon: HardHat },
   { href: "/admin/stockage", label: "Stockage", icon: Package },
   { href: "/admin/import", label: "Import CSV", icon: FileUp },
   { href: "/admin/users", label: "Utilisateurs", icon: UserPlus },
@@ -73,6 +75,7 @@ const secretaireNav = [
   { href: "/admin/sav", label: "SAV", icon: Wrench },
   { href: "/admin/altitude", label: "Altitude", icon: Mountain },
   { href: "/admin/agenda-courrier", label: "Agenda", icon: Calendar },
+  { href: "/admin/equipe", label: "Équipe", icon: HardHat },
   { href: "/admin/taches", label: "Tâches", icon: ListTodo, tasksBadge: true },
   { href: "/admin/import", label: "Import CSV", icon: FileUp },
   { href: "/admin/stats-secretaire", label: "Statistiques", icon: BarChart3 },
@@ -81,6 +84,7 @@ const secretaireNav = [
 
 const stockageNav = [
   { href: "/admin/stockage", label: "Stockage", icon: Package },
+  { href: "/admin/equipe", label: "Équipe", icon: HardHat },
   { href: "/admin/sav", label: "SAV", icon: Wrench },
   { href: "/admin/altitude", label: "Altitude", icon: Mountain },
   { href: "/admin/taches", label: "Tâches", icon: ListTodo, tasksBadge: true },
